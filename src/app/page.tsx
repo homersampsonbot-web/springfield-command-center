@@ -43,6 +43,11 @@ export default function CommandCenter() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState<any>(null);
 
+  // New directive states
+  const [directive, setDirective] = useState('');
+  const [sending, setSending] = useState(false);
+  const [lastResult, setLastResult] = useState<any>(null);
+
   useEffect(() => {
     if (auth) {
       const fetchStatus = async () => {
@@ -81,6 +86,25 @@ export default function CommandCenter() {
       setLoading(false);
     }
   };
+
+  async function handleSend() {
+    if (!directive.trim() || sending) return;
+    setSending(true);
+    try {
+      const res = await fetch('/api/directive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ directive })
+      });
+      const data = await res.json();
+      setLastResult(data);
+      setDirective('');
+    } catch(e) {
+      setLastResult({ status: 'error', message: 'Failed to reach Marge' });
+    } finally {
+      setSending(false);
+    }
+  }
 
   if (!auth) {
     return (
@@ -154,14 +178,33 @@ export default function CommandCenter() {
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl font-marker mb-8 text-[#FFD90F] uppercase tracking-tighter">Mayor Quimby's Podium</h1>
-          <div className="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/10">
-            <input 
-              className="flex-grow bg-transparent p-4 text-lg font-elite outline-none placeholder-white/30"
-              placeholder="Issue a new directive..."
-            />
-            <button className="bg-[#FFD90F] text-black p-4 rounded-xl hover:scale-105 transition-transform">
-              <Send size={24} />
-            </button>
+          
+          <div className="flex flex-col gap-2 text-left">
+            <div className="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/10">
+              <input 
+                className="flex-grow bg-transparent p-4 text-lg font-elite outline-none placeholder-white/30"
+                placeholder="Issue a new directive..."
+                value={directive}
+                onChange={e => setDirective(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                disabled={sending}
+              />
+              <button 
+                onClick={handleSend}
+                disabled={sending}
+                className="bg-[#FFD90F] text-black p-4 rounded-xl hover:scale-105 transition-transform disabled:opacity-50"
+              >
+                {sending ? '...' : <Send size={24} />}
+              </button>
+            </div>
+            {lastResult && (
+              <div className={`text-xs p-2 rounded-lg ${lastResult.status === 'dispatched' ? 'bg-green-900/50 text-green-300' : lastResult.status === 'escalation' ? 'bg-red-900/50 text-red-300' : 'bg-white/10 text-white/50'}`}>
+                {lastResult.status === 'dispatched' && `✅ Dispatched — Task ${lastResult.taskId?.slice(0,8)}`}
+                {lastResult.status === 'escalation' && `🚨 Escalation — ${lastResult.reason}`}
+                {lastResult.status === 'error' && `❌ ${lastResult.message}`}
+                {lastResult.debateLog?.length > 1 && ` · Marge + Lisa debated`}
+              </div>
+            )}
           </div>
         </header>
 
