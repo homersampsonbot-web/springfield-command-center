@@ -3,37 +3,49 @@
 :root {
   --springfield-sky: #87CEEB;
   --springfield-yellow: #FED90F;
+  --springfield-navy: #0D0D1A;
 }
 
-body {
-  background-color: var(--springfield-sky);
-  overflow-x: hidden;
+@layer base {
+  body {
+    @apply bg-[#0D0D1A] text-white antialiased overflow-x-hidden;
+    background: linear-gradient(180deg, #0D0D1A 0%, #1A1A2E 100%);
+  }
 }
 
-.cloud-animation {
-  position: absolute;
-  background: white;
-  border-radius: 100px;
-  opacity: 0.8;
+.font-marker { font-family: 'Permanent Marker', cursive; }
+.font-elite { font-family: 'Special Elite', system-ui; }
+.font-mono { font-family: 'Share Tech Mono', monospace; }
+
+.cloud {
+  @apply absolute bg-white rounded-full opacity-20;
+  filter: blur(8px);
   animation: move-clouds linear infinite;
 }
 
 @keyframes move-clouds {
-  from { transform: translateX(-200px); }
+  from { transform: translateX(-100%); }
   to { transform: translateX(100vw); }
 }
 
-.agent-panel {
-  @apply bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-xl border-4 border-[#FED90F] transition-all duration-300;
+.glass-card {
+  @apply bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl transition-all duration-300;
 }
 
-.agent-panel:hover {
-  @apply transform -translate-y-2 shadow-2xl;
+.terminal {
+  @apply bg-black rounded-lg p-3 font-mono text-[10px] leading-tight border border-white/10;
+  box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.1);
 }
 
-.status-pill {
-  @apply px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border-2;
+.cursor-blink {
+  animation: blink 1s step-end infinite;
 }
 
-.status-online { @apply bg-green-500/20 text-green-700 border-green-500; }
-.status-pending { @apply bg-amber-500/20 text-amber-700 border-amber-500; }
+@keyframes blink {
+  from, to { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.auth-input {
+  @apply bg-white/10 border-2 border-white/20 rounded-xl p-4 text-center focus:border-[#FFD90F] outline-none transition-all;
+}
