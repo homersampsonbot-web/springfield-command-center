@@ -4,10 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Send, Activity, Database, Server, Shield, Monitor, Layout, MessageSquare } from 'lucide-react';
 
 const AGENTS = [
-  { name: 'Marge', role: 'Chief Architect', icon: 'https://img.icons8.com/color/96/marge-simpson.png', desc: 'Claude | Architecture & Specs' },
-  { name: 'Lisa', role: 'Strategist', icon: 'https://img.icons8.com/color/96/lisa-simpson.png', desc: 'GPT-4o | Planning & Debate' },
-  { name: 'Homer', role: 'Executor', icon: 'https://img.icons8.com/color/96/homer-simpson.png', desc: 'Gemini | Build & Deploy' },
-  { name: 'Bart', role: 'QA Validator', icon: 'https://img.icons8.com/color/96/bart-simpson.png', desc: 'Gemini | UI & Testing' },
+  { name: 'Marge', role: 'Chief Architect', icon: '/icons/marge.png', desc: 'Claude | Architecture & Specs' },
+  { name: 'Lisa', role: 'Strategist', icon: '/icons/lisa.png', desc: 'GPT-4o | Planning & Debate' },
+  { name: 'Homer', role: 'Executor', icon: '/icons/homer.png', desc: 'Gemini | Build & Deploy' },
+  { name: 'Bart', role: 'QA Validator', icon: '/icons/bart.png', desc: 'Gemini | UI & Testing' },
 ];
 
 export default function CommandCenter() {
@@ -45,7 +45,7 @@ export default function CommandCenter() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-3xl shadow-2xl border-8 border-[#FED90F] max-w-md w-full text-center">
-          <img src="https://img.icons8.com/color/96/homer-simpson.png" className="mx-auto mb-6" alt="Homer" />
+          <img src="/icons/homer.png" className="mx-auto mb-6" alt="Homer" />
           <h1 className="text-3xl font-black mb-6 text-gray-900 uppercase">Classified Access</h1>
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="md:hidden">
