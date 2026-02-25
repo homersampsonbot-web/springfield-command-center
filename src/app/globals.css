@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  --springfield-sky: #87CEEB;
+  --springfield-yellow: #FED90F;
+}
+
+body {
+  background-color: var(--springfield-sky);
+  overflow-x: hidden;
+}
+
+.cloud-animation {
+  position: absolute;
+  background: white;
+  border-radius: 100px;
+  opacity: 0.8;
+  animation: move-clouds linear infinite;
+}
+
+@keyframes move-clouds {
+  from { transform: translateX(-200px); }
+  to { transform: translateX(100vw); }
+}
+
+.agent-panel {
+  @apply bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-xl border-4 border-[#FED90F] transition-all duration-300;
+}
+
+.agent-panel:hover {
+  @apply transform -translate-y-2 shadow-2xl;
+}
+
+.status-pill {
+  @apply px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border-2;
+}
+
+.status-online { @apply bg-green-500/20 text-green-700 border-green-500; }
+.status-pending { @apply bg-amber-500/20 text-amber-700 border-amber-500; }
