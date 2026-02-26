@@ -194,7 +194,7 @@ export default function CommandCenter() {
                 disabled={sending}
                 className="bg-[#FFD90F] text-black p-4 rounded-xl hover:scale-105 transition-transform disabled:opacity-50"
               >
-                {sending ? '...' : <Send size={24} />}
+                {sending ? '...' : <Send size={20} className='mr-2' /> SEND DIRECTIVE}
               </button>
             </div>
             {lastResult && (
