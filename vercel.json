@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/directive", "destination": "/api/directive/route.js" },
+    { "source": "/api/results", "destination": "/api/results/route.js" }
+  ]
+}
