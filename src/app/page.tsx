@@ -80,7 +80,10 @@ export default function Home() {
 
   if (!auth) return (
     <div style={{ minHeight:'100vh', background:'#0D0D1A', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:24 }}>
-      <div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88' }}>🏛️ SPRINGFIELD</div>
+      <div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88', display:'flex', alignItems:'center', gap:12 }}>
+        <img src="/icons/homer.webp" alt="Homer" style={{ width:48, height:48, borderRadius:'50%', border:'2px solid #FFD90F', objectFit:'cover' }} />
+        SPRINGFIELD
+      </div>
       <div style={{ fontFamily:'Permanent Marker', fontSize:24, color:'#fff', marginBottom:16 }}>Command Center</div>
       <input 
         type="password" 
@@ -180,7 +183,7 @@ export default function Home() {
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <div style={{ fontFamily:'Permanent Marker', fontSize:22, color:'#FFD90F' }}>🏛️ Springfield</div>
+        <div style={{ fontFamily:'Permanent Marker', fontSize:22, color:'#FFD90F' }}>🍩 Springfield</div>
         <div style={{ display:'flex', gap:8 }}>
           <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', color: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600 }}> HOMER {gatewayStatus.homer==='online'?'LIVE':'OFFLINE'} </span>
           <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.bart==='online'?'#7ED321':'#FF9500', color: gatewayStatus.bart==='online'?'#7ED321':'#FF9500', fontSize:11, fontWeight:600 }}> BART {gatewayStatus.bart==='online'?'ONLINE':'OFFLINE'} </span>
@@ -191,7 +194,7 @@ export default function Home() {
 
       {/* Podium */}
       <div style={{ ...glassCard, border:'2px solid #FFD90F', marginBottom:20 }}>
-        <div style={{ fontFamily:'Permanent Marker', fontSize:28, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>🎙️ MAYOR QUIMBY'S PODIUM</div>
+        <div style={{ fontFamily:'Permanent Marker', fontSize:28, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>🎙️ PODIUM</div>
         <textarea 
           value={directive} 
           onChange={e => setDirective(e.target.value)} 
