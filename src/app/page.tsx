@@ -157,14 +157,27 @@ export default function Home() {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div style={{ fontFamily:'Permanent Marker', fontSize:22, color:'#FFD90F' }}>🍩 Springfield</div>
-        <div style={{ display:'flex', gap:8 }}>
-          <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', color: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600 }}> HOMER {gatewayStatus.homer==='online'?'LIVE':'OFFLINE'} </span>
-          <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.bart==='online'?'#7ED321':'#FF9500', color: gatewayStatus.bart==='online'?'#7ED321':'#FF9500', fontSize:11, fontWeight:600 }}> BART {gatewayStatus.bart==='online'?'ONLINE':'OFFLINE'} </span>
-          <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', color: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600 }}> MARGE {gatewayStatus.marge==='online'?'LIVE':'OFFLINE'} </span>
-          <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', color: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600 }}> LISA {gatewayStatus.lisa==='online'?'LIVE':'OFFLINE'} </span>
-          <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', color: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
-            <img src="https://zilliz.com/favicon.ico" alt="Z" style={{ width:12, height:12 }} /> ZILLIZ {gatewayStatus.zilliz==='online'?'LIVE':'OFFLINE'}
-          </span>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
+            <img src="/icons/homer.webp" alt="Homer" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #FFD90F' }} />
+            HOMER <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.homer==='online'?'#7ED321':'#FF4444' }} />
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
+            <img src="/icons/marge.webp" alt="Marge" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #4A90D9' }} />
+            MARGE <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.marge==='online'?'#7ED321':'#FF4444' }} />
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
+            <img src="/icons/lisa.webp" alt="Lisa" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #7ED321' }} />
+            LISA <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444' }} />
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.bart==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
+            <img src="/icons/bart.webp" alt="Bart" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #FF6B35' }} />
+            BART <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.bart==='online'?'#7ED321':'#FF4444' }} />
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
+            <img src="https://zilliz.com/favicon.ico" alt="Zilliz" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover' }} />
+            ZILLIZ <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444' }} />
+          </div>
         </div>
       </div>
 
