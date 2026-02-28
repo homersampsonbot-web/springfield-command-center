@@ -1,13 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 
-const AGENTS = [
-  { id: 'homer', name: 'HOMER', role: 'EXECUTOR', model: 'Kimi K2 / AWS', emoji: '🍩', icon: '/icons/homer.webp', color: '#FFD90F' },
-  { id: 'marge', name: 'MARGE', role: 'CHIEF ARCHITECT', model: 'Claude / Architecture', emoji: '🏠', icon: '/icons/marge.webp', color: '#4A90D9' },
-  { id: 'lisa', name: 'LISA', role: 'STRATEGIST', model: 'GPT-4o / Strategy', emoji: '🎷', icon: '/icons/lisa.webp', color: '#7ED321' },
-  { id: 'bart', name: 'BART', role: 'QA VALIDATOR', model: 'Gemini / UI & Testing', emoji: '🛹', icon: '/icons/bart.webp', color: '#FF6B35' },
-];
-
 const BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || "";
 
 export default function Home() {
@@ -16,10 +9,8 @@ export default function Home() {
   const [directive, setDirective] = useState('');
   const [status, setStatus] = useState('Standby');
   const [results, setResults] = useState<any[]>([]);
-  const [chatMessages, setChatMessages] = useState<Record<string, {role:string,text:string}[]>>({});
-  const [chatInput, setChatInput] = useState<Record<string,string>>({});
   const [gatewayStatus, setGatewayStatus] = useState<Record<string,string>>({ homer: 'checking', marge: 'checking', lisa: 'checking', bart: 'checking', zilliz: 'checking' });
-  const [activeTab, setActiveTab] = useState('agents');
+  const [activeTab, setActiveTab] = useState('debate');
   const [debateTopic, setDebateTopic] = useState('');
   const [debateResponses, setDebateResponses] = useState<{marge?:string, lisa?:string} | null>(null);
   const [isDebating, setIsDebating] = useState(false);
@@ -138,24 +129,6 @@ export default function Home() {
     }
   };
 
-  const sendChat = async (agentId: string) => {
-    const msg = chatInput[agentId];
-    if (!msg?.trim()) return;
-    setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'user', text:msg }] }));
-    setChatInput(c => ({ ...c, [agentId]: '' }));
-    try {
-      const r = await fetch(`${BASE}/api/chat`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ agent: agentId, message: msg }) 
-      });
-      const d = await r.json();
-      setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'assistant', text: d.reply || 'No response' }] }));
-    } catch {
-      setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'assistant', text:'Connection failed.' }] }));
-    }
-  };
-
   const glassCard = { 
     background:'rgba(255,255,255,0.05)', 
     border:'1px solid rgba(255,217,15,0.2)', 
@@ -189,6 +162,9 @@ export default function Home() {
           <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.bart==='online'?'#7ED321':'#FF9500', color: gatewayStatus.bart==='online'?'#7ED321':'#FF9500', fontSize:11, fontWeight:600 }}> BART {gatewayStatus.bart==='online'?'ONLINE':'OFFLINE'} </span>
           <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', color: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600 }}> MARGE {gatewayStatus.marge==='online'?'LIVE':'OFFLINE'} </span>
           <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', color: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600 }}> LISA {gatewayStatus.lisa==='online'?'LIVE':'OFFLINE'} </span>
+          <span style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', color: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', fontSize:11, fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
+            <img src="https://zilliz.com/favicon.ico" alt="Z" style={{ width:12, height:12 }} /> ZILLIZ {gatewayStatus.zilliz==='online'?'LIVE':'OFFLINE'}
+          </span>
         </div>
       </div>
 
@@ -216,61 +192,16 @@ export default function Home() {
 
       {/* Tab Nav */}
       <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-        {['agents','debate','terminal','kanban'].map(tab => (
+        {['debate','terminal','kanban'].map(tab => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)}
             style={{ flex:1, padding:'10px', background: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.05)', color: activeTab===tab ? '#000' : '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:14, cursor:'pointer', textTransform:'uppercase' }}
           >
-            {tab === 'agents' ? '👥 Agents' : tab === 'debate' ? '⚖️ Debate' : tab === 'terminal' ? '💻 Terminal' : '📋 Kanban'}
+            {tab === 'debate' ? '⚖️ Debate' : tab === 'terminal' ? '💻 Terminal' : '📋 Kanban'}
           </button>
         ))}
       </div>
-
-      {/* Agents Tab */}
-      {activeTab === 'agents' && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', width:'100%', gap:12 }}>
-          {AGENTS.map(agent => (
-            <div key={agent.id} style={{ ...glassCard, display:'flex', flexDirection:'column', gap:10 }}>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ marginBottom:4, display:'flex', justifyContent:'center' }}>
-                  {agent.icon ? (
-                    <img src={agent.icon} alt={agent.name} style={{ width:48, height:48, borderRadius:'50%', objectFit:'cover', border:`2px solid ${agent.color}` }} />
-                  ) : (
-                    <div style={{ fontSize:36 }}>{agent.emoji}</div>
-                  )}
-                </div>
-                <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:agent.color }}>{agent.name}</div>
-                <div style={{ color:'#4A90D9', fontSize:11, fontWeight:600, letterSpacing:1 }}>{agent.role}</div>
-                <div style={{ color:'rgba(255,255,255,0.4)', fontSize:10, fontStyle:'italic' }}>{agent.model}</div>
-              </div>
-              <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:8, padding:8, minHeight:60, fontSize:12, color:'rgba(255,255,255,0.7)', overflowY:'auto', maxHeight:80 }}>
-                {(chatMessages[agent.id]||[]).slice(-2).map((m,i) => (
-                  <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:4 }}>
-                    {m.role==='user'?'You: ':''}{m.text}
-                  </div>
-                ))}
-                {!(chatMessages[agent.id]||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>Listening...</span>}
-              </div>
-              <div style={{ display:'flex', gap:6 }}>
-                <input 
-                  value={chatInput[agent.id]||''} 
-                  onChange={e => setChatInput(c=>({...c,[agent.id]:e.target.value}))} 
-                  onKeyDown={e => e.key==='Enter' && sendChat(agent.id)} 
-                  placeholder="Message..." 
-                  style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 10px', color:'#fff', fontSize:12, outline:'none' }} 
-                />
-                <button 
-                  onClick={() => sendChat(agent.id)} 
-                  style={{ padding:'6px 12px', background:agent.color, color:'#000', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' }}
-                > 
-                  ➤ 
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Debate Tab */}
       {activeTab === 'debate' && (
