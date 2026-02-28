@@ -156,26 +156,29 @@ export default function Home() {
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <div style={{ fontFamily:'Permanent Marker', fontSize:22, color:'#FFD90F' }}>🍩 Springfield</div>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}>
+          <span style={{ fontSize:20 }}>🍩</span>
+          <div style={{ fontFamily:'Permanent Marker', fontSize:19, color:'#FFD90F' }}>Springfield</div>
+        </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/homer.webp" alt="Homer" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #FFD90F' }} />
+            <img src="/icons/homer.webp" alt="Homer" style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', border:'1px solid #FFD90F' }} />
             HOMER <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.homer==='online'?'#7ED321':'#FF4444' }} />
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/marge.webp" alt="Marge" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #4A90D9' }} />
+            <img src="/icons/marge.webp" alt="Marge" style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', border:'1px solid #4A90D9' }} />
             MARGE <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.marge==='online'?'#7ED321':'#FF4444' }} />
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/lisa.webp" alt="Lisa" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #7ED321' }} />
+            <img src="/icons/lisa.webp" alt="Lisa" style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', border:'1px solid #7ED321' }} />
             LISA <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444' }} />
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.bart==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/bart.webp" alt="Bart" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover', border:'1px solid #FF6B35' }} />
+            <img src="/icons/bart.webp" alt="Bart" style={{ width:20, height:20, borderRadius:'50%', objectFit:'cover', border:'1px solid #FF6B35' }} />
             BART <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.bart==='online'?'#7ED321':'#FF4444' }} />
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="https://zilliz.com/favicon.ico" alt="Zilliz" style={{ width:18, height:18, borderRadius:'50%', objectFit:'cover' }} />
+            <span style={{ color:'#00B4D8', fontWeight:900, width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>Z</span>
             ZILLIZ <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444' }} />
           </div>
         </div>
