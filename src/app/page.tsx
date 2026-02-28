@@ -156,9 +156,9 @@ export default function Home() {
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', lineHeight:1 }}>
-          <span style={{ fontSize:20 }}>🍩</span>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:19, color:'#FFD90F', marginTop:0 }}>Springfield</div>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', lineHeight:1, gap:0 }}>
+          <span style={{ fontSize:20, display:'block', margin:0, padding:0 }}>🍩</span>
+          <div style={{ fontFamily:'Permanent Marker', fontSize:19, color:'#FFD90F', margin:0, padding:0, lineHeight:1 }}>Springfield</div>
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
