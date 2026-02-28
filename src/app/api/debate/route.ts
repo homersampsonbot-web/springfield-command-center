@@ -33,11 +33,14 @@ export async function POST(req: Request) {
 
     const [margeData, lisaData] = await Promise.all([margePromise, lisaPromise]);
 
+    const margeText = margeData?.response || margeData?.message || '[no response from Marge relay]';
+    const lisaText = lisaData?.response || lisaData?.message || '[no response from Lisa relay]';
+
     return NextResponse.json({
       topic,
       responses: {
-        marge: margeData.response,
-        lisa: lisaData.response
+        marge: margeText,
+        lisa: lisaText
       }
     });
   } catch (error: any) {
