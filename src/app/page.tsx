@@ -9,8 +9,10 @@ export default function Home() {
   const [directive, setDirective] = useState('');
   const [status, setStatus] = useState('Standby');
   const [results, setResults] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<Record<string, {role:string,text:string}[]>>({});
+  const [chatInput, setChatInput] = useState<Record<string,string>>({});
   const [gatewayStatus, setGatewayStatus] = useState<Record<string,string>>({ homer: 'checking', marge: 'checking', lisa: 'checking', bart: 'checking', zilliz: 'checking' });
-  const [activeTab, setActiveTab] = useState('debate');
+  const [activeTab, setActiveTab] = useState('directives');
   const [debateTopic, setDebateTopic] = useState('');
   const [debateResponses, setDebateResponses] = useState<{marge?:string, lisa?:string} | null>(null);
   const [isDebating, setIsDebating] = useState(false);
@@ -112,6 +114,7 @@ export default function Home() {
 
   const sendDebate = async () => {
     if (!debateTopic.trim()) return;
+    console.log('[ui] debate click', debateTopic);
     setIsDebating(true);
     setDebateResponses(null);
     try {
@@ -126,6 +129,24 @@ export default function Home() {
       alert('Debate failed');
     } finally {
       setIsDebating(false);
+    }
+  };
+
+  const sendChat = async (agentId: string) => {
+    const msg = chatInput[agentId];
+    if (!msg?.trim()) return;
+    setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'user', text:msg }] }));
+    setChatInput(c => ({ ...c, [agentId]: '' }));
+    try {
+      const r = await fetch(`${BASE}/api/chat`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ agent: agentId, message: msg }) 
+      });
+      const d = await r.json();
+      setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'assistant', text: d.reply || 'No response' }] }));
+    } catch {
+      setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'assistant', text:'Connection failed.' }] }));
     }
   };
 
@@ -187,36 +208,150 @@ export default function Home() {
       {/* Podium */}
       <div style={{ ...glassCard, border:'2px solid #FFD90F', marginBottom:20 }}>
         <div style={{ fontFamily:'Permanent Marker', fontSize:28, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>🎙️ PODIUM</div>
-        <textarea 
-          value={directive} 
-          onChange={e => setDirective(e.target.value)} 
-          onKeyDown={e => e.key === 'Enter' && e.metaKey && sendDirective()} 
-          placeholder="Issue a new directive..." 
-          rows={4} 
-          style={{ width:'100%', background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,217,15,0.4)', borderRadius:10, padding:12, color:'#FFD90F', fontSize:15, resize:'none', outline:'none', marginBottom:12 }} 
-        />
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span style={{ color:'rgba(255,255,255,0.5)', fontSize:13 }}>{status}</span>
-          <button 
-            onClick={sendDirective} 
-            style={{ padding:'10px 24px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:16, cursor:'pointer' }}
-          > 
-            DISPATCH ➤ 
-          </button>
-        </div>
-      </div>
 
-      {/* Tab Nav */}
-      <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-        {['debate','terminal','kanban'].map(tab => (
-          <button 
-            key={tab} 
-            onClick={() => setActiveTab(tab)}
-            style={{ flex:1, padding:'10px', background: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.05)', color: activeTab===tab ? '#000' : '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:14, cursor:'pointer', textTransform:'uppercase' }}
-          >
-            {tab === 'debate' ? '⚖️ Debate' : tab === 'terminal' ? '💻 Terminal' : '📋 Kanban'}
-          </button>
-        ))}
+        {/* Podium Tabs */}
+        <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+          {['directives','marge','lisa','debate','terminal','kanban'].map(tab => (
+            <button 
+              key={tab} 
+              onClick={() => setActiveTab(tab)}
+              style={{ flex:1, padding:'10px', background: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.05)', color: activeTab===tab ? '#000' : '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:12, cursor:'pointer', textTransform:'uppercase' }}
+            >
+              {tab === 'directives' ? '📣 DIRECTIVES' : tab === 'marge' ? '🏠 MARGE' : tab === 'lisa' ? '🎷 LISA' : tab === 'debate' ? '⚖️ DEBATE' : tab === 'terminal' ? '💻 TERMINAL' : '📋 KANBAN'}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'directives' && (
+          <>
+            <textarea 
+              value={directive} 
+              onChange={e => setDirective(e.target.value)} 
+              onKeyDown={e => e.key === 'Enter' && e.metaKey && sendDirective()} 
+              placeholder="Issue a new directive..." 
+              rows={4} 
+              style={{ width:'100%', background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,217,15,0.4)', borderRadius:10, padding:12, color:'#FFD90F', fontSize:15, resize:'none', outline:'none', marginBottom:12 }} 
+            />
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{ color:'rgba(255,255,255,0.5)', fontSize:13 }}>{status}</span>
+              <button 
+                onClick={sendDirective} 
+                style={{ padding:'10px 24px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:16, cursor:'pointer' }}
+              > 
+                DISPATCH ➤ 
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'marge' && (
+          <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:10, padding:12 }}>
+            <div style={{ marginBottom:8, color:'#4A90D9', fontFamily:'Permanent Marker' }}>Marge Direct Chat</div>
+            <div style={{ minHeight:80, maxHeight:160, overflowY:'auto', fontSize:12, color:'#fff', marginBottom:8 }}>
+              {(chatMessages.marge||[]).map((m,i) => (
+                <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:4 }}>
+                  {m.role==='user'?'You: ':''}{m.text}
+                </div>
+              ))}
+              {!(chatMessages.marge||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>No messages yet.</span>}
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              <input 
+                value={chatInput.marge||''} 
+                onChange={e => setChatInput(c=>({...c, marge:e.target.value}))} 
+                onKeyDown={e => e.key==='Enter' && sendChat('marge')} 
+                placeholder="Message Marge..." 
+                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 10px', color:'#fff', fontSize:12, outline:'none' }} 
+              />
+              <button 
+                onClick={() => sendChat('marge')} 
+                style={{ padding:'6px 12px', background:'#4A90D9', color:'#000', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' }}
+              >➤</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'lisa' && (
+          <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:10, padding:12 }}>
+            <div style={{ marginBottom:8, color:'#7ED321', fontFamily:'Permanent Marker' }}>Lisa Direct Chat</div>
+            <div style={{ minHeight:80, maxHeight:160, overflowY:'auto', fontSize:12, color:'#fff', marginBottom:8 }}>
+              {(chatMessages.lisa||[]).map((m,i) => (
+                <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:4 }}>
+                  {m.role==='user'?'You: ':''}{m.text}
+                </div>
+              ))}
+              {!(chatMessages.lisa||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>No messages yet.</span>}
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              <input 
+                value={chatInput.lisa||''} 
+                onChange={e => setChatInput(c=>({...c, lisa:e.target.value}))} 
+                onKeyDown={e => e.key==='Enter' && sendChat('lisa')} 
+                placeholder="Message Lisa..." 
+                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 10px', color:'#fff', fontSize:12, outline:'none' }} 
+              />
+              <button 
+                onClick={() => sendChat('lisa')} 
+                style={{ padding:'6px 12px', background:'#7ED321', color:'#000', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' }}
+              >➤</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'debate' && (
+          <div style={{ ...glassCard, padding:12 }}>
+            <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:'#FFD90F', textAlign:'center', marginBottom:12 }}>⚖️ STRATEGIC DEBATE</div>
+            <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+              <input 
+                value={debateTopic} 
+                onChange={e => setDebateTopic(e.target.value)} 
+                placeholder="Topic for debate..." 
+                style={{ flex:1, background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,217,15,0.4)', borderRadius:10, padding:10, color:'#FFD90F', fontSize:14, outline:'none' }} 
+              />
+              <button 
+                onClick={sendDebate} 
+                disabled={isDebating}
+                style={{ padding:'8px 18px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:14, cursor:'pointer', opacity: isDebating ? 0.5 : 1 }}
+              > 
+                {isDebating ? 'THINKING...' : 'DEBATE'} 
+              </button>
+            </div>
+            {debateResponses && (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div style={{ background:'rgba(74,144,217,0.1)', border:'1px solid #4A90D9', borderRadius:12, padding:12 }}>
+                  <div style={{ fontFamily:'Permanent Marker', color:'#4A90D9', marginBottom:8 }}>MARGE (ARCHITECTURE)</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.marge}</div>
+                </div>
+                <div style={{ background:'rgba(126,211,33,0.1)', border:'1px solid #7ED321', borderRadius:12, padding:12 }}>
+                  <div style={{ fontFamily:'Permanent Marker', color:'#7ED321', marginBottom:8 }}>LISA (STRATEGY)</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.lisa}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'terminal' && (
+          <div style={{ ...glassCard, padding:12 }}>
+            <div style={{ fontFamily:'Permanent Marker', fontSize:16, color:'#FFD90F', marginBottom:10 }}>⚡ Homer's Terminal</div>
+            <div style={{ background:'#000', borderRadius:8, padding:12, minHeight:200, fontFamily:'monospace', fontSize:12, color:'#00FF41', overflowY:'auto', maxHeight:300 }}>
+              {results.length ? results.map((r,i) => (
+                <div key={i} style={{ marginBottom:8, borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8 }}>
+                  <span style={{ color:'#FFD90F' }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span>{' '}
+                  <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444' }}>{r.status?.toUpperCase()}</span>{' '}
+                  {r.result?.slice(0,100)}
+                </div>
+              )) : <span style={{ color:'rgba(255,255,255,0.3)' }}>Waiting for Homer...</span>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'kanban' && (
+          <div style={{ ...glassCard, padding:0, overflow:'hidden' }}>
+            <div style={{ fontFamily:'Permanent Marker', fontSize:16, color:'#FFD90F', padding:12, borderBottom:'1px solid rgba(255,217,15,0.2)' }}>📋 SPRINGFIELD OPS</div>
+            <iframe src="https://kanban-board-one-ecru.vercel.app" style={{ width:'100%', height:400, border:'none', background:'#0D0D1A' }} />
+          </div>
+        )}
       </div>
 
       {/* Debate Tab */}
