@@ -354,41 +354,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Debate Tab */}
-      {activeTab === 'debate' && (
-        <div style={{ ...glassCard }}>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:22, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>⚖️ STRATEGIC DEBATE</div>
-          <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-            <input 
-              value={debateTopic} 
-              onChange={e => setDebateTopic(e.target.value)} 
-              placeholder="Topic for debate..." 
-              style={{ flex:1, background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,217,15,0.4)', borderRadius:10, padding:12, color:'#FFD90F', fontSize:15, outline:'none' }} 
-            />
-            <button 
-              onClick={sendDebate} 
-              disabled={isDebating}
-              style={{ padding:'10px 24px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:16, cursor:'pointer', opacity: isDebating ? 0.5 : 1 }}
-            > 
-              {isDebating ? 'THINKING...' : 'DEBATE'} 
-            </button>
-          </div>
-          
-          {debateResponses && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div style={{ background:'rgba(74,144,217,0.1)', border:'1px solid #4A90D9', borderRadius:12, padding:12 }}>
-                <div style={{ fontFamily:'Permanent Marker', color:'#4A90D9', marginBottom:8 }}>MARGE (ARCHITECTURE)</div>
-                <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.marge}</div>
-              </div>
-              <div style={{ background:'rgba(126,211,33,0.1)', border:'1px solid #7ED321', borderRadius:12, padding:12 }}>
-                <div style={{ fontFamily:'Permanent Marker', color:'#7ED321', marginBottom:8 }}>LISA (STRATEGY)</div>
-                <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.lisa}</div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Terminal Tab */}
       {activeTab === 'terminal' && (
         <div style={{ ...glassCard }}>
