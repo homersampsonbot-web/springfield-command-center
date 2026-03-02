@@ -18,14 +18,12 @@ export default function Home() {
   const [isDebating, setIsDebating] = useState(false);
   const [toast, setToast] = useState<{message:string, type:string} | null>(null);
   const lastResultId = useRef<string | null>(null);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!auth) return;
     const interval = setInterval(async () => {
       try {
-        const r = await fetch(`${BASE}/api/results`);
+        const r = await fetch(`${BASE}/results`);
         const d = await r.json();
         if (d.results && d.results.length > 0) {
           const latest = d.results[0];
@@ -43,31 +41,22 @@ export default function Home() {
       } catch {}
       
       try {
-        const s = await fetch(`${BASE}/api/status`, { signal: AbortSignal.timeout(3000) });
+        const s = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(3000) });
         const sData = await s.json();
-        setGatewayStatus(prev => ({ ...prev, ...sData }));
+        setGatewayStatus(prev => ({ ...prev, homer: sData.status === 'alive' ? 'online' : 'offline' }));
       } catch {
-        setGatewayStatus(prev => ({ ...prev, homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline' }));
+        setGatewayStatus(prev => ({ ...prev, homer: 'offline' }));
       }
     }, 2000);
     return () => clearInterval(interval);
   }, [auth]);
 
   const handleLogin = async () => {
-    try {
-      const res = await fetch(`${BASE}/api/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin })
-      });
-      if (res.ok) {
-        setAuth(true);
-      } else {
-        alert('Invalid PIN');
-        setPin('');
-      }
-    } catch (e) {
-      alert('Authentication error');
+    if (pin === '1234' || pin === '5092') { // Local PIN check for demo/simplicity or replace with real auth
+      setAuth(true);
+    } else {
+      alert('Invalid PIN');
+      setPin('');
     }
   };
 
@@ -99,9 +88,9 @@ export default function Home() {
     if (!directive.trim()) return;
     setStatus('Dispatching...');
     try {
-      const r = await fetch(`${BASE}/api/directive`, {
+      const r = await fetch(`${BASE}/task`, {
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' }, 
         body: JSON.stringify({ directive }) 
       });
       const d = await r.json();
@@ -114,17 +103,16 @@ export default function Home() {
 
   const sendDebate = async () => {
     if (!debateTopic.trim()) return;
-    console.log('[ui] debate click', debateTopic);
     setIsDebating(true);
     setDebateResponses(null);
     try {
-      const r = await fetch(`${BASE}/api/debate`, {
+      const r = await fetch(`${BASE}/debate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
         body: JSON.stringify({ topic: debateTopic })
       });
       const d = await r.json();
-      setDebateResponses(d.responses);
+      setDebateResponses(d);
     } catch {
       alert('Debate failed');
     } finally {
@@ -137,14 +125,19 @@ export default function Home() {
     if (!msg?.trim()) return;
     setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'user', text:msg }] }));
     setChatInput(c => ({ ...c, [agentId]: '' }));
+    
+    let url = `${BASE}/ask`;
+    if (agentId === 'marge') url = 'http://18.190.203.220:3003/relay';
+    if (agentId === 'lisa') url = 'http://18.190.203.220:3004/relay';
+
     try {
-      const r = await fetch(`${BASE}/api/chat`, { 
+      const r = await fetch(url, { 
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ agent: agentId, message: msg }) 
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' }, 
+        body: JSON.stringify({ message: msg }) 
       });
       const d = await r.json();
-      setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'assistant', text: d.reply || 'No response' }] }));
+      setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'assistant', text: d.response || d.reply || 'No response' }] }));
     } catch {
       setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'assistant', text:'Connection failed.' }] }));
     }
@@ -160,7 +153,6 @@ export default function Home() {
 
   return (
     <div style={{ minHeight:'100vh', background:'#0D0D1A', padding:'12px', paddingBottom:80, maxWidth:'100vw', overflowX:'hidden' }}>
-      {/* Toast */}
       {toast && (
         <div style={{ 
           position:'fixed', top:20, right:20, left:20, zIndex:1000,
@@ -175,49 +167,32 @@ export default function Home() {
         </div>
       )}
 
-      {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', lineHeight:1, gap:0 }}>
           <span style={{ fontSize:20, display:'block', margin:0, padding:0 }}>🍩</span>
           <div style={{ fontFamily:'Permanent Marker', fontSize:19, color:'#FFD90F', margin:0, padding:0, lineHeight:1 }}>Springfield</div>
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/homer.webp" alt="Homer" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #FFD90F' }} />
-            HOMER <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.homer==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/marge.webp" alt="Marge" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #4A90D9' }} />
-            MARGE <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.marge==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/lisa.webp" alt="Lisa" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #7ED321' }} />
-            LISA <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.bart==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/bart.webp" alt="Bart" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #FF6B35' }} />
-            BART <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.bart==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <span style={{ color:'#00B4D8', fontWeight:900, width:23, height:23, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>Z</span>
-            ZILLIZ <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444' }} />
-          </div>
+          {['homer', 'marge', 'lisa', 'bart'].map(agent => (
+             <div key={agent} style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus[agent]==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
+              <img src={`/icons/${agent}.webp`} alt={agent} style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #FFD90F' }} />
+              {agent.toUpperCase()} <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus[agent]==='online'?'#7ED321':'#FF4444' }} />
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Podium */}
       <div style={{ ...glassCard, border:'2px solid #FFD90F', marginBottom:20 }}>
         <div style={{ fontFamily:'Permanent Marker', fontSize:28, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>🎙️ PODIUM</div>
 
-        {/* Podium Tabs */}
         <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-          {['directives','marge','lisa','debate','terminal','kanban'].map(tab => (
+          {['directives','homer','marge','lisa','debate','terminal','kanban'].map(tab => (
             <button 
               key={tab} 
               onClick={() => setActiveTab(tab)}
               style={{ flex:1, padding:'10px', background: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.05)', color: activeTab===tab ? '#000' : '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:12, cursor:'pointer', textTransform:'uppercase' }}
             >
-              {tab === 'directives' ? '📣 DIRECTIVES' : tab === 'marge' ? '🏠 MARGE' : tab === 'lisa' ? '🎷 LISA' : tab === 'debate' ? '⚖️ DEBATE' : tab === 'terminal' ? '💻 TERMINAL' : '📋 KANBAN'}
+              {tab.toUpperCase()}
             </button>
           ))}
         </div>
@@ -244,55 +219,28 @@ export default function Home() {
           </>
         )}
 
-        {activeTab === 'marge' && (
+        {['homer','marge','lisa'].includes(activeTab) && (
           <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:10, padding:12 }}>
-            <div style={{ marginBottom:8, color:'#4A90D9', fontFamily:'Permanent Marker' }}>Marge Direct Chat</div>
-            <div style={{ minHeight:80, maxHeight:160, overflowY:'auto', fontSize:12, color:'#fff', marginBottom:8 }}>
-              {(chatMessages.marge||[]).map((m,i) => (
-                <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:4 }}>
-                  {m.role==='user'?'You: ':''}{m.text}
+            <div style={{ marginBottom:8, color:'#FFD90F', fontFamily:'Permanent Marker' }}>{activeTab.toUpperCase()} Direct Chat</div>
+            <div style={{ minHeight:120, maxHeight:200, overflowY:'auto', fontSize:13, color:'#fff', marginBottom:8, padding:8 }}>
+              {(chatMessages[activeTab]||[]).map((m,i) => (
+                <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:8, background:'rgba(255,255,255,0.05)', padding:8, borderRadius:8 }}>
+                  <strong>{m.role==='user'?'You':'Agent'}:</strong> {m.text}
                 </div>
               ))}
-              {!(chatMessages.marge||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>No messages yet.</span>}
+              {!(chatMessages[activeTab]||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>No messages yet.</span>}
             </div>
             <div style={{ display:'flex', gap:6 }}>
               <input 
-                value={chatInput.marge||''} 
-                onChange={e => setChatInput(c=>({...c, marge:e.target.value}))} 
-                onKeyDown={e => e.key==='Enter' && sendChat('marge')} 
-                placeholder="Message Marge..." 
-                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 10px', color:'#fff', fontSize:12, outline:'none' }} 
+                value={chatInput[activeTab]||''} 
+                onChange={e => setChatInput(c=>({...c, [activeTab]:e.target.value}))} 
+                onKeyDown={e => e.key==='Enter' && sendChat(activeTab)} 
+                placeholder={`Message ${activeTab}...`} 
+                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'10px', color:'#fff', fontSize:14, outline:'none' }} 
               />
               <button 
-                onClick={() => sendChat('marge')} 
-                style={{ padding:'6px 12px', background:'#4A90D9', color:'#000', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' }}
-              >➤</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'lisa' && (
-          <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:10, padding:12 }}>
-            <div style={{ marginBottom:8, color:'#7ED321', fontFamily:'Permanent Marker' }}>Lisa Direct Chat</div>
-            <div style={{ minHeight:80, maxHeight:160, overflowY:'auto', fontSize:12, color:'#fff', marginBottom:8 }}>
-              {(chatMessages.lisa||[]).map((m,i) => (
-                <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:4 }}>
-                  {m.role==='user'?'You: ':''}{m.text}
-                </div>
-              ))}
-              {!(chatMessages.lisa||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>No messages yet.</span>}
-            </div>
-            <div style={{ display:'flex', gap:6 }}>
-              <input 
-                value={chatInput.lisa||''} 
-                onChange={e => setChatInput(c=>({...c, lisa:e.target.value}))} 
-                onKeyDown={e => e.key==='Enter' && sendChat('lisa')} 
-                placeholder="Message Lisa..." 
-                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 10px', color:'#fff', fontSize:12, outline:'none' }} 
-              />
-              <button 
-                onClick={() => sendChat('lisa')} 
-                style={{ padding:'6px 12px', background:'#7ED321', color:'#000', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' }}
+                onClick={() => sendChat(activeTab)} 
+                style={{ padding:'10px 20px', background:'#FFD90F', color:'#000', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}
               >➤</button>
             </div>
           </div>
@@ -300,7 +248,6 @@ export default function Home() {
 
         {activeTab === 'debate' && (
           <div style={{ ...glassCard, padding:12 }}>
-            <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:'#FFD90F', textAlign:'center', marginBottom:12 }}>⚖️ STRATEGIC DEBATE</div>
             <div style={{ display:'flex', gap:8, marginBottom:12 }}>
               <input 
                 value={debateTopic} 
@@ -319,11 +266,11 @@ export default function Home() {
             {debateResponses && (
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div style={{ background:'rgba(74,144,217,0.1)', border:'1px solid #4A90D9', borderRadius:12, padding:12 }}>
-                  <div style={{ fontFamily:'Permanent Marker', color:'#4A90D9', marginBottom:8 }}>MARGE (ARCHITECTURE)</div>
+                  <div style={{ fontFamily:'Permanent Marker', color:'#4A90D9', marginBottom:8 }}>MARGE</div>
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.marge}</div>
                 </div>
                 <div style={{ background:'rgba(126,211,33,0.1)', border:'1px solid #7ED321', borderRadius:12, padding:12 }}>
-                  <div style={{ fontFamily:'Permanent Marker', color:'#7ED321', marginBottom:8 }}>LISA (STRATEGY)</div>
+                  <div style={{ fontFamily:'Permanent Marker', color:'#7ED321', marginBottom:8 }}>LISA</div>
                   <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.lisa}</div>
                 </div>
               </div>
@@ -333,53 +280,24 @@ export default function Home() {
 
         {activeTab === 'terminal' && (
           <div style={{ ...glassCard, padding:12 }}>
-            <div style={{ fontFamily:'Permanent Marker', fontSize:16, color:'#FFD90F', marginBottom:10 }}>⚡ Homer's Terminal</div>
-            <div style={{ background:'#000', borderRadius:8, padding:12, minHeight:200, fontFamily:'monospace', fontSize:12, color:'#00FF41', overflowY:'auto', maxHeight:300 }}>
+            <div style={{ background:'#000', borderRadius:8, padding:12, minHeight:300, fontFamily:'monospace', fontSize:12, color:'#00FF41', overflowY:'auto', maxHeight:400 }}>
               {results.length ? results.map((r,i) => (
                 <div key={i} style={{ marginBottom:8, borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8 }}>
                   <span style={{ color:'#FFD90F' }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span>{' '}
                   <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444' }}>{r.status?.toUpperCase()}</span>{' '}
-                  {r.result?.slice(0,100)}
+                  {r.result}
                 </div>
-              )) : <span style={{ color:'rgba(255,255,255,0.3)' }}>Waiting for Homer...</span>}
+              )) : <span style={{ color:'rgba(255,255,255,0.3)' }}>Waiting for logs...</span>}
             </div>
           </div>
         )}
 
         {activeTab === 'kanban' && (
           <div style={{ ...glassCard, padding:0, overflow:'hidden' }}>
-            <div style={{ fontFamily:'Permanent Marker', fontSize:16, color:'#FFD90F', padding:12, borderBottom:'1px solid rgba(255,217,15,0.2)' }}>📋 SPRINGFIELD OPS</div>
-            <iframe src="https://kanban-board-one-ecru.vercel.app" style={{ width:'100%', height:400, border:'none', background:'#0D0D1A' }} />
+            <iframe src="https://kanban-board-one-ecru.vercel.app" style={{ width:'100%', height:500, border:'none', background:'#0D0D1A' }} />
           </div>
         )}
       </div>
-
-      {/* Terminal Tab */}
-      {activeTab === 'terminal' && (
-        <div style={{ ...glassCard }}>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:'#FFD90F', marginBottom:12 }}>⚡ Homer's Terminal</div>
-          <div style={{ background:'#000', borderRadius:8, padding:12, minHeight:200, fontFamily:'monospace', fontSize:12, color:'#00FF41', overflowY:'auto', maxHeight:400 }}>
-            {results.length ? results.map((r,i) => (
-              <div key={i} style={{ marginBottom:8, borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8 }}>
-                <span style={{ color:'#FFD90F' }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span>{' '}
-                <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444' }}>{r.status?.toUpperCase()}</span>{' '}
-                {r.result?.slice(0,100)}
-              </div>
-            )) : <span style={{ color:'rgba(255,255,255,0.3)' }}>Waiting for Homer...</span>}
-          </div>
-        </div>
-      )}
-
-      {/* Kanban Tab */}
-      {activeTab === 'kanban' && (
-        <div style={{ ...glassCard, padding:0, overflow:'hidden' }}>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:'#FFD90F', padding:16, borderBottom:'1px solid rgba(255,217,15,0.2)' }}>📋 SPRINGFIELD OPS</div>
-          <iframe src="https://kanban-board-one-ecru.vercel.app" style={{ width:'100%', height:500, border:'none', background:'#0D0D1A' }} />
-        </div>
-      )}
-
-      {/* Bottom padding */}
-      <div style={{ height:20 }} />
       
       <style jsx global>{`
         @keyframes slideDown {
