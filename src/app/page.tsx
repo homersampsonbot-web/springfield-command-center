@@ -23,7 +23,9 @@ export default function Home() {
     if (!auth) return;
     const interval = setInterval(async () => {
       try {
-        const r = await fetch(`${BASE}/results`);
+        const r = await fetch(`${BASE}/results`, {
+          headers: { 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' }
+        });
         const d = await r.json();
         if (d.results && d.results.length > 0) {
           const latest = d.results[0];
