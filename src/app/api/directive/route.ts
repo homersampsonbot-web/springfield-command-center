@@ -4,7 +4,7 @@ export async function POST(req: Request) {
   if (!directive) return Response.json({ error: 'directive required' }, { status: 400 });
 
   const task = {
-    from: 'mayor_quimby',
+    from: 'springfield_command_center',
     priority: 'high',
     task: directive,
     taskId: crypto.randomUUID(),

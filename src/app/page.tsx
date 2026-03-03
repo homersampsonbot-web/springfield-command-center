@@ -177,7 +177,7 @@ export default function CommandCenter() {
               BART {status?.bart?.status === 'alive' ? 'LIVE' : 'PENDING'}
             </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-marker mb-8 text-[#FFD90F] uppercase tracking-tighter">Mayor Quimby's Podium</h1>
+          <h1 className="text-4xl md:text-5xl font-marker mb-8 text-[#FFD90F] uppercase tracking-tighter">Springfield Command Center</h1>
           
           <div className="flex flex-col gap-2 text-left">
             <div className="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/10">
