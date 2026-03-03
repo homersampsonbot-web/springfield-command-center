@@ -169,105 +169,77 @@ export default function CommandCenter() {
       </div>
 
       <div className="relative z-10 p-4 md:p-8 space-y-8">
-        {/* Main Dashboard Layout */}
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left Column: Podium / Directives */}
-          <div className="lg:col-span-2 space-y-8">
-            <header className="bg-gradient-to-b from-amber-800 to-amber-950 p-6 md:p-8 rounded-3xl shadow-2xl border-4 border-[#FFD90F] text-white text-center">
-              <div className="mb-6 flex flex-wrap justify-center gap-4">
-                <div className={`status-pill px-4 py-1 rounded-full text-[10px] font-bold border-2 ${status?.homer?.status === 'alive' ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-red-500 bg-red-500/10 text-red-400'}`}>
-                  HOMER GATEWAY {status?.homer?.status === 'alive' ? 'LIVE' : 'OFFLINE'}
-                </div>
-                <div className="status-pill px-4 py-1 rounded-full text-[10px] font-bold border-2 border-green-500 bg-green-500/10 text-green-400">
-                  ZILLIZ ON
-                </div>
-                <div className={`status-pill px-4 py-1 rounded-full text-[10px] font-bold border-2 ${status?.bart?.status === 'alive' ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-amber-500 bg-amber-500/10 text-amber-400'}`}>
-                  BART {status?.bart?.status === 'alive' ? 'LIVE' : 'PENDING'}
-                </div>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-marker mb-8 text-[#FFD90F] uppercase tracking-tighter">Command Podium</h1>
-              
-              <div className="flex flex-col gap-2 text-left">
-                <div className="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/10">
-                  <input 
-                    className="flex-grow bg-transparent p-4 text-lg font-elite outline-none placeholder-white/30"
-                    placeholder="Issue a new directive..."
-                    value={directive}
-                    onChange={e => setDirective(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                    disabled={sending}
-                  />
-                  <button 
-                    onClick={handleSend}
-                    disabled={sending}
-                    className="bg-[#FFD90F] text-black p-4 rounded-xl hover:scale-105 transition-transform disabled:opacity-50"
-                  >
-                    {sending ? '...' : <><Send size={20} className='mr-2' /> SEND DIRECTIVE</>}
+        {/* Agent Status Chips Row */}
+        <div className="max-w-4xl mx-auto flex flex-wrap justify-center gap-4 mb-8">
+          {['HOMER', 'MARGE', 'LISA', 'BART', 'ZILLIZ'].map((name) => (
+            <div key={name} className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 text-[10px] font-bold tracking-widest text-white/70">
+              <div className={`w-1.5 h-1.5 rounded-full ${name === 'ZILLIZ' || (name === 'HOMER' && status?.homer?.status === 'alive') || (name === 'BART' && status?.bart?.status === 'alive') || (name === 'MARGE') || (name === 'LISA') ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-red-500'}`} />
+              {name}
+            </div>
+          ))}
+        </div>
+
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* PODIUM Section */}
+          <section className="bg-gradient-to-b from-amber-800 to-amber-950 p-6 md:p-8 rounded-3xl shadow-2xl border-4 border-[#FFD90F] text-white">
+            <h2 className="text-center font-marker text-[#FFD90F] text-2xl mb-6 tracking-widest uppercase">Podium</h2>
+            
+            <div className="flex flex-col gap-6">
+              {/* Podium Button Row 1 */}
+              <div className="grid grid-cols-4 gap-2">
+                {['DIRECTIVES', 'MARGE', 'LISA', 'DEBATE'].map((btn) => (
+                  <button key={btn} className="bg-black/40 border border-[#FFD90F]/30 py-2 rounded-lg font-marker text-[10px] text-[#FFD90F] hover:bg-[#FFD90F]/10 transition-colors uppercase">
+                    {btn}
                   </button>
-                </div>
-                {lastResult && (
-                  <div className={`text-xs p-2 rounded-lg ${lastResult.status === 'dispatched' ? 'bg-green-900/50 text-green-300' : lastResult.status === 'escalation' ? 'bg-red-900/50 text-red-300' : 'bg-white/10 text-white/50'}`}>
-                    {lastResult.status === 'dispatched' && `✅ Dispatched — Task ${lastResult.taskId?.slice(0,8)}`}
-                    {lastResult.status === 'escalation' && `🚨 Escalation — ${lastResult.reason}`}
-                    {lastResult.status === 'error' && `❌ ${lastResult.message}`}
-                    {lastResult.debateLog?.length > 1 && ` · Marge + Lisa debated`}
-                  </div>
-                )}
+                ))}
               </div>
-            </header>
 
-            {/* Feature Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <button className="feature-button bg-blue-900/20 border-blue-500/30 text-blue-400 p-6 rounded-2xl border flex flex-col items-center gap-3 hover:bg-blue-500/10 transition-colors group">
-                <MessageSquare className="group-hover:scale-110 transition-transform" />
-                <span className="font-marker text-sm uppercase">Strategic Debate</span>
-              </button>
-              <button className="feature-button bg-orange-900/20 border-orange-500/30 text-orange-400 p-6 rounded-2xl border flex flex-col items-center gap-3 hover:bg-orange-500/10 transition-colors group">
-                <List className="group-hover:scale-110 transition-transform" />
-                <span className="font-marker text-sm uppercase">Active Kanban</span>
-              </button>
-              <a href="https://ssh.margebot.com" target="_blank" className="feature-button bg-green-900/20 border-green-500/30 text-green-400 p-6 rounded-2xl border flex flex-col items-center gap-3 hover:bg-green-500/10 transition-colors group">
-                <Terminal className="group-hover:scale-110 transition-transform" />
-                <span className="font-marker text-sm uppercase">Homer Terminal</span>
-              </a>
-              <button className="feature-button bg-purple-900/20 border-purple-500/30 text-purple-400 p-6 rounded-2xl border flex flex-col items-center gap-3 hover:bg-purple-500/10 transition-colors group">
-                <Briefcase className="group-hover:scale-110 transition-transform" />
-                <span className="font-marker text-sm uppercase">Project Specs</span>
-              </button>
-              <button className="feature-button bg-red-900/20 border-red-500/30 text-red-400 p-6 rounded-2xl border flex flex-col items-center gap-3 hover:bg-red-500/10 transition-colors group">
-                <Shield className="group-hover:scale-110 transition-transform" />
-                <span className="font-marker text-sm uppercase">Audit Logs</span>
-              </button>
-              <button className="feature-button bg-amber-900/20 border-amber-500/30 text-amber-400 p-6 rounded-2xl border flex flex-col items-center gap-3 hover:bg-amber-500/10 transition-colors group">
-                <Activity className="group-hover:scale-110 transition-transform" />
-                <span className="font-marker text-sm uppercase">System Health</span>
-              </button>
-            </div>
-          </div>
+              {/* Podium Button Row 2 */}
+              <div className="grid grid-cols-2 gap-2 max-w-sm mx-auto w-full">
+                {['TERMINAL', 'KANBAN'].map((btn) => (
+                  <button key={btn} className="bg-black/40 border border-[#FFD90F]/30 py-2 rounded-lg font-marker text-[10px] text-[#FFD90F] hover:bg-[#FFD90F]/10 transition-colors uppercase">
+                    {btn}
+                  </button>
+                ))}
+              </div>
 
-          {/* Right Column: Agent Status */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-marker text-[#FFD90F] uppercase tracking-widest pl-2">Operational Units</h2>
-            <div className="grid grid-cols-1 gap-4">
-              {AGENTS.map((agent) => (
-                <a 
-                  key={agent.name} 
-                  href={agent.link} 
-                  target="_blank"
-                  className={`glass-card p-4 flex items-center gap-4 border-l-4 ${agent.color} hover:bg-white/5 transition-colors group`}
+              {/* Directive Input */}
+              <div className="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/10 mt-4">
+                <input 
+                  className="flex-grow bg-transparent p-4 text-lg font-elite outline-none placeholder-white/30"
+                  placeholder="Issue a new directive..."
+                  value={directive}
+                  onChange={e => setDirective(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSend()}
+                  disabled={sending}
+                />
+                <button 
+                  onClick={handleSend}
+                  disabled={sending}
+                  className="bg-[#FFD90F] text-black p-4 rounded-xl hover:scale-105 transition-transform disabled:opacity-50"
                 >
-                  <img src={agent.icon} alt={agent.name} className="w-12 h-12 group-hover:scale-110 transition-transform" />
-                  <div className="text-left">
-                    <h3 className="text-lg font-marker text-[#FFD90F] uppercase leading-none">{agent.name}</h3>
-                    <p className="text-[9px] font-bold text-blue-400 uppercase tracking-tighter">{agent.role}</p>
-                    <p className="text-[8px] text-white/40 italic">{agent.desc}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
+                  {sending ? '...' : <><Send size={20} className='mr-2' /> SEND</>}
+                </button>
+              </div>
 
+              {lastResult && (
+                <div className={`text-xs p-2 rounded-lg text-center ${lastResult.status === 'dispatched' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+                  {lastResult.status === 'dispatched' ? `✅ Dispatched: ${lastResult.taskId?.slice(0,8)}` : `❌ Error: ${lastResult.message}`}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Operational Units (Simplified Agent Cards) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {AGENTS.map((agent) => (
+              <div key={agent.name} className={`glass-card p-4 flex flex-col items-center text-center border-t-4 ${agent.color}`}>
+                <img src={agent.icon} alt={agent.name} className="w-12 h-12 mb-2" />
+                <h3 className="font-marker text-[#FFD90F] text-xs uppercase">{agent.name}</h3>
+                <p className="text-[8px] text-white/40 italic">{agent.role}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
