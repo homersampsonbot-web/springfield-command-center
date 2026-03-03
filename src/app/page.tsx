@@ -112,6 +112,7 @@ export default function CommandCenter() {
         <div className="glass-card p-10 max-w-md w-full text-center border-[#FFD90F] border-4">
           <img src="/icons/homer.png" className="mx-auto mb-6 w-24 h-24" alt="Homer" />
           <h1 className="text-3xl font-marker mb-8 text-[#FFD90F] uppercase tracking-wider">Classified Access</h1>
+          <div className="text-[10px] opacity-40 font-mono uppercase tracking-widest mt-[-1.5rem] mb-8">Build: e0af284 · 2026-03-03 16:49 UTC</div>
           <form onSubmit={handleAuth} className="space-y-6">
             <div className="md:hidden">
               <input 
