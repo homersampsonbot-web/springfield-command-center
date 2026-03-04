@@ -17,9 +17,6 @@ export default function Home() {
   const [chatInput, setChatInput] = useState<Record<string,string>>({});
   const [gatewayStatus, setGatewayStatus] = useState<Record<string,string>>({ homer: 'checking', marge: 'checking', lisa: 'checking', bart: 'checking', zilliz: 'checking', gateway: 'checking' });
   const [activeTab, setActiveTab] = useState('directives');
-  const [debateTopic, setDebateTopic] = useState('');
-  const [debateResponses, setDebateResponses] = useState<{marge?:string, lisa?:string} | null>(null);
-  const [isDebating, setIsDebating] = useState(false);
   const [toast, setToast] = useState<{message:string, type:string} | null>(null);
   const lastResultId = useRef<string | null>(null);
 
@@ -27,14 +24,11 @@ export default function Home() {
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
   const [bootDegraded, setBootDegraded] = useState(false);
 
-  const voiceCtl = useVoiceInput({ lang: "en-US", maxMs: 30000 });
+  // Contract Test State
+  const [testResults, setTestResults] = useState<any>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
-  // Keep directive box synced with voice transcript (only while listening)
-  useEffect(() => {
-    if (voiceCtl.voice.status === "listening" && voiceCtl.transcript) {
-      setDirective(voiceCtl.transcript);
-    }
-  }, [voiceCtl.voice.status, voiceCtl.transcript, setDirective]);
+  const voiceCtl = useVoiceInput({ lang: "en-US", maxMs: 30000 });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -48,6 +42,12 @@ export default function Home() {
     }
   }, [bootDegraded]);
 
+  // Keep directive box synced with voice transcript (only while listening)
+  useEffect(() => {
+    if (voiceCtl.voice.status === "listening" && voiceCtl.transcript) {
+      setDirective(voiceCtl.transcript);
+    }
+  }, [voiceCtl.voice.status, voiceCtl.transcript]);
 
   useEffect(() => {
     if (!auth) return;
@@ -56,7 +56,7 @@ export default function Home() {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
-        const s = await fetch(`${BASE}/api/system-health`, { signal: controller.signal });
+        const s = await fetch(`/api/system-health`, { signal: controller.signal });
         clearTimeout(timeoutId);
         const hData = await s.json();
         setSystemHealth(hData);
@@ -68,18 +68,19 @@ export default function Home() {
           homer: hData.agents?.homer === 'alive' ? 'online' : 'offline',
           bart: hData.agents?.bart === 'alive' ? 'online' : 'offline',
           lisa: hData.agents?.lisa === 'available' ? 'online' : 'offline',
-          maggie: hData.agents?.maggie === 'alive' ? 'online' : hData.agents?.maggie === 'initializing' ? 'pending' : 'offline'
+          maggie: hData.agents?.maggie === 'alive' ? 'online' : hData.agents?.maggie === 'initializing' ? 'pending' : 'offline',
+          maggieLocal: hData.maggieLocalStatus || 'offline'
         });
       } catch {
-        setGatewayStatus({ homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline', gateway: 'offline', database: 'offline', queue: 'offline' });
+        setGatewayStatus({ homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline', gateway: 'offline', database: 'offline', queue: 'offline', maggieLocal: 'offline' });
       }
     };
 
     const fetchJobs = async () => {
       try {
-        const r = await fetch(`${BASE}/api/jobs`);
+        const r = await fetch(`/api/jobs`);
         const d = await r.json();
-        const pending = d.filter((j: any) => j.status !== 'DONE').slice(0, 3);
+        const pending = d.filter((j: any) => j.status !== 'DONE').slice(0, 5);
         setActiveJobs(pending);
       } catch {}
     };
@@ -97,16 +98,13 @@ export default function Home() {
 
   const handleLogin = async () => {
     try {
-      const res = await fetch(`${BASE}/api/auth`, {
+      const res = await fetch(`/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin })
       });
       if (res.ok) {
         setAuth(true);
-        const searchParams = new URLSearchParams(window.location.search);
-        const next = searchParams.get('next');
-        if (next) window.location.href = next;
       } else {
         alert('Invalid PIN');
         setPin('');
@@ -120,16 +118,29 @@ export default function Home() {
     if (!directive.trim()) return;
     setStatus('Dispatching...');
     try {
-      const r = await fetch(`${BASE}/api/directive`, {
+      const r = await fetch(`/api/directives`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ directive }) 
+        body: JSON.stringify({ text: directive }) 
       });
       const d = await r.json();
-      setStatus(`✅ Dispatched — Task ID: ${d.taskId?.slice(0,8)}`);
+      setStatus(`✅ Dispatched — ID: ${d.id?.slice(0,8)}`);
       setDirective('');
     } catch {
       setStatus('❌ Send failed');
+    }
+  };
+
+  const runContractTest = async () => {
+    setIsTesting(true);
+    try {
+      const r = await fetch(`/api/maggie/contract-test`, { method: 'POST' });
+      const d = await r.json();
+      setTestResults(d.providers);
+    } catch (e) {
+      alert("Contract test failed to run");
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -139,7 +150,7 @@ export default function Home() {
     setChatMessages(m => ({ ...m, [agentId]: [...(m[agentId]||[]), { role:'user', text:msg }] }));
     setChatInput(c => ({ ...c, [agentId]: '' }));
     try {
-      const r = await fetch(`${BASE}/api/chat`, { 
+      const r = await fetch(`/api/chat`, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ agent: agentId, message: msg }) 
@@ -151,7 +162,7 @@ export default function Home() {
     }
   };
 
-  const GlassPanel = ({ children, title, style }: any) => (
+  const GlassPanel = ({ children, title, style, actions }: any) => (
     <div style={{ 
       background: 'rgba(255,255,255,0.03)', 
       backdropFilter: 'blur(10px)',
@@ -166,21 +177,29 @@ export default function Home() {
         <div style={{ 
           padding: '10px 16px', 
           borderBottom: '1px solid rgba(255,217,15,0.1)',
-          fontFamily: 'Permanent Marker',
-          color: '#FFD90F',
-          fontSize: 14,
-          letterSpacing: '0.05em'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          {title}
+          <span style={{ 
+            fontFamily: 'Permanent Marker',
+            color: '#FFD90F',
+            fontSize: 14,
+            letterSpacing: '0.05em'
+          }}>{title}</span>
+          {actions}
         </div>
       )}
-      <div style={{ flex: 1, padding: 16 }}>{children}</div>
+      <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>{children}</div>
     </div>
   );
 
-  const StatusLight = ({ label, status }: any) => (
+  const StatusLight = ({ label, status, subLabel }: any) => (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding: '6px 0' }}>
-      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+        {subLabel && <span style={{ fontSize: 9, color: 'rgba(255,217,15,0.4)', fontFamily: 'monospace' }}>{subLabel}</span>}
+      </div>
       <div style={{ 
         width: 8, 
         height: 8, 
@@ -193,104 +212,158 @@ export default function Home() {
 
   if (!auth) return (
     <div style={{ position: 'relative',  minHeight:'100vh', background:'#0D0D1A', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:24 }}>
-      
-      {/* LOGIN HERO BACKGROUND */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: -10 }}>
+      <div style={{ position: 'absolute', inset: 0, zIndex: -1 }}>
         <Image 
-          src="/login/springfield-map.png" 
-          alt="Welcome to Springfield" 
+          src="/login-hero.png" 
+          alt="Welcome" 
           fill 
           priority 
-          sizes="100vw"
-          style={{ objectFit: 'cover' }}
+          style={{ objectFit: 'cover', opacity: 0.4 }}
         />
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, transparent 0%, #0D0D1A 100%)' }} />
       </div>
-<div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88' }}>SPRINGFIELD</div>
-      <input 
-        type="password" 
-        value={pin} 
-        onChange={e => setPin(e.target.value)} 
-        onKeyDown={e => e.key === 'Enter' && handleLogin()} 
-        style={{ padding:'12px 24px', borderRadius:12, border:'2px solid #FFD90F', background:'#1a1a2e', color:'#fff', textAlign:'center', outline:'none' }} 
-      />
-      <button onClick={handleLogin} style={{ padding:'12px 32px', background:'#FFD90F', borderRadius:12, fontFamily:'Permanent Marker', cursor:'pointer' }}>ENTER</button>
+      <div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88' }}>SPRINGFIELD</div>
+      <div style={{ 
+        background: 'rgba(255,255,255,0.05)', 
+        backdropFilter: 'blur(20px)',
+        padding: 32,
+        borderRadius: 24,
+        border: '1px solid rgba(255,217,15,0.2)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        width: 'min(400px, 90vw)'
+      }}>
+        <input 
+          type="password" 
+          value={pin} 
+          onChange={e => setPin(e.target.value)} 
+          onKeyDown={e => e.key === 'Enter' && handleLogin()} 
+          placeholder="ENTER COMMAND PIN"
+          style={{ padding:'16px', borderRadius:12, border:'1px solid rgba(255,217,15,0.3)', background:'rgba(0,0,0,0.4)', color:'#fff', textAlign:'center', outline:'none', fontSize: 18, letterSpacing: 4 }} 
+        />
+        <button onClick={handleLogin} style={{ padding:'16px', background:'#FFD90F', color: '#000', border: 'none', borderRadius:12, fontFamily:'Permanent Marker', fontSize: 18, cursor:'pointer' }}>AUTHORIZE</button>
+      </div>
     </div>
   );
 
   return (
     <>
       <LaunchSplash />
+      
+      {/* Contract Test Modal */}
+      {testResults && (
+        <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'#12121A', border:'1px solid #FFD90F', borderRadius:16, width:'min(800px, 100%)', maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+             <div style={{ padding:16, borderBottom:'1px solid rgba(255,255,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <h2 style={{ fontFamily:'Permanent Marker', color:'#FFD90F', margin:0 }}>PROVIDER CONTRACT TEST</h2>
+                <button onClick={() => setTestResults(null)} style={{ background:'none', border:'none', color:'#fff', fontSize:24, cursor:'pointer' }}>×</button>
+             </div>
+             <div style={{ padding:16, overflowY:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', color:'#fff', fontSize:13 }}>
+                   <thead>
+                      <tr style={{ textAlign:'left', borderBottom:'1px solid rgba(255,255,255,0.1)' }}>
+                         <th style={{ padding:8 }}>PROVIDER</th>
+                         <th style={{ padding:8 }}>STATUS</th>
+                         <th style={{ padding:8 }}>LATENCY</th>
+                         <th style={{ padding:8 }}>CONTRACT</th>
+                      </tr>
+                   </thead>
+                   <tbody>
+                      {testResults.map((r: any) => (
+                         <tr key={r.provider} style={{ borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding:8, fontWeight:'bold' }}>{r.provider.toUpperCase()}</td>
+                            <td style={{ padding:8, color: r.ok ? '#7ED321' : '#FF4444' }}>{r.ok ? 'ONLINE' : 'ERROR'}</td>
+                            <td style={{ padding:8 }}>{r.ms}ms</td>
+                            <td style={{ padding:8, color: r.contractOk ? '#7ED321' : '#FF4444' }}>{r.contractOk ? 'PASSED' : 'FAILED'}</td>
+                         </tr>
+                      ))}
+                   </tbody>
+                </table>
+
+                {testResults.map((r: any) => r.ok && (
+                   <div key={r.provider + '_json'} style={{ marginTop:20 }}>
+                      <div style={{ fontSize:10, color:'#FFD90F', marginBottom:4 }}>{r.provider.toUpperCase()} OUTPUT:</div>
+                      <pre style={{ background:'rgba(0,0,0,0.3)', padding:12, borderRadius:8, fontSize:11, overflow:'auto', maxHeight:200 }}>
+                         {JSON.stringify(r.sampleJobs, null, 2)}
+                      </pre>
+                   </div>
+                ))}
+             </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ 
         minHeight:'100vh', 
         background:'#080810', 
-      color: '#fff',
-      padding: '20px',
-      display: 'grid',
-      gridTemplateColumns: '280px 1fr 280px',
-      gridTemplateRows: 'auto 1fr 200px',
-      gap: '20px',
-      maxWidth: '1600px',
-      margin: '0 auto'
-    }}>
-      {/* Top Header */}
-      <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 24 }}>🍩</span>
-          <h1 style={{ fontFamily: 'Permanent Marker', fontSize: 24, color: '#FFD90F', margin: 0 }}>MISSION CONTROL</h1>
-          {bootDegraded && (
-            <div style={{ 
-              background: 'rgba(255,68,68,0.2)', 
-              color: '#FF4444', 
-              fontSize: 10, 
-              padding: '2px 8px', 
-              borderRadius: 4, 
-              border: '1px solid #FF4444',
-              fontFamily: 'monospace',
-              fontWeight: 'bold'
-            }}>
-              LIMITED MODE
-            </div>
-          )}
+        color: '#fff',
+        padding: '20px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gridAutoRows: 'minmax(200px, auto)',
+        gap: '20px',
+        maxWidth: '1600px',
+        margin: '0 auto'
+      }}>
+        {/* Top Header */}
+        <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 32 }}>🍩</span>
+            <h1 style={{ fontFamily: 'Permanent Marker', fontSize: 28, color: '#FFD90F', margin: 0, letterSpacing: 2 }}>MISSION CONTROL</h1>
+            {bootDegraded && (
+              <div style={{ background: 'rgba(255,68,68,0.2)', color: '#FF4444', fontSize: 10, padding: '4px 10px', borderRadius: 6, border: '1px solid #FF4444', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                LIMITED MODE
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(255,217,15,0.4)', fontFamily: 'monospace', textAlign: 'right' }}>
+            BUILD: {systemHealth?.build || 'v1.6-MAGGIE-BRAIN'}<br/>
+            PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
+          </div>
         </div>
-        <div style={{ fontSize: 10, color: 'rgba(255,217,15,0.3)', fontFamily: 'monospace' }}>
-          BUILD: {systemHealth?.build || 'v1.5-MOBILE-DND'}
-        </div>
-      </div>
 
-      {/* Left Column: Active Jobs */}
-      <div style={{ gridRow: '2 / 3' }}>
-        <GlassPanel title="ACTIVE JOBS" style={{ height: '100%' }}>
+        {/* Column: Active Jobs */}
+        <GlassPanel title="ACTIVE JOBS">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {activeJobs.map(job => (
-              <div key={job.id} style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, borderLeft: '3px solid #FFD90F' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{job.title}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
-                  <span>{job.owner}</span>
-                  <span style={{ color: '#FFD90F' }}>{job.status}</span>
+              <div key={job.id} style={{ padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 12, borderLeft: `4px solid ${job.risk === 'HIGH' ? '#FF4444' : '#FFD90F'}` }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{job.title}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+                  <span style={{ fontWeight: 'bold' }}>{job.owner}</span>
+                  <span style={{ color: '#FFD90F', fontSize: 10 }}>{job.status}</span>
                 </div>
               </div>
             ))}
-            {!activeJobs.length && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>No active tasks</div>}
+            {!activeJobs.length && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', textAlign: 'center', padding: 20 }}>All tasks completed</div>}
           </div>
         </GlassPanel>
-      </div>
 
-      {/* Center: Command Podium */}
-      <div style={{ gridRow: '2 / 3', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <GlassPanel title="COMMAND PODIUM" style={{ flex: 1 }}>
+        {/* Column: Command Podium */}
+        <GlassPanel 
+          title="COMMAND PODIUM" 
+          actions={
+            <button 
+              onClick={runContractTest} 
+              disabled={isTesting}
+              style={{ fontSize: 9, padding: '4px 8px', background: 'rgba(255,217,15,0.1)', border: '1px solid rgba(255,217,15,0.3)', color: '#FFD90F', borderRadius: 4, cursor: 'pointer' }}
+            >
+              {isTesting ? 'TESTING...' : 'CONTRACT TEST'}
+            </button>
+          }
+        >
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
-             {/* Podium Tabs */}
              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               {['directives','marge','lisa','terminal'].map(tab => (
                 <button 
                   key={tab} 
                   onClick={() => setActiveTab(tab)}
                   style={{ 
-                    flex:1, padding:'8px', 
+                    flex:1, padding:'10px', 
                     background: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.05)', 
                     color: activeTab===tab ? '#000' : '#fff', 
-                    border:'none', borderRadius:8, fontFamily:'Permanent Marker', fontSize:10, cursor:'pointer' 
+                    border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:11, cursor:'pointer',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   {tab.toUpperCase()}
@@ -298,13 +371,13 @@ export default function Home() {
               ))}
               <button 
                 onClick={() => window.open('/kanban', '_blank')}
-                style={{ flex:1, padding:'8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border:'none', borderRadius:8, fontFamily:'Permanent Marker', fontSize:10, cursor:'pointer' }}
+                style={{ flex:1, padding:'10px', background: 'rgba(255,255,255,0.05)', color: '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:11, cursor:'pointer' }}
               >
-                KANBAN ↗
+                KANBAN
               </button>
             </div>
 
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minHeight: 200 }}>
               {activeTab === 'directives' && (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 12 }}>
                   <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -315,111 +388,110 @@ export default function Home() {
                         voiceCtl.setTranscript(e.target.value);
                       }} 
                       placeholder="Enter strategic directive..." 
-                      style={{ flex: 1, background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,217,15,0.2)', borderRadius:8, padding:12, paddingRight: 48, color:'#FFD90F', fontSize:14, resize:'none', outline:'none' }} 
+                      style={{ flex: 1, background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,217,15,0.2)', borderRadius:12, padding:16, paddingRight: 52, color:'#FFD90F', fontSize:15, resize:'none', outline:'none', fontFamily: 'monospace' }} 
                     />
                     <button 
                       onClick={voiceCtl.toggle}
                       style={{ 
                         position: 'absolute', 
-                        right: 8, 
-                        top: 8, 
-                        width: 32, 
-                        height: 32, 
-                        borderRadius: 8, 
-                        background: voiceCtl.voice.status === 'listening' ? '#FF4444' : 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,217,15,0.2)',
+                        right: 12, 
+                        top: 12, 
+                        width: 36, 
+                        height: 36, 
+                        borderRadius: 10, 
+                        background: voiceCtl.voice.status === 'listening' ? '#FF4444' : 'rgba(0,0,0,0.4)',
+                        border: '1px solid rgba(255,217,15,0.3)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: 16
+                        fontSize: 18,
+                        boxShadow: voiceCtl.voice.status === 'listening' ? '0 0 15px #FF4444' : 'none'
                       }}
                     >
                       {voiceCtl.voice.status === 'listening' ? '⏺' : '🎙️'}
                     </button>
                   </div>
-                  {voiceCtl.voice.status === 'listening' && (
-                    <div style={{ fontSize: 10, color: '#FFD90F', opacity: 0.8, marginTop: -8 }}>
-                      Listening... (tap ⏺ to stop)
-                    </div>
-                  )}
-                  {voiceCtl.voice.status === 'error' && (
-                    <div style={{ fontSize: 10, color: '#FF4444', marginTop: -8 }}>
-                      Voice Error: {voiceCtl.voice.message}
-                    </div>
-                  )}
+                  {voiceCtl.voice.status === 'listening' && <div style={{ fontSize: 11, color: '#FFD90F', textAlign: 'center' }}>LISTENING... TAP ⏺ TO STOP</div>}
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <span style={{ color:'rgba(255,255,255,0.4)', fontSize:11 }}>{status}</span>
-                    <button onClick={sendDirective} style={{ padding:'10px 20px', background:'#FFD90F', color:'#000', border:'none', borderRadius:8, fontFamily:'Permanent Marker', fontSize:14, cursor:'pointer' }}>DISPATCH ➤</button>
+                    <span style={{ color:'rgba(255,255,255,0.4)', fontSize:12, fontFamily: 'monospace' }}>{status}</span>
+                    <button onClick={sendDirective} style={{ padding:'12px 24px', background:'#FFD90F', color:'#000', border:'none', borderRadius:12, fontFamily:'Permanent Marker', fontSize:16, cursor:'pointer', boxShadow: '0 4px 15px rgba(255,217,15,0.2)' }}>DISPATCH ➤</button>
                   </div>
                 </div>
               )}
 
               {activeTab === 'marge' && (
-                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8 }}>
-                    <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 12, overflowY: 'auto', fontSize: 12 }}>
+                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 10 }}>
+                    <div style={{ flex: 1, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 16, overflowY: 'auto', fontSize: 13, border: '1px solid rgba(255,255,255,0.05)' }}>
                       {(chatMessages.marge||[]).map((m,i) => (
-                        <div key={i} style={{ marginBottom: 6, color: m.role === 'user' ? '#FFD90F' : '#fff' }}>
-                          <span style={{ opacity: 0.5 }}>{m.role === 'user' ? 'SMS: ' : 'MARGE: '}</span>{m.text}
+                        <div key={i} style={{ marginBottom: 10, lineHeight: 1.4 }}>
+                          <span style={{ color: m.role === 'user' ? '#FFD90F' : '#4A90D9', fontWeight: 'bold' }}>{m.role === 'user' ? 'SMS: ' : 'MARGE: '}</span>
+                          <span style={{ color: '#fff' }}>{m.text}</span>
                         </div>
                       ))}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 10 }}>
                       <input 
                         value={chatInput.marge||''} 
                         onChange={e => setChatInput(c=>({...c, marge:e.target.value}))} 
                         onKeyDown={e => e.key==='Enter' && sendChat('marge')}
-                        style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 12px', color: '#fff' }}
-                        placeholder="Relay message to Marge..."
+                        style={{ flex: 1, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,217,15,0.2)', borderRadius: 10, padding: '12px 16px', color: '#fff', outline: 'none' }}
+                        placeholder="Direct message to Marge..."
                       />
-                      <button onClick={() => sendChat('marge')} style={{ padding: '8px 16px', background: '#4A90D9', border: 'none', borderRadius: 8, cursor: 'pointer' }}>➤</button>
+                      <button onClick={() => sendChat('marge')} style={{ padding: '0 20px', background: '#4A90D9', border: 'none', borderRadius: 10, cursor: 'pointer', color: '#fff' }}>SEND</button>
                     </div>
                  </div>
               )}
               
               {activeTab === 'terminal' && (
-                <div style={{ background:'#000', borderRadius:8, padding:12, height: '100%', fontFamily:'monospace', fontSize:11, color:'#00FF41', overflowY:'auto' }}>
+                <div style={{ background:'#000', borderRadius:12, padding:16, height: '100%', fontFamily:'monospace', fontSize:12, color:'#00FF41', overflowY:'auto', border: '1px solid rgba(0,255,65,0.1)' }}>
                   {results.length ? results.map((r,i) => (
-                    <div key={i} style={{ marginBottom: 6 }}>
-                      <span style={{ opacity: 0.5 }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span> <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444' }}>{r.status?.toUpperCase()}</span> {r.result?.slice(0,80)}
+                    <div key={i} style={{ marginBottom: 8 }}>
+                      <span style={{ opacity: 0.4 }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span> <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444', fontWeight: 'bold' }}>{r.status?.toUpperCase()}</span> {r.result?.slice(0,100)}
                     </div>
-                  )) : <div style={{ color:'rgba(255,255,255,0.2)' }}>Standby...</div>}
+                  )) : <div style={{ color:'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: '20%' }}>SYSTEM STANDBY</div>}
                 </div>
               )}
             </div>
           </div>
         </GlassPanel>
-      </div>
 
-      {/* Right Column: Telemetry */}
-      <div style={{ gridRow: '2 / 3' }}>
-        <GlassPanel title="TELEMETRY" style={{ height: '100%' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Column: Telemetry */}
+        <GlassPanel title="TELEMETRY">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <StatusLight label="Gateway" status={gatewayStatus.gateway} />
             <StatusLight label="Database" status={gatewayStatus.database} />
             <StatusLight label="Queue" status={gatewayStatus.queue} />
-            <div style={{ margin: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }} />
-            <StatusLight label="Homer" status={gatewayStatus.homer} />
-            <StatusLight label="Bart" status={gatewayStatus.bart} />
-            <StatusLight label="Lisa" status={gatewayStatus.lisa} />
-            <StatusLight label="Maggie" status={gatewayStatus.maggie} />
+            
+            <div style={{ margin: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 12 }}>
+               <div style={{ fontSize: 10, color: '#FFD90F', fontWeight: 'bold', marginBottom: 8 }}>AGENT STATUS</div>
+               <StatusLight label="Homer" status={gatewayStatus.homer} />
+               <StatusLight label="Bart" status={gatewayStatus.bart} />
+               <StatusLight label="Lisa" status={gatewayStatus.lisa} />
+               <StatusLight label="Maggie" status={gatewayStatus.maggie} subLabel={`BRAIN: ${systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}`} />
+            </div>
+
+            <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 12 }}>
+               <div style={{ fontSize: 10, color: '#FFD90F', fontWeight: 'bold', marginBottom: 8 }}>LOCAL NODES</div>
+               <StatusLight label="Mac Mini" status={gatewayStatus.maggieLocal} subLabel="maggie.local:8080" />
+            </div>
           </div>
         </GlassPanel>
-      </div>
 
-      {/* Bottom: Event Stream */}
-      <div style={{ gridColumn: '1 / -1', gridRow: '3 / 4' }}>
-        <EventStream />
-      </div>
+        {/* Event Stream (Full Width) */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <EventStream />
+        </div>
 
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
-        body { margin: 0; padding: 0; background: #080810; overflow: hidden; }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,217,15,0.2); border-radius: 10px; }
-      `}</style>
-    </div>
+        <style jsx global>{`
+          @import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
+          body { margin: 0; padding: 0; background: #080810; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+          * { box-sizing: border-box; }
+          ::-webkit-scrollbar { width: 6px; }
+          ::-webkit-scrollbar-thumb { background: rgba(255,217,15,0.15); border-radius: 10px; }
+          ::-webkit-scrollbar-track { background: transparent; }
+        `}</style>
+      </div>
     </>
   );
 }

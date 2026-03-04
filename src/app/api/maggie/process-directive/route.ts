@@ -1,28 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { recordEvent } from "@/lib/maggie/recordEvent";
-import { geminiJSON } from "@/lib/maggie/gemini";
-import { buildPrompt, safeParsePlan } from "@/lib/maggie/parser";
-
-function normOwner(o?: string): any {
-  const v = String(o || "").toUpperCase();
-  const allowed = ["HOMER", "BART", "LISA", "MARGE", "MAGGIE", "SMS"];
-  return allowed.includes(v) ? v : "MAGGIE";
-}
-
-function normStatus(s?: string): any {
-  const v = String(s || "").toUpperCase();
-  const allowed = ["QUEUED", "IN_PROGRESS", "BLOCKED", "QA", "DONE"];
-  return allowed.includes(v) ? v : "QUEUED";
-}
-
-function normPriority(p?: string): any {
-  const v = String(p || "").toUpperCase();
-  if (v === "LOW") return "LOW";
-  if (v === "MEDIUM" || v === "MED") return "MED";
-  if (v === "HIGH") return "HIGH";
-  return "LOW";
-}
+import { parseDirectiveToJobs } from "@/lib/maggieProvider";
 
 export async function POST(req: Request) {
   const { directiveId } = await req.json().catch(() => ({}));
@@ -48,9 +27,7 @@ export async function POST(req: Request) {
   });
 
   try {
-    const prompt = buildPrompt(directive.text);
-    const out = await geminiJSON(prompt);
-    const plan = safeParsePlan(out.text);
+    const plan = await parseDirectiveToJobs(directive.text);
 
     // create jobs
     const created = await prisma.$transaction(async (tx) => {
@@ -59,16 +36,16 @@ export async function POST(req: Request) {
         const job = await tx.job.create({
           data: {
             title: j.title.trim(),
-            description: (j.description || "").trim(),
-            status: normStatus(j.status),
-            risk: normPriority(j.priority),
-            owner: normOwner(j.owner),
+            description: (j.notes || "").trim(),
+            status: j.status as any,
+            risk: j.priority as any,
+            owner: j.owner as any,
             directiveId: directiveId,
             requiresApproval: Boolean(j.requiresApproval),
             labels: j.tags || [],
           },
         });
-        jobs.push({ job, dependsOnTitles: j.dependsOnTitles || [] });
+        jobs.push({ job, dependsOnTitles: j.dependsOn || [] });
         
         await tx.jobEvent.create({
           data: {
@@ -101,7 +78,7 @@ export async function POST(req: Request) {
       data: {
         status: "PARSED",
         parsedJobs: created.length,
-        rawModelJson: out.text
+        rawModelJson: JSON.stringify(plan.meta || {})
       },
     });
 

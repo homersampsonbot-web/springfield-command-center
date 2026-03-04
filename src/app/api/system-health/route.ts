@@ -11,17 +11,30 @@ export async function GET() {
       dbStatus = "disconnected";
     }
 
+    // Maggie Local Status Check
+    const maggieLocalUrl = process.env.MAGGIE_LOCAL_URL || "http://maggie.local:8080";
+    let maggieLocalStatus = "offline";
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      const maggieResp = await fetch(`${maggieLocalUrl}/health`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (maggieResp.ok) maggieLocalStatus = "online";
+    } catch (e) {}
+
     const health = {
       gateway: "online",
       database: dbStatus,
       queue: "connected",
+      maggieProvider: process.env.MAGGIE_PROVIDER || "gemini",
+      maggieLocalStatus,
       agents: {
         homer: "alive",
         bart: "alive",
         lisa: "available",
         maggie: "initializing"
       },
-      build: "v1.5-MOBILE-DND",
+      build: "v1.6-MAGGIE-BRAIN",
       timestamp: Date.now()
     };
 
