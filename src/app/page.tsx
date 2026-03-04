@@ -1,9 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import EventStream from '@/components/EventStream';
 
 const BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || "";
-const BUILD_SHA = "17dfef2";
-const BUILD_DATE = "2026-03-03 20:31 UTC";
 
 export default function Home() {
   const [pin, setPin] = useState('');
@@ -20,34 +19,14 @@ export default function Home() {
   const [isDebating, setIsDebating] = useState(false);
   const [toast, setToast] = useState<{message:string, type:string} | null>(null);
   const lastResultId = useRef<string | null>(null);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [systemHealth, setSystemHealth] = useState<any>(null);
+  const [activeJobs, setActiveJobs] = useState<any[]>([]);
 
   useEffect(() => {
     if (!auth) return;
-    const interval = setInterval(async () => {
-      // Refresh results
-      try {
-        const r = await fetch(`${BASE}/api/results`);
-        const d = await r.json();
-        if (d.results && d.results.length > 0) {
-          const latest = d.results[0];
-          setResults(d.results.slice(0, 10));
-          
-          if (lastResultId.current && latest.taskId !== lastResultId.current) {
-             setToast({ 
-               message: `Task ${latest.status.toUpperCase()}: ${latest.result.slice(0,40)}...`, 
-               type: latest.status === 'failed' ? 'error' : 'success' 
-             });
-             setTimeout(() => setToast(null), 5000);
-          }
-          lastResultId.current = latest.taskId;
-        }
-      } catch {}
-      
-      // Refresh system status
+    
+    const fetchHealth = async () => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -56,17 +35,37 @@ export default function Home() {
         const hData = await s.json();
         setSystemHealth(hData);
 
-        setGatewayStatus(prev => ({ 
-          ...prev, 
+        setGatewayStatus({ 
           gateway: hData.gateway,
+          database: hData.database === 'connected' ? 'online' : 'offline',
+          queue: hData.queue === 'connected' ? 'online' : 'offline',
           homer: hData.agents?.homer === 'alive' ? 'online' : 'offline',
           bart: hData.agents?.bart === 'alive' ? 'online' : 'offline',
-          lisa: hData.agents?.lisa === 'available' ? 'online' : 'offline'
-        }));
+          lisa: hData.agents?.lisa === 'available' ? 'online' : 'offline',
+          maggie: hData.agents?.maggie === 'alive' ? 'online' : hData.agents?.maggie === 'initializing' ? 'pending' : 'offline'
+        });
       } catch {
-        setGatewayStatus(prev => ({ ...prev, homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline', gateway: 'offline' }));
+        setGatewayStatus({ homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline', gateway: 'offline', database: 'offline', queue: 'offline' });
       }
+    };
+
+    const fetchJobs = async () => {
+      try {
+        const r = await fetch(`${BASE}/api/jobs`);
+        const d = await r.json();
+        const pending = d.filter((j: any) => j.status !== 'DONE').slice(0, 3);
+        setActiveJobs(pending);
+      } catch {}
+    };
+
+    fetchHealth();
+    fetchJobs();
+    
+    const interval = setInterval(() => {
+      fetchHealth();
+      fetchJobs();
     }, 15000);
+    
     return () => clearInterval(interval);
   }, [auth]);
 
@@ -79,12 +78,9 @@ export default function Home() {
       });
       if (res.ok) {
         setAuth(true);
-        // After successful server auth, check for 'next' param
         const searchParams = new URLSearchParams(window.location.search);
         const next = searchParams.get('next');
-        if (next) {
-          window.location.href = next;
-        }
+        if (next) window.location.href = next;
       } else {
         alert('Invalid PIN');
         setPin('');
@@ -93,30 +89,6 @@ export default function Home() {
       alert('Authentication error');
     }
   };
-
-  if (!auth) return (
-    <div style={{ minHeight:'100vh', background:'#0D0D1A', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:24 }}>
-      <div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88', display:'flex', alignItems:'center', gap:12 }}>
-        <img src="/icons/homer.webp" alt="Homer" style={{ width:48, height:48, borderRadius:'50%', border:'2px solid #FFD90F', objectFit:'cover' }} />
-        SPRINGFIELD
-      </div>
-      <div style={{ fontFamily:'Permanent Marker', fontSize:24, color:'#fff', marginBottom:16 }}>Command Center</div>
-      <input 
-        type="password" 
-        placeholder="Enter PIN" 
-        value={pin} 
-        onChange={e => setPin(e.target.value)} 
-        onKeyDown={e => e.key === 'Enter' && handleLogin()} 
-        style={{ padding:'12px 24px', borderRadius:12, border:'2px solid #FFD90F', background:'#1a1a2e', color:'#fff', fontSize:18, textAlign:'center', outline:'none' }} 
-      />
-      <button 
-        onClick={handleLogin} 
-        style={{ padding:'12px 32px', background:'#FFD90F', color:'#000', border:'none', borderRadius:12, fontFamily:'Permanent Marker', fontSize:20, cursor:'pointer' }}
-      > 
-        ENTER 
-      </button>
-    </div>
-  );
 
   const sendDirective = async () => {
     if (!directive.trim()) return;
@@ -132,25 +104,6 @@ export default function Home() {
       setDirective('');
     } catch {
       setStatus('❌ Send failed');
-    }
-  };
-
-  const sendDebate = async () => {
-    if (!debateTopic.trim()) return;
-    setIsDebating(true);
-    setDebateResponses(null);
-    try {
-      const r = await fetch(`${BASE}/api/debate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: debateTopic })
-      });
-      const d = await r.json();
-      setDebateResponses(d.responses);
-    } catch {
-      alert('Debate failed');
-    } finally {
-      setIsDebating(false);
     }
   };
 
@@ -172,242 +125,209 @@ export default function Home() {
     }
   };
 
-  const glassCard = { 
-    background:'rgba(255,255,255,0.05)', 
-    border:'1px solid rgba(255,217,15,0.2)', 
-    borderRadius:16, 
-    padding:20, 
-    backdropFilter:'blur(10px)' 
-  };
+  const GlassPanel = ({ children, title, style }: any) => (
+    <div style={{ 
+      background: 'rgba(255,255,255,0.03)', 
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255,217,15,0.1)',
+      borderRadius: 12,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      ...style
+    }}>
+      {title && (
+        <div style={{ 
+          padding: '10px 16px', 
+          borderBottom: '1px solid rgba(255,217,15,0.1)',
+          fontFamily: 'Permanent Marker',
+          color: '#FFD90F',
+          fontSize: 14,
+          letterSpacing: '0.05em'
+        }}>
+          {title}
+        </div>
+      )}
+      <div style={{ flex: 1, padding: 16 }}>{children}</div>
+    </div>
+  );
 
-  const StatusPill = ({ label, status }: { label:string, status:string }) => (
-    <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'rgba(255,255,255,0.6)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
-      <div style={{ width:6, height:6, borderRadius:'50%', background: status==='online'?'#7ED321':'#FF4444', boxShadow: status==='online'?'0 0 5px #7ED321':'' }} />
-      {label}: <span style={{ color: status==='online'?'#7ED321':'#FF4444', fontWeight:700 }}>{status}</span>
+  const StatusLight = ({ label, status }: any) => (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding: '6px 0' }}>
+      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+      <div style={{ 
+        width: 8, 
+        height: 8, 
+        borderRadius: '50%', 
+        background: status === 'online' ? '#7ED321' : status === 'pending' ? '#FFD90F' : '#FF4444',
+        boxShadow: status === 'online' ? '0 0 8px #7ED321' : status === 'pending' ? '0 0 8px #FFD90F' : '0 0 8px #FF4444'
+      }} />
+    </div>
+  );
+
+  if (!auth) return (
+    <div style={{ minHeight:'100vh', background:'#0D0D1A', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:24 }}>
+      <div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88' }}>SPRINGFIELD</div>
+      <input 
+        type="password" 
+        value={pin} 
+        onChange={e => setPin(e.target.value)} 
+        onKeyDown={e => e.key === 'Enter' && handleLogin()} 
+        style={{ padding:'12px 24px', borderRadius:12, border:'2px solid #FFD90F', background:'#1a1a2e', color:'#fff', textAlign:'center', outline:'none' }} 
+      />
+      <button onClick={handleLogin} style={{ padding:'12px 32px', background:'#FFD90F', borderRadius:12, fontFamily:'Permanent Marker', cursor:'pointer' }}>ENTER</button>
     </div>
   );
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0D0D1A', padding:'12px', paddingBottom:80, maxWidth:'100vw', overflowX:'hidden' }}>
-      {/* Toast */}
-      {toast && (
-        <div style={{ 
-          position:'fixed', top:20, right:20, left:20, zIndex:1000,
-          background: toast.type === 'error' ? '#FF4444' : '#7ED321',
-          color: '#fff', padding: '12px 20px', borderRadius: 12,
-          boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
-          fontFamily: 'Inter, sans-serif', fontWeight: 600,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          animation: 'slideDown 0.3s ease-out'
-        }}>
-          {toast.message}
+    <div style={{ 
+      minHeight:'100vh', 
+      background:'#080810', 
+      color: '#fff',
+      padding: '20px',
+      display: 'grid',
+      gridTemplateColumns: '280px 1fr 280px',
+      gridTemplateRows: 'auto 1fr 200px',
+      gap: '20px',
+      maxWidth: '1600px',
+      margin: '0 auto'
+    }}>
+      {/* Top Header */}
+      <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 24 }}>🍩</span>
+          <h1 style={{ fontFamily: 'Permanent Marker', fontSize: 24, color: '#FFD90F', margin: 0 }}>MISSION CONTROL</h1>
         </div>
-      )}
-
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', lineHeight:1, gap:0 }}>
-          <span style={{ fontSize:20, display:'block', margin:0, padding:0 }}>🍩</span>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:19, color:'#FFD90F', margin:0, padding:0, lineHeight:1 }}>Springfield</div>
-        </div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.homer==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/homer.webp" alt="Homer" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #FFD90F' }} />
-            HOMER <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.homer==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.marge==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/marge.webp" alt="Marge" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #4A90D9' }} />
-            MARGE <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.marge==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/lisa.webp" alt="Lisa" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #7ED321' }} />
-            LISA <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.lisa==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.bart==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <img src="/icons/bart.webp" alt="Bart" style={{ width:23, height:23, borderRadius:'50%', objectFit:'cover', border:'1px solid #FF6B35' }} />
-            BART <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.bart==='online'?'#7ED321':'#FF4444' }} />
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:20, border:'1px solid', borderColor: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444', color:'#fff', fontSize:11, fontWeight:600 }}>
-            <span style={{ color:'#00B4D8', fontWeight:900, width:23, height:23, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>Z</span>
-            ZILLIZ <span style={{ width:8, height:8, borderRadius:'50%', background: gatewayStatus.zilliz==='online'?'#7ED321':'#FF4444' }} />
-          </div>
+        <div style={{ fontSize: 10, color: 'rgba(255,217,15,0.3)', fontFamily: 'monospace' }}>
+          BUILD: {systemHealth?.build || 'v1.5-MOBILE-DND'}
         </div>
       </div>
 
-      {/* System Status Strip */}
-      <div style={{ maxWidth:800, margin:'0 auto 20px auto', background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:30, padding:'6px 16px', display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'16px' }}>
-        <StatusPill label="Gateway" status={gatewayStatus.gateway} />
-        <StatusPill label="Database" status={systemHealth?.database === 'connected' ? 'online' : 'offline'} />
-        <StatusPill label="Homer" status={gatewayStatus.homer} />
-        <StatusPill label="Bart" status={gatewayStatus.bart} />
-        <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontStyle:'italic' }}>
-          Build: {systemHealth?.build || BUILD_SHA}
-        </div>
-      </div>
-
-      {/* Podium */}
-      <div style={{ ...glassCard, border:'2px solid #FFD90F', marginBottom:20 }}>
-        <div style={{ fontFamily:'Permanent Marker', fontSize:28, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>🎙️ PODIUM</div>
-
-        {/* Podium Tabs */}
-        <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-          {['directives','marge','lisa','debate','terminal','kanban'].map(tab => (
-            <button 
-              key={tab} 
-              onClick={() => setActiveTab(tab)}
-              style={{ flex:1, padding:'10px', background: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.05)', color: activeTab===tab ? '#000' : '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:12, cursor:'pointer', textTransform:'uppercase' }}
-            >
-              {tab === 'directives' ? '📣 DIRECTIVES' : tab === 'marge' ? '🏠 MARGE' : tab === 'lisa' ? '🎷 LISA' : tab === 'debate' ? '⚖️ DEBATE' : tab === 'terminal' ? '💻 TERMINAL' : '📋 KANBAN'}
-            </button>
-          ))}
-          <button 
-            onClick={() => window.open('/kanban', '_blank')}
-            style={{ flex:1, padding:'10px', background: 'rgba(255,255,255,0.05)', color: '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:12, cursor:'pointer', textTransform:'uppercase' }}
-          >
-            🚀 FULL KANBAN
-          </button>
-        </div>
-
-        {activeTab === 'directives' && (
-          <>
-            <textarea 
-              value={directive} 
-              onChange={e => setDirective(e.target.value)} 
-              onKeyDown={e => e.key === 'Enter' && e.metaKey && sendDirective()} 
-              placeholder="Issue a new directive..." 
-              rows={4} 
-              style={{ width:'100%', background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,217,15,0.4)', borderRadius:10, padding:12, color:'#FFD90F', fontSize:15, resize:'none', outline:'none', marginBottom:12 }} 
-            />
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <span style={{ color:'rgba(255,255,255,0.5)', fontSize:13 }}>{status}</span>
-              <button 
-                onClick={sendDirective} 
-                style={{ padding:'10px 24px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:16, cursor:'pointer' }}
-              > 
-                DISPATCH ➤ 
-              </button>
-            </div>
-          </>
-        )}
-
-        {activeTab === 'marge' && (
-          <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:10, padding:12 }}>
-            <div style={{ marginBottom:8, color:'#4A90D9', fontFamily:'Permanent Marker' }}>Marge Direct Chat</div>
-            <div style={{ minHeight:80, maxHeight:160, overflowY:'auto', fontSize:12, color:'#fff', marginBottom:8 }}>
-              {(chatMessages.marge||[]).map((m,i) => (
-                <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:4 }}>
-                  {m.role==='user'?'You: ':''}{m.text}
-                </div>
-              ))}
-              {!(chatMessages.marge||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>No messages yet.</span>}
-            </div>
-            <div style={{ display:'flex', gap:6 }}>
-              <input 
-                value={chatInput.marge||''} 
-                onChange={e => setChatInput(c=>({...c, marge:e.target.value}))} 
-                onKeyDown={e => e.key==='Enter' && sendChat('marge')} 
-                placeholder="Message Marge..." 
-                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 10px', color:'#fff', fontSize:12, outline:'none' }} 
-              />
-              <button 
-                onClick={() => sendChat('marge')} 
-                style={{ padding:'6px 12px', background:'#4A90D9', color:'#000', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' }}
-              >➤</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'lisa' && (
-          <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:10, padding:12 }}>
-            <div style={{ marginBottom:8, color:'#7ED321', fontFamily:'Permanent Marker' }}>Lisa Direct Chat</div>
-            <div style={{ minHeight:80, maxHeight:160, overflowY:'auto', fontSize:12, color:'#fff', marginBottom:8 }}>
-              {(chatMessages.lisa||[]).map((m,i) => (
-                <div key={i} style={{ color: m.role==='user' ? '#FFD90F' : '#fff', marginBottom:4 }}>
-                  {m.role==='user'?'You: ':''}{m.text}
-                </div>
-              ))}
-              {!(chatMessages.lisa||[]).length && <span style={{color:'rgba(255,255,255,0.3)'}}>No messages yet.</span>}
-            </div>
-            <div style={{ display:'flex', gap:6 }}>
-              <input 
-                value={chatInput.lisa||''} 
-                onChange={e => setChatInput(c=>({...c, lisa:e.target.value}))} 
-                onKeyDown={e => e.key==='Enter' && sendChat('lisa')} 
-                placeholder="Message Lisa..." 
-                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 10px', color:'#fff', fontSize:12, outline:'none' }} 
-              />
-              <button 
-                onClick={() => sendChat('lisa')} 
-                style={{ padding:'6px 12px', background:'#7ED321', color:'#000', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer' }}
-              >➤</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'debate' && (
-          <div style={{ ...glassCard, padding:12 }}>
-            <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:'#FFD90F', textAlign:'center', marginBottom:12 }}>⚖️ STRATEGIC DEBATE</div>
-            <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-              <input 
-                value={debateTopic} 
-                onChange={e => setDebateTopic(e.target.value)} 
-                placeholder="Topic for debate..." 
-                style={{ flex:1, background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,217,15,0.4)', borderRadius:10, padding:10, color:'#FFD90F', fontSize:14, outline:'none' }} 
-              />
-              <button 
-                onClick={sendDebate} 
-                disabled={isDebating}
-                style={{ padding:'8px 18px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:14, cursor:'pointer', opacity: isDebating ? 0.5 : 1 }}
-              > 
-                {isDebating ? 'THINKING...' : 'DEBATE'} 
-              </button>
-            </div>
-            {debateResponses && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                <div style={{ background:'rgba(74,144,217,0.1)', border:'1px solid #4A90D9', borderRadius:12, padding:12 }}>
-                  <div style={{ fontFamily:'Permanent Marker', color:'#4A90D9', marginBottom:8 }}>MARGE (ARCHITECTURE)</div>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.marge}</div>
-                </div>
-                <div style={{ background:'rgba(126,211,33,0.1)', border:'1px solid #7ED321', borderRadius:12, padding:12 }}>
-                  <div style={{ fontFamily:'Permanent Marker', color:'#7ED321', marginBottom:8 }}>LISA (STRATEGY)</div>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.lisa}</div>
+      {/* Left Column: Active Jobs */}
+      <div style={{ gridRow: '2 / 3' }}>
+        <GlassPanel title="ACTIVE JOBS" style={{ height: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {activeJobs.map(job => (
+              <div key={job.id} style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, borderLeft: '3px solid #FFD90F' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{job.title}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
+                  <span>{job.owner}</span>
+                  <span style={{ color: '#FFD90F' }}>{job.status}</span>
                 </div>
               </div>
-            )}
+            ))}
+            {!activeJobs.length && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>No active tasks</div>}
           </div>
-        )}
-
-        {activeTab === 'terminal' && (
-          <div style={{ ...glassCard, padding:12 }}>
-            <div style={{ fontFamily:'Permanent Marker', fontSize:16, color:'#FFD90F', marginBottom:10 }}>⚡ Homer's Terminal</div>
-            <div style={{ background:'#000', borderRadius:8, padding:12, minHeight:200, fontFamily:'monospace', fontSize:12, color:'#00FF41', overflowY:'auto', maxHeight:300 }}>
-              {results.length ? results.map((r,i) => (
-                <div key={i} style={{ marginBottom:8, borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8 }}>
-                  <span style={{ color:'#FFD90F' }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span>{' '}
-                  <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444' }}>{r.status?.toUpperCase()}</span>{' '}
-                  {r.result?.slice(0,100)}
-                </div>
-              )) : <span style={{ color:'rgba(255,255,255,0.3)' }}>Waiting for Homer...</span>}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'kanban' && (
-          <div style={{ ...glassCard, padding:0, overflow:'hidden' }}>
-            <div style={{ fontFamily:'Permanent Marker', fontSize:16, color:'#FFD90F', padding:12, borderBottom:'1px solid rgba(255,217,15,0.2)' }}>📋 SPRINGFIELD OPS</div>
-            <iframe src="https://kanban-board-one-ecru.vercel.app" style={{ width:'100%', height:400, border:'none', background:'#0D0D1A' }} />
-          </div>
-        )}
+        </GlassPanel>
       </div>
 
-      {/* Bottom padding */}
-      <div style={{ height:20 }} />
-      
+      {/* Center: Command Podium */}
+      <div style={{ gridRow: '2 / 3', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <GlassPanel title="COMMAND PODIUM" style={{ flex: 1 }}>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+             {/* Podium Tabs */}
+             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {['directives','marge','lisa','terminal'].map(tab => (
+                <button 
+                  key={tab} 
+                  onClick={() => setActiveTab(tab)}
+                  style={{ 
+                    flex:1, padding:'8px', 
+                    background: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.05)', 
+                    color: activeTab===tab ? '#000' : '#fff', 
+                    border:'none', borderRadius:8, fontFamily:'Permanent Marker', fontSize:10, cursor:'pointer' 
+                  }}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
+              <button 
+                onClick={() => window.open('/kanban', '_blank')}
+                style={{ flex:1, padding:'8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border:'none', borderRadius:8, fontFamily:'Permanent Marker', fontSize:10, cursor:'pointer' }}
+              >
+                KANBAN ↗
+              </button>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              {activeTab === 'directives' && (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 12 }}>
+                  <textarea 
+                    value={directive} 
+                    onChange={e => setDirective(e.target.value)} 
+                    placeholder="Enter strategic directive..." 
+                    style={{ flex: 1, background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,217,15,0.2)', borderRadius:8, padding:12, color:'#FFD90F', fontSize:14, resize:'none', outline:'none' }} 
+                  />
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <span style={{ color:'rgba(255,255,255,0.4)', fontSize:11 }}>{status}</span>
+                    <button onClick={sendDirective} style={{ padding:'10px 20px', background:'#FFD90F', color:'#000', border:'none', borderRadius:8, fontFamily:'Permanent Marker', fontSize:14, cursor:'pointer' }}>DISPATCH ➤</button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'marge' && (
+                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8 }}>
+                    <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 12, overflowY: 'auto', fontSize: 12 }}>
+                      {(chatMessages.marge||[]).map((m,i) => (
+                        <div key={i} style={{ marginBottom: 6, color: m.role === 'user' ? '#FFD90F' : '#fff' }}>
+                          <span style={{ opacity: 0.5 }}>{m.role === 'user' ? 'SMS: ' : 'MARGE: '}</span>{m.text}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input 
+                        value={chatInput.marge||''} 
+                        onChange={e => setChatInput(c=>({...c, marge:e.target.value}))} 
+                        onKeyDown={e => e.key==='Enter' && sendChat('marge')}
+                        style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 12px', color: '#fff' }}
+                        placeholder="Relay message to Marge..."
+                      />
+                      <button onClick={() => sendChat('marge')} style={{ padding: '8px 16px', background: '#4A90D9', border: 'none', borderRadius: 8, cursor: 'pointer' }}>➤</button>
+                    </div>
+                 </div>
+              )}
+              
+              {activeTab === 'terminal' && (
+                <div style={{ background:'#000', borderRadius:8, padding:12, height: '100%', fontFamily:'monospace', fontSize:11, color:'#00FF41', overflowY:'auto' }}>
+                  {results.length ? results.map((r,i) => (
+                    <div key={i} style={{ marginBottom: 6 }}>
+                      <span style={{ opacity: 0.5 }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span> <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444' }}>{r.status?.toUpperCase()}</span> {r.result?.slice(0,80)}
+                    </div>
+                  )) : <div style={{ color:'rgba(255,255,255,0.2)' }}>Standby...</div>}
+                </div>
+              )}
+            </div>
+          </div>
+        </GlassPanel>
+      </div>
+
+      {/* Right Column: Telemetry */}
+      <div style={{ gridRow: '2 / 3' }}>
+        <GlassPanel title="TELEMETRY" style={{ height: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <StatusLight label="Gateway" status={gatewayStatus.gateway} />
+            <StatusLight label="Database" status={gatewayStatus.database} />
+            <StatusLight label="Queue" status={gatewayStatus.queue} />
+            <div style={{ margin: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }} />
+            <StatusLight label="Homer" status={gatewayStatus.homer} />
+            <StatusLight label="Bart" status={gatewayStatus.bart} />
+            <StatusLight label="Lisa" status={gatewayStatus.lisa} />
+            <StatusLight label="Maggie" status={gatewayStatus.maggie} />
+          </div>
+        </GlassPanel>
+      </div>
+
+      {/* Bottom: Event Stream */}
+      <div style={{ gridColumn: '1 / -1', gridRow: '3 / 4' }}>
+        <EventStream />
+      </div>
+
       <style jsx global>{`
-        @keyframes slideDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
+        body { margin: 0; padding: 0; background: #080810; overflow: hidden; }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,217,15,0.2); border-radius: 10px; }
       `}</style>
     </div>
   );
