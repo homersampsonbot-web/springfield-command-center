@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from 'react';
 
 const BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || "";
+const BUILD_SHA = "17dfef2";
+const BUILD_DATE = "2026-03-03 20:31 UTC";
 
 export default function Home() {
   const [pin, setPin] = useState('');
@@ -11,7 +13,7 @@ export default function Home() {
   const [results, setResults] = useState<any[]>([]);
   const [chatMessages, setChatMessages] = useState<Record<string, {role:string,text:string}[]>>({});
   const [chatInput, setChatInput] = useState<Record<string,string>>({});
-  const [gatewayStatus, setGatewayStatus] = useState<Record<string,string>>({ homer: 'checking', marge: 'checking', lisa: 'checking', bart: 'checking', zilliz: 'checking' });
+  const [gatewayStatus, setGatewayStatus] = useState<Record<string,string>>({ homer: 'checking', marge: 'checking', lisa: 'checking', bart: 'checking', zilliz: 'checking', gateway: 'checking' });
   const [activeTab, setActiveTab] = useState('directives');
   const [debateTopic, setDebateTopic] = useState('');
   const [debateResponses, setDebateResponses] = useState<{marge?:string, lisa?:string} | null>(null);
@@ -24,6 +26,7 @@ export default function Home() {
   useEffect(() => {
     if (!auth) return;
     const interval = setInterval(async () => {
+      // Refresh results
       try {
         const r = await fetch(`${BASE}/api/results`);
         const d = await r.json();
@@ -42,14 +45,31 @@ export default function Home() {
         }
       } catch {}
       
+      // Refresh system status
       try {
-        const s = await fetch(`${BASE}/api/status`, { signal: AbortSignal.timeout(3000) });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const s = await fetch(`${BASE}/api/status`, { signal: controller.signal });
+        clearTimeout(timeoutId);
         const sData = await s.json();
-        setGatewayStatus(prev => ({ ...prev, ...sData }));
+        
+        // Also check main gateway health
+        const gController = new AbortController();
+        const gTimeoutId = setTimeout(() => gController.abort(), 3000);
+        const gHealth = await fetch("https://gateway.margebot.com/health", { signal: gController.signal });
+        clearTimeout(gTimeoutId);
+        const gatewayLive = gHealth.ok ? 'online' : 'offline';
+
+        setGatewayStatus(prev => ({ 
+          ...prev, 
+          ...sData, 
+          gateway: gatewayLive,
+          homer: sData.homer || gatewayLive // fallback homer to gateway health if status api is ambiguous
+        }));
       } catch {
-        setGatewayStatus(prev => ({ ...prev, homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline' }));
+        setGatewayStatus(prev => ({ ...prev, homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline', gateway: 'offline' }));
       }
-    }, 2000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [auth]);
 
@@ -114,7 +134,6 @@ export default function Home() {
 
   const sendDebate = async () => {
     if (!debateTopic.trim()) return;
-    console.log('[ui] debate click', debateTopic);
     setIsDebating(true);
     setDebateResponses(null);
     try {
@@ -157,6 +176,13 @@ export default function Home() {
     padding:20, 
     backdropFilter:'blur(10px)' 
   };
+
+  const StatusPill = ({ label, status }: { label:string, status:string }) => (
+    <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'rgba(255,255,255,0.6)', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+      <div style={{ width:6, height:6, borderRadius:'50%', background: status==='online'?'#7ED321':'#FF4444', boxShadow: status==='online'?'0 0 5px #7ED321':'' }} />
+      {label}: <span style={{ color: status==='online'?'#7ED321':'#FF4444', fontWeight:700 }}>{status}</span>
+    </div>
+  );
 
   return (
     <div style={{ minHeight:'100vh', background:'#0D0D1A', padding:'12px', paddingBottom:80, maxWidth:'100vw', overflowX:'hidden' }}>
@@ -205,6 +231,17 @@ export default function Home() {
         </div>
       </div>
 
+      {/* System Status Strip */}
+      <div style={{ maxWidth:800, margin:'0 auto 20px auto', background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:30, padding:'6px 16px', display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'16px' }}>
+        <StatusPill label="Gateway" status={gatewayStatus.gateway} />
+        <StatusPill label="Homer" status={gatewayStatus.homer} />
+        <StatusPill label="Bart" status={gatewayStatus.bart === 'checking' ? 'Unknown' : gatewayStatus.bart} />
+        <StatusPill label="Zilliz" status={gatewayStatus.zilliz} />
+        <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontStyle:'italic' }}>
+          Build: {BUILD_SHA} · {BUILD_DATE}
+        </div>
+      </div>
+
       {/* Podium */}
       <div style={{ ...glassCard, border:'2px solid #FFD90F', marginBottom:20 }}>
         <div style={{ fontFamily:'Permanent Marker', fontSize:28, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>🎙️ PODIUM</div>
@@ -220,6 +257,12 @@ export default function Home() {
               {tab === 'directives' ? '📣 DIRECTIVES' : tab === 'marge' ? '🏠 MARGE' : tab === 'lisa' ? '🎷 LISA' : tab === 'debate' ? '⚖️ DEBATE' : tab === 'terminal' ? '💻 TERMINAL' : '📋 KANBAN'}
             </button>
           ))}
+          <button 
+            onClick={() => window.open('/kanban', '_blank')}
+            style={{ flex:1, padding:'10px', background: 'rgba(255,255,255,0.05)', color: '#fff', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:12, cursor:'pointer', textTransform:'uppercase' }}
+          >
+            🚀 FULL KANBAN
+          </button>
         </div>
 
         {activeTab === 'directives' && (
@@ -353,65 +396,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {/* Debate Tab */}
-      {activeTab === 'debate' && (
-        <div style={{ ...glassCard }}>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:22, color:'#FFD90F', textAlign:'center', marginBottom:16 }}>⚖️ STRATEGIC DEBATE</div>
-          <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-            <input 
-              value={debateTopic} 
-              onChange={e => setDebateTopic(e.target.value)} 
-              placeholder="Topic for debate..." 
-              style={{ flex:1, background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,217,15,0.4)', borderRadius:10, padding:12, color:'#FFD90F', fontSize:15, outline:'none' }} 
-            />
-            <button 
-              onClick={sendDebate} 
-              disabled={isDebating}
-              style={{ padding:'10px 24px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', fontSize:16, cursor:'pointer', opacity: isDebating ? 0.5 : 1 }}
-            > 
-              {isDebating ? 'THINKING...' : 'DEBATE'} 
-            </button>
-          </div>
-          
-          {debateResponses && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div style={{ background:'rgba(74,144,217,0.1)', border:'1px solid #4A90D9', borderRadius:12, padding:12 }}>
-                <div style={{ fontFamily:'Permanent Marker', color:'#4A90D9', marginBottom:8 }}>MARGE (ARCHITECTURE)</div>
-                <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.marge}</div>
-              </div>
-              <div style={{ background:'rgba(126,211,33,0.1)', border:'1px solid #7ED321', borderRadius:12, padding:12 }}>
-                <div style={{ fontFamily:'Permanent Marker', color:'#7ED321', marginBottom:8 }}>LISA (STRATEGY)</div>
-                <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', whiteSpace:'pre-wrap' }}>{debateResponses.lisa}</div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Terminal Tab */}
-      {activeTab === 'terminal' && (
-        <div style={{ ...glassCard }}>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:'#FFD90F', marginBottom:12 }}>⚡ Homer's Terminal</div>
-          <div style={{ background:'#000', borderRadius:8, padding:12, minHeight:200, fontFamily:'monospace', fontSize:12, color:'#00FF41', overflowY:'auto', maxHeight:400 }}>
-            {results.length ? results.map((r,i) => (
-              <div key={i} style={{ marginBottom:8, borderBottom:'1px solid rgba(255,255,255,0.05)', paddingBottom:8 }}>
-                <span style={{ color:'#FFD90F' }}>[{new Date(r.receivedAt||r.timestamp).toLocaleTimeString()}]</span>{' '}
-                <span style={{ color: r.status==='complete'?'#00FF41':'#FF4444' }}>{r.status?.toUpperCase()}</span>{' '}
-                {r.result?.slice(0,100)}
-              </div>
-            )) : <span style={{ color:'rgba(255,255,255,0.3)' }}>Waiting for Homer...</span>}
-          </div>
-        </div>
-      )}
-
-      {/* Kanban Tab */}
-      {activeTab === 'kanban' && (
-        <div style={{ ...glassCard, padding:0, overflow:'hidden' }}>
-          <div style={{ fontFamily:'Permanent Marker', fontSize:18, color:'#FFD90F', padding:16, borderBottom:'1px solid rgba(255,217,15,0.2)' }}>📋 SPRINGFIELD OPS</div>
-          <iframe src="https://kanban-board-one-ecru.vercel.app" style={{ width:'100%', height:500, border:'none', background:'#0D0D1A' }} />
-        </div>
-      )}
 
       {/* Bottom padding */}
       <div style={{ height:20 }} />
