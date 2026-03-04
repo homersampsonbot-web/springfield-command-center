@@ -23,6 +23,8 @@ export default function Home() {
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [systemHealth, setSystemHealth] = useState<any>(null);
+
   useEffect(() => {
     if (!auth) return;
     const interval = setInterval(async () => {
@@ -49,22 +51,17 @@ export default function Home() {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
-        const s = await fetch(`${BASE}/api/status`, { signal: controller.signal });
+        const s = await fetch(`${BASE}/api/system-health`, { signal: controller.signal });
         clearTimeout(timeoutId);
-        const sData = await s.json();
-        
-        // Also check main gateway health
-        const gController = new AbortController();
-        const gTimeoutId = setTimeout(() => gController.abort(), 3000);
-        const gHealth = await fetch("https://gateway.margebot.com/health", { signal: gController.signal });
-        clearTimeout(gTimeoutId);
-        const gatewayLive = gHealth.ok ? 'online' : 'offline';
+        const hData = await s.json();
+        setSystemHealth(hData);
 
         setGatewayStatus(prev => ({ 
           ...prev, 
-          ...sData, 
-          gateway: gatewayLive,
-          homer: sData.homer || gatewayLive // fallback homer to gateway health if status api is ambiguous
+          gateway: hData.gateway,
+          homer: hData.agents?.homer === 'alive' ? 'online' : 'offline',
+          bart: hData.agents?.bart === 'alive' ? 'online' : 'offline',
+          lisa: hData.agents?.lisa === 'available' ? 'online' : 'offline'
         }));
       } catch {
         setGatewayStatus(prev => ({ ...prev, homer: 'offline', marge: 'offline', lisa: 'offline', bart: 'offline', zilliz: 'offline', gateway: 'offline' }));
@@ -240,11 +237,11 @@ export default function Home() {
       {/* System Status Strip */}
       <div style={{ maxWidth:800, margin:'0 auto 20px auto', background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:30, padding:'6px 16px', display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'16px' }}>
         <StatusPill label="Gateway" status={gatewayStatus.gateway} />
+        <StatusPill label="Database" status={systemHealth?.database === 'connected' ? 'online' : 'offline'} />
         <StatusPill label="Homer" status={gatewayStatus.homer} />
-        <StatusPill label="Bart" status={gatewayStatus.bart === 'checking' ? 'Unknown' : gatewayStatus.bart} />
-        <StatusPill label="Zilliz" status={gatewayStatus.zilliz} />
+        <StatusPill label="Bart" status={gatewayStatus.bart} />
         <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontStyle:'italic' }}>
-          Build: {BUILD_SHA} · {BUILD_DATE}
+          Build: {systemHealth?.build || BUILD_SHA}
         </div>
       </div>
 
