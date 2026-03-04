@@ -1,4 +1,5 @@
 'use client';
+import LaunchSplash from '@/components/LaunchSplash';
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import EventStream from '@/components/EventStream';
@@ -194,9 +195,11 @@ export default function Home() {
   );
 
   return (
-    <div style={{ 
-      minHeight:'100vh', 
-      background:'#080810', 
+    <>
+      <LaunchSplash />
+      <div style={{ 
+        minHeight:'100vh', 
+        background:'#080810', 
       color: '#fff',
       padding: '20px',
       display: 'grid',
@@ -344,5 +347,6 @@ export default function Home() {
         ::-webkit-scrollbar-thumb { background: rgba(255,217,15,0.2); border-radius: 10px; }
       `}</style>
     </div>
+    </>
   );
 }

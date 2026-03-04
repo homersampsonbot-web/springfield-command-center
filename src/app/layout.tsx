@@ -14,8 +14,6 @@ title: 'Springfield Command Center',
   description: 'Mission Control for Springfield',
 };
 
-import LaunchSplash from '@/components/LaunchSplash';
-
 export default function RootLayout({
   children,
 }: {
@@ -33,8 +31,7 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/splash/apple-splash-750-1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
         <link rel="apple-touch-startup-image" href="/splash/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
       </head>
-      <body><LaunchSplash />
-{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
