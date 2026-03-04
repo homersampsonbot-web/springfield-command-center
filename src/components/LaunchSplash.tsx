@@ -25,68 +25,70 @@ export default function LaunchSplash() {
   const [health, setHealth] = React.useState<Health | null>(null);
   const startRef = React.useRef<number>(0);
   const doneRef = React.useRef<boolean>(false);
+  const pollTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
-    if (!isStandaloneMode()) return; // only show “app boot” when launched from home screen
+    if (!isStandaloneMode()) return;
+    
     setVisible(true);
     startRef.current = Date.now();
     let cancelled = false;
 
     async function tick() {
       if (cancelled) return;
+      
       try {
-        setPhase('Connecting Gateway…');
-        setDetail('Contacting gateway.margebot.com');
         const r = await fetch('/api/system-health', { cache: 'no-store' });
         const d: Health = await r.json();
         if (cancelled) return;
         setHealth(d);
 
-        setPhase('Checking Database…');
-        setDetail(`Neon: ${d.database ?? 'unknown'}`);
-        
-        setPhase('Connecting Queue…');
-        setDetail(`Upstash: ${d.queue ?? 'unknown'}`);
-        
-        const agents = d.agents ?? {};
-        const homer = agents.homer ?? 'unknown';
-        const bart = agents.bart ?? 'unknown';
-        const lisa = agents.lisa ?? 'unknown';
-        const maggie = agents.maggie ?? 'unknown';
-        
-        setPhase('Agents Online…');
-        setDetail(`Homer=${homer} · Bart=${bart} · Lisa=${lisa} · Maggie=${maggie}`);
-
-        const ready = (d.gateway === 'online' || d.gateway === 'alive') && (d.database === 'connected') && (d.queue === 'connected');
-        setPhase(ready ? 'Mission Control Ready' : 'Mission Control Limited');
-        setDetail(ready ? 'All systems nominal' : 'Some subsystems degraded');
-        doneRef.current = true;
-
-        // Minimum splash time so it feels intentional
-        const MIN_MS = 650;
+        const criticalReady = (d.gateway === 'online' || d.gateway === 'alive') && (d.database === 'connected');
         const elapsed = Date.now() - startRef.current;
-        const wait = Math.max(0, MIN_MS - elapsed);
-        
-        setTimeout(() => {
-          if (cancelled) return;
-          setVisible(false);
-        }, wait);
+        const MIN_MS = 4500;
+        const MAX_MS = 15000;
+
+        setPhase('System Check…');
+        setDetail(`Gateway: ${d.gateway} · Database: ${d.database}`);
+
+        if (elapsed >= MAX_MS) {
+            setPhase('Boot Degraded');
+            setDetail('Failsafe triggered. Proceeding in limited mode.');
+            if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
+            doneRef.current = true;
+            setTimeout(() => { if (!cancelled) setVisible(false); }, 1500);
+            return;
+        }
+
+        if (criticalReady && elapsed >= MIN_MS) {
+            setPhase('Mission Control Ready');
+            setDetail('All critical systems nominal.');
+            if (typeof window !== 'undefined') window.localStorage.removeItem('boot_degraded');
+            doneRef.current = true;
+            setTimeout(() => { if (!cancelled) setVisible(false); }, 800);
+            return;
+        }
+
+        // Fast polling during boot
+        pollTimerRef.current = setTimeout(tick, 500);
+
       } catch (e: any) {
-        setPhase('Boot Error');
-        setDetail('Could not reach /api/system-health');
-        doneRef.current = true;
-        const MIN_MS = 650;
+        setPhase('Connection Error');
+        setDetail('Retrying link to command center…');
         const elapsed = Date.now() - startRef.current;
-        const wait = Math.max(0, MIN_MS - elapsed);
-        setTimeout(() => {
-          if (cancelled) return;
-          setVisible(false);
-        }, wait);
+        if (elapsed >= 15000) {
+            setVisible(false);
+            return;
+        }
+        pollTimerRef.current = setTimeout(tick, 500);
       }
     }
+
     tick();
+    
     return () => {
       cancelled = true;
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, []);
 
@@ -128,50 +130,63 @@ export default function LaunchSplash() {
             width: 'min(520px, 92vw)',
             borderRadius: 18,
             border: '1px solid rgba(255, 217, 15, 0.35)',
-            background: 'rgba(10,10,16,0.55)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            padding: 16,
+            background: 'rgba(10,10,16,0.75)',
+            backdropFilter: 'blur(15px)',
+            WebkitBackdropFilter: 'blur(15px)',
+            padding: 20,
             color: 'rgba(255,255,255,0.92)',
-            boxShadow: '0 18px 60px rgba(0,0,0,0.55)',
+            boxShadow: '0 25px 80px rgba(0,0,0,0.7)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-            <div style={{ fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase' }}>
+            <div style={{ fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', fontSize: 14 }}>
               Command Center Boot
             </div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              {health?.build ? `Build ${health.build}` : ''}
+            <div style={{ fontSize: 11, opacity: 0.6, fontFamily: 'monospace' }}>
+              {health?.build ? `REV: ${health.build}` : 'INITIALIZING'}
             </div>
           </div>
           
-          <div style={{ marginTop: 12, fontSize: 18, fontWeight: 800, color: '#FFD90F' }}>
+          <div style={{ marginTop: 20, fontSize: 20, fontWeight: 800, color: '#FFD90F', letterSpacing: '0.02em' }}>
             {phase}
           </div>
-          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85 }}>
+          <div style={{ marginTop: 8, fontSize: 14, opacity: 0.85, fontFamily: 'monospace' }}>
             {detail}
           </div>
 
-          <div style={{ marginTop: 14, height: 1, background: 'rgba(255,255,255,0.10)' }} />
+          <div style={{ marginTop: 20, height: 2, background: 'rgba(255,255,255,0.05)', overflow: 'hidden', position: 'relative' }}>
+             <div style={{ 
+               position: 'absolute', 
+               left: 0, 
+               top: 0, 
+               height: '100%', 
+               background: '#FFD90F', 
+               boxShadow: '0 0 10px #FFD90F',
+               width: `${Math.min(100, ((Date.now() - startRef.current) / 4500) * 100)}%`,
+               transition: 'width 0.3s ease-out'
+             }} />
+          </div>
           
           <pre
             style={{
-              marginTop: 12,
-              fontSize: 12,
-              lineHeight: 1.45,
+              marginTop: 20,
+              fontSize: 11,
+              lineHeight: 1.5,
               whiteSpace: 'pre-wrap',
-              color: 'rgba(255,255,255,0.78)',
-              maxHeight: 180,
-              overflow: 'auto',
+              color: 'rgba(255,255,255,0.5)',
+              maxHeight: 120,
+              overflow: 'hidden',
+              fontFamily: 'monospace',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              paddingTop: 12
             }}
           >
-            {`[${new Date().toISOString()}] boot.start
-[${new Date().toISOString()}] health.poll /api/system-health
-[${new Date().toISOString()}] gateway: ${health?.gateway ?? 'unknown'}
-[${new Date().toISOString()}] database: ${health?.database ?? 'unknown'}
-[${new Date().toISOString()}] queue: ${health?.queue ?? 'unknown'}
-[${new Date().toISOString()}] agents: ${JSON.stringify(health?.agents ?? {}, null, 0)}
-[${new Date().toISOString()}] boot.${doneRef.current ? 'done' : 'running'}`}
+            {`[BOOT] timestamp: ${new Date().toISOString()}
+[BOOT] gateway: ${health?.gateway || 'polling...'}
+[BOOT] database: ${health?.database || 'polling...'}
+[BOOT] queue: ${health?.queue || 'polling...'}
+[BOOT] critical_ready: ${((health?.gateway === 'online' || health?.gateway === 'alive') && (health?.database === 'connected'))}
+[BOOT] elapsed_ms: ${Date.now() - startRef.current}`}
           </pre>
         </div>
       </div>

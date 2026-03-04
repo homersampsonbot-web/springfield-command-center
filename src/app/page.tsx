@@ -24,6 +24,20 @@ export default function Home() {
 
   const [systemHealth, setSystemHealth] = useState<any>(null);
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
+  const [bootDegraded, setBootDegraded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkDegraded = () => {
+        const isDegraded = window.localStorage.getItem('boot_degraded') === 'true';
+        if (isDegraded !== bootDegraded) setBootDegraded(isDegraded);
+      };
+      checkDegraded();
+      const interval = setInterval(checkDegraded, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [bootDegraded]);
+
 
   useEffect(() => {
     if (!auth) return;
@@ -214,6 +228,20 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 24 }}>🍩</span>
           <h1 style={{ fontFamily: 'Permanent Marker', fontSize: 24, color: '#FFD90F', margin: 0 }}>MISSION CONTROL</h1>
+          {bootDegraded && (
+            <div style={{ 
+              background: 'rgba(255,68,68,0.2)', 
+              color: '#FF4444', 
+              fontSize: 10, 
+              padding: '2px 8px', 
+              borderRadius: 4, 
+              border: '1px solid #FF4444',
+              fontFamily: 'monospace',
+              fontWeight: 'bold'
+            }}>
+              LIMITED MODE
+            </div>
+          )}
         </div>
         <div style={{ fontSize: 10, color: 'rgba(255,217,15,0.3)', fontFamily: 'monospace' }}>
           BUILD: {systemHealth?.build || 'v1.5-MOBILE-DND'}
