@@ -31,16 +31,37 @@ enum Risk {
   HIGH
 }
 
+enum DirectiveStatus {
+  QUEUED
+  PROCESSING
+  PLANNED
+  FAILED
+}
+
 model Directive {
-  id           String    @id @default(cuid())
-  createdAt    DateTime  @default(now())
-  createdBy    String    @default("sms")
+  id           String          @id @default(cuid())
+  createdAt    DateTime        @default(now())
+  createdBy    String          @default("sms")
   text         String
-  status       String    @default("RECEIVED") // RECEIVED|PROCESSING|PARSED|FAILED
-  parsedJobs   Int       @default(0)
-  rawModelJson String?   @db.Text
-  error        String?   @db.Text
+  status       DirectiveStatus @default(QUEUED)
+  provider     String          @default("gemini")
+  jobsCreated  Int             @default(0)
+  rawModelJson String?         @db.Text
+  error        String?         @db.Text
   jobs         Job[]
+  events       DirectiveEvent[]
+}
+
+model DirectiveEvent {
+  id          String   @id @default(cuid())
+  directiveId String
+  createdAt   DateTime @default(now())
+  level       String   // INFO|WARN|ERROR|SUCCESS
+  message     String   @db.Text
+  directive   Directive @relation(fields: [directiveId], references: [id], onDelete: Cascade)
+
+  @@index([directiveId])
+  @@index([createdAt])
 }
 
 model Job {

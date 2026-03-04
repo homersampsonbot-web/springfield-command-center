@@ -1,1 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bangers&family=Inter:wght@400;600&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; } body { background: #0D0D1A; color: #fff; font-family: 'Inter', sans-serif; min-height: 100vh; } 
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bangers&family=Inter:wght@400;600&display=swap');
+:root {
+  --jarvis-bg: #070712;
+  --jarvis-panel: rgba(10,10,20,.55);
+  --jarvis-stroke: rgba(255,217,15,.35);
+  --jarvis-glow: rgba(255,217,15,.18);
+  --jarvis-text-dim: rgba(255,255,255,.70);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--jarvis-bg);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+}
+
+/* subtle scanline */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.02),
+    rgba(255,255,255,0.02) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.15;
+  z-index: 0;
+}
