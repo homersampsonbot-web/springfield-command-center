@@ -1,15 +1,16 @@
 'use client';
-import LaunchSplash from '@/components/LaunchSplash';
 import Image from 'next/image';
 import { useVoiceInput } from "@/lib/useVoiceInput";
 import { useState, useEffect, useRef } from 'react';
 import EventStream from '@/components/EventStream';
+import { useAuth } from '@/components/AuthProvider';
 
 const BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || "";
 
 export default function Home() {
   const [pin, setPin] = useState('');
   const [auth, setAuth] = useState(false);
+  const { setAuthed } = useAuth();
   const [directive, setDirective] = useState('');
   const [status, setStatus] = useState('Standby');
   const [results, setResults] = useState<any[]>([]);
@@ -105,6 +106,7 @@ export default function Home() {
       });
       if (res.ok) {
         setAuth(true);
+        setAuthed(true);
       } else {
         alert('Invalid PIN');
         setPin('');
@@ -249,8 +251,6 @@ export default function Home() {
 
   return (
     <>
-      <LaunchSplash />
-      
       {/* Contract Test Modal */}
       {testResults && (
         <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>

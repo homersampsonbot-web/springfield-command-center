@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AppShell from "@/components/AppShell";
+import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   icons: {
@@ -32,7 +33,7 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/splash/apple-splash-750-1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
         <link rel="apple-touch-startup-image" href="/splash/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
       </head>
-      <body><AppShell>{children}</AppShell></body>
+      <body><AuthProvider><AppShell>{children}</AppShell></AuthProvider></body>
     </html>
   );
 }

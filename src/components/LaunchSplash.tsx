@@ -10,26 +10,17 @@ type Health = {
   timestamp?: number;
 };
 
-function isStandaloneMode() {
-  // iOS Safari standalone + generic PWA display-mode
-  // @ts-ignore
-  const iosStandalone = typeof navigator !== 'undefined' && (navigator as any).standalone === true;
-  const displayModeStandalone = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-  return iosStandalone || displayModeStandalone;
-}
+type Props = { onComplete?: () => void };
 
-export default function LaunchSplash() {
+export default function LaunchSplash({ onComplete }: Props) {
   const [visible, setVisible] = React.useState(false);
   const [phase, setPhase] = React.useState<string>('Booting…');
   const [detail, setDetail] = React.useState<string>('Initializing');
   const [health, setHealth] = React.useState<Health | null>(null);
   const startRef = React.useRef<number>(0);
-  const doneRef = React.useRef<boolean>(false);
   const pollTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
-    if (!isStandaloneMode()) return;
-    
     setVisible(true);
     startRef.current = Date.now();
     let cancelled = false;
@@ -55,8 +46,7 @@ export default function LaunchSplash() {
             setPhase('Boot Degraded');
             setDetail('Failsafe triggered. Proceeding in limited mode.');
             if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
-            doneRef.current = true;
-            setTimeout(() => { if (!cancelled) setVisible(false); }, 1500);
+            setTimeout(() => { if (!cancelled) { setVisible(false); onComplete?.(); } }, 1500);
             return;
         }
 
@@ -64,12 +54,10 @@ export default function LaunchSplash() {
             setPhase('Mission Control Ready');
             setDetail('All critical systems nominal.');
             if (typeof window !== 'undefined') window.localStorage.removeItem('boot_degraded');
-            doneRef.current = true;
-            setTimeout(() => { if (!cancelled) setVisible(false); }, 800);
+            setTimeout(() => { if (!cancelled) { setVisible(false); onComplete?.(); } }, 800);
             return;
         }
 
-        // Fast polling during boot
         pollTimerRef.current = setTimeout(tick, 500);
 
       } catch (e: any) {
@@ -78,6 +66,7 @@ export default function LaunchSplash() {
         const elapsed = Date.now() - startRef.current;
         if (elapsed >= 15000) {
             setVisible(false);
+            onComplete?.();
             return;
         }
         pollTimerRef.current = setTimeout(tick, 500);
@@ -90,7 +79,7 @@ export default function LaunchSplash() {
       cancelled = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, []);
+  }, [onComplete]);
 
   if (!visible) return null;
 

@@ -1,28 +1,29 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import LaunchSplash from "@/components/LaunchSplash";
+import { useAuth } from "@/components/AuthProvider";
 
-type Props = { children: React.ReactNode };
+type Props = { children: React.ReactNode; isAuthed?: boolean; onBootComplete?: () => void };
 
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (window.navigator as any).standalone === true || window.matchMedia?.("(display-mode: standalone)").matches === true;
-}
-
-function isDesktop(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(min-width: 1024px)").matches === true;
-}
-
-export default function AppShell({ children }: Props) {
+export default function AppShell({ children, isAuthed: isAuthedProp, onBootComplete }: Props) {
   const [open, setOpen] = useState(false);
-  const [showBoot, setShowBoot] = useState(false);
+  const [bootDone, setBootDone] = useState(false);
+  const { isAuthed: isAuthedCtx } = useAuth();
+  const isAuthed = isAuthedProp ?? isAuthedCtx;
+  const prevAuthed = useRef(isAuthed);
 
   useEffect(() => {
-    const shouldBoot = isStandalone() || isDesktop();
-    setShowBoot(shouldBoot);
-  }, []);
+    // reset boot if user logs out
+    if (!isAuthed) setBootDone(false);
+  }, [isAuthed]);
+
+  useEffect(() => {
+    prevAuthed.current = isAuthed;
+  }, [isAuthed]);
+
+  // Only boot when auth transitions false -> true
+  const shouldBoot = isAuthed && !prevAuthed.current && !bootDone;
 
   return (
     <div className="min-h-screen bg-[#080810] text-white">
@@ -30,7 +31,7 @@ export default function AppShell({ children }: Props) {
       <button
         aria-label="Open menu"
         onClick={() => setOpen(true)}
-        className="fixed z-[10000] left-3 top-3 md:left-4 md:top-4 px-3 py-2 rounded-xl border border-white/10 bg-black/40 backdrop-blur"
+        className="fixed z-[110] left-3 top-3 md:left-4 md:top-4 px-3 py-2 rounded-xl border border-white/10 bg-black/40 backdrop-blur"
         style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" as any }}
       >
         ☰
@@ -38,10 +39,10 @@ export default function AppShell({ children }: Props) {
 
       {/* Drawer */}
       {open && (
-        <div className="fixed inset-0 z-[9999]">
+        <div className="fixed inset-0 z-[90]">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
           <div
-            className="absolute left-0 top-0 h-full w-[82%] max-w-[320px] bg-black/70 backdrop-blur border-r border-white/10 p-4"
+            className="absolute left-0 top-0 h-full w-[82%] max-w-[320px] bg-black/70 backdrop-blur border-r border-white/10 p-4 z-[100]"
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" as any }}
           >
             <div className="flex items-center justify-between mb-4">
@@ -57,20 +58,26 @@ export default function AppShell({ children }: Props) {
               <Link className="block px-3 py-2 rounded-xl bg-white/5 border border-white/10" href="/kanban" onClick={() => setOpen(false)}>
                 Kanban
               </Link>
-              <a className="block px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" href="#" onClick={(e) => e.preventDefault()}>
+              <button className="w-full text-left px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" disabled>
                 Team (soon)
-              </a>
-              <a className="block px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" href="#" onClick={(e) => e.preventDefault()}>
+              </button>
+              <button className="w-full text-left px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" disabled>
                 Relay Chat (soon)
-              </a>
+              </button>
             </nav>
-            <div className="mt-6 text-xs text-white/60">Tip: This menu is now global (all routes).</div>
           </div>
         </div>
       )}
 
-      {/* Boot overlay: global (standalone + desktop) */}
-      {showBoot ? <LaunchSplash /> : null}
+      {/* Boot overlay: only after auth transition */}
+      {shouldBoot ? (
+        <LaunchSplash
+          onComplete={() => {
+            setBootDone(true);
+            onBootComplete?.();
+          }}
+        />
+      ) : null}
 
       {/* Route content */}
       <div className="pt-16">{children}</div>
