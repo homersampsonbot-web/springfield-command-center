@@ -10,14 +10,14 @@ export async function GET() {
     // Simple seed if empty
     if (jobs.length === 0) {
       const seedJobs = [
-        { title: "Enable Maggie orchestration layer", owner: "MAGGIE", status: "INTAKE", risk: "HIGH" },
+        { title: "Enable Maggie orchestration layer", owner: "MAGGIE", status: "QUEUED", risk: "HIGH" },
         { title: "Harden Cloudflare tunnel security", owner: "HOMER", status: "QUEUED", risk: "HIGH" },
-        { title: "Improve Homer health monitoring", owner: "HOMER", status: "RUNNING", risk: "MED" },
+        { title: "Improve Homer health monitoring", owner: "HOMER", status: "IN_PROGRESS", risk: "MED" },
         { title: "Add Bart visual validation pipeline", owner: "BART", status: "QUEUED", risk: "MED" },
-        { title: "Build Command Center Kanban board", owner: "LISA", status: "RUNNING", risk: "LOW" },
+        { title: "Build Command Center Kanban board", owner: "LISA", status: "IN_PROGRESS", risk: "LOW" },
         { title: "Implement structured directive routing", owner: "MARGE", status: "QUEUED", risk: "HIGH" },
-        { title: "Add system health strip to UI", owner: "LISA", status: "INTAKE", risk: "LOW" },
-        { title: "Configure secrets rotation policy", owner: "MARGE", status: "INTAKE", risk: "HIGH" },
+        { title: "Add system health strip to UI", owner: "LISA", status: "QUEUED", risk: "LOW" },
+        { title: "Configure secrets rotation policy", owner: "MARGE", status: "QUEUED", risk: "HIGH" },
       ];
 
       await prisma.job.createMany({

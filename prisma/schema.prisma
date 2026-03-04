@@ -6,41 +6,12 @@ datasource db {
   provider = "postgresql"
 }
 
-model Job {
-  id               String     @id @default(uuid())
-  title            String
-  description      String?
-  status           JobStatus  @default(INTAKE)
-  owner            Owner      @default(MAGGIE)
-  risk             Risk       @default(LOW)
-  labels           String[]
-  requiresApproval Boolean    @default(false)
-  blockedReason    String?
-  links            Json?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  lastEventAt      DateTime?
-  events           JobEvent[]
-}
-
-model JobEvent {
-  id        String   @id @default(uuid())
-  jobId     String
-  type      String
-  message   String
-  payload   Json?
-  createdAt DateTime @default(now())
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-}
-
 enum JobStatus {
-  INTAKE
   QUEUED
-  RUNNING
+  IN_PROGRESS
   BLOCKED
-  REVIEW
+  QA
   DONE
-  FAILED
 }
 
 enum Owner {
@@ -56,4 +27,41 @@ enum Risk {
   LOW
   MED
   HIGH
+}
+
+model Job {
+  id               String     @id @default(uuid())
+  title            String
+  description      String?
+  status           JobStatus  @default(QUEUED)
+  owner            Owner      @default(MAGGIE)
+  risk             Risk       @default(LOW)
+  labels           String[]
+  requiresApproval Boolean    @default(false)
+  blockedReason    String?
+  links            Json?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  lastEventAt      DateTime?
+  events           JobEvent[]
+  lock             JobLock?
+}
+
+model JobEvent {
+  id        String   @id @default(uuid())
+  jobId     String
+  type      String
+  message   String
+  payload   Json?
+  createdAt DateTime @default(now())
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model JobLock {
+  id        String   @id @default(uuid())
+  jobId     String   @unique
+  ownerId   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
