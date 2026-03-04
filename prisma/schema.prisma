@@ -22,6 +22,7 @@ enum Owner {
   MARGE
   MAGGIE
   MIXED
+  SMS
 }
 
 enum Risk {
@@ -30,32 +31,61 @@ enum Risk {
   HIGH
 }
 
+model Directive {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  createdBy    String    @default("sms")
+  text         String
+  status       String    @default("RECEIVED") // RECEIVED|PROCESSING|PARSED|FAILED
+  parsedJobs   Int       @default(0)
+  rawModelJson String?   @db.Text
+  error        String?   @db.Text
+  jobs         Job[]
+}
+
 model Job {
-  id               String     @id @default(uuid())
+  id               String          @id @default(uuid())
   title            String
   description      String?
-  status           JobStatus  @default(QUEUED)
-  owner            Owner      @default(MAGGIE)
-  risk             Risk       @default(LOW)
+  status           JobStatus       @default(QUEUED)
+  owner            Owner           @default(MAGGIE)
+  risk             Risk            @default(LOW)
   labels           String[]
-  requiresApproval Boolean    @default(false)
+  requiresApproval Boolean         @default(false)
   blockedReason    String?
   links            Json?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   lastEventAt      DateTime?
   events           JobEvent[]
   lock             JobLock?
+  directiveId      String?
+  directive        Directive?      @relation(fields: [directiveId], references: [id], onDelete: SetNull)
+  dependencies     JobDependency[] @relation("JobDeps")
+  dependentOn      JobDependency[] @relation("JobDepsOn")
+}
+
+model JobDependency {
+  id             String @id @default(cuid())
+  jobId          String
+  dependsOnJobId String
+  job            Job    @relation("JobDeps", fields: [jobId], references: [id], onDelete: Cascade)
+  dependsOn      Job    @relation("JobDepsOn", fields: [dependsOnJobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, dependsOnJobId])
 }
 
 model JobEvent {
-  id        String   @id @default(uuid())
-  jobId     String
-  type      String
-  message   String
-  payload   Json?
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId     String?
+  type      String   // INFO|STATUS_CHANGE|ERROR|DIRECTIVE
+  message   String   @db.Text
+  payload   Json?
+  job       Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([jobId])
 }
 
 model JobLock {
