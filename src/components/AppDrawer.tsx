@@ -1,29 +1,26 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
+import Link from 'next/link';
 import { Menu, X, Layout, Zap, Users, ExternalLink } from 'lucide-react';
 
-export default function AppDrawer() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const toggleDrawer = () => setIsOpen(!isOpen);
-
+export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOpen: boolean; onOpen: () => void; onClose: () => void; authStamp?: string }) {
   const navItems = [
     { label: 'Mission Control', icon: <Zap size={18} />, href: '/' },
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
-    { label: 'Team', icon: <Users size={18} />, href: '#' },
-    { label: 'Relays', icon: <ExternalLink size={18} />, href: '#' },
+    { label: 'Team (soon)', icon: <Users size={18} />, href: '/team' },
+    { label: 'Relays (soon)', icon: <ExternalLink size={18} />, href: '/relays' },
   ];
 
   return (
     <>
       <button
-        onClick={toggleDrawer}
+        onClick={isOpen ? onClose : onOpen}
         style={{
           position: 'fixed',
-          top: 'calc(env(safe-area-inset-top) + 12px)',
+          top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
           left: 12,
-          zIndex: 10000,
+          zIndex: 110,
           width: 44,
           height: 44,
           borderRadius: 12,
@@ -41,31 +38,30 @@ export default function AppDrawer() {
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Backdrop */}
       {isOpen && (
         <div
-          onClick={toggleDrawer}
+          onClick={onClose}
           style={{
             position: 'fixed',
             inset: 0,
             background: 'rgba(0,0,0,0.6)',
             backdropFilter: 'blur(4px)',
-            zIndex: 9998,
+            zIndex: 90,
           }}
         />
       )}
 
-      {/* Drawer */}
       <div
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
           bottom: 0,
-          width: 280,
+          width: '80%',
+          maxWidth: 340,
           background: '#0D0D1A',
           borderRight: '1px solid rgba(255,217,15,0.2)',
-          zIndex: 9999,
+          zIndex: 100,
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           padding: '80px 20px 20px',
@@ -77,12 +73,12 @@ export default function AppDrawer() {
         <div style={{ fontFamily: 'Permanent Marker', color: '#FFD90F', fontSize: 24, marginBottom: 20, paddingLeft: 12 }}>
           SPRINGFIELD
         </div>
-        
+
         {navItems.map((item, idx) => (
-          <a
+          <Link
             key={idx}
             href={item.href}
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -96,17 +92,19 @@ export default function AppDrawer() {
               fontWeight: 500,
               transition: 'background 0.2s',
               border: '1px solid transparent',
+              opacity: item.href.includes('soon') ? 0.7 : 1
             }}
             onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,217,15,0.05)')}
             onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
           >
             <span style={{ color: '#FFD90F' }}>{item.icon}</span>
             {item.label}
-          </a>
+          </Link>
         ))}
 
-        <div style={{ marginTop: 'auto', padding: 12, fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>
-          COMMAND CENTER v1.5
+        <div style={{ marginTop: 'auto', padding: 12, fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+          DRAWER_UI=KANBAN_STYLE<br />
+          AUTH={authStamp || 'false'}
         </div>
       </div>
     </>
