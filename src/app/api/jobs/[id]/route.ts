@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+const VALID_STATUSES = ["QUEUED", "IN_PROGRESS", "BLOCKED", "QA", "DONE"];
 
 export async function PATCH(
   req: NextRequest,
@@ -8,37 +10,39 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    
+    const { status } = body;
+
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
     const oldJob = await prisma.job.findUnique({ where: { id } });
+    if (!oldJob) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
     const job = await prisma.job.update({
       where: { id },
       data: {
-        title: body.title,
-        description: body.description,
-        status: body.status,
-        owner: body.owner,
-        risk: body.risk,
-        labels: body.labels,
-        requiresApproval: body.requiresApproval,
-        blockedReason: body.blockedReason,
-        links: body.links,
+        status,
         lastEventAt: new Date(),
       }
     });
 
-    if (body.status && oldJob?.status !== body.status) {
+    if (oldJob.status !== status) {
       await prisma.jobEvent.create({
         data: {
           jobId: id,
           type: 'STATUS_CHANGE',
-          message: `Status changed from ${oldJob?.status} to ${body.status}`,
-          payload: { old: oldJob?.status, new: body.status }
+          message: `Status changed from ${oldJob.status} to ${status}`,
+          payload: { old: oldJob.status, new: status }
         }
       });
     }
 
-    return Response.json(job);
+    return NextResponse.json(job);
   } catch (e: any) {
-    return Response.json({ error: e.message }, { status: 500 });
+    console.error("[API PATCH JOB ERROR]", e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

@@ -38,12 +38,14 @@ interface Job {
   labels: string[];
 }
 
-export default function KanbanBoard() {
+export default function KanbanBoard({ 
+  onStatusChange 
+}: { 
+  onStatusChange?: (msg: string, isError?: boolean) => void 
+}) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const jobIds = useMemo(() => jobs.map(j => j.id), [jobs]);
 
   useEffect(() => {
     fetchJobs();
@@ -56,6 +58,7 @@ export default function KanbanBoard() {
       setJobs(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to fetch jobs", e);
+      onStatusChange?.("Failed to load jobs.", true);
     } finally {
       setLoading(false);
     }
@@ -80,20 +83,18 @@ export default function KanbanBoard() {
     const activeJob = jobs.find(j => j.id === activeId);
     if (!activeJob) return;
 
-    // If hovering over a column
     const isOverColumn = COLUMNS.some(c => c.id === overId);
     
     if (isOverColumn) {
-        if (activeJob.status !== overId) {
-            setJobs(prev => prev.map(j => j.id === activeId ? { ...j, status: overId } : j));
-        }
-        return;
+      if (activeJob.status !== overId) {
+        setJobs(prev => prev.map(j => j.id === activeId ? { ...j, status: overId } : j));
+      }
+      return;
     }
 
-    // If hovering over another job
     const overJob = jobs.find(j => j.id === overId);
     if (overJob && activeJob.status !== overJob.status) {
-        setJobs(prev => prev.map(j => j.id === activeId ? { ...j, status: overJob.status } : j));
+      setJobs(prev => prev.map(j => j.id === activeId ? { ...j, status: overJob.status } : j));
     }
   };
 
@@ -108,23 +109,43 @@ export default function KanbanBoard() {
 
     let toStatus = overId;
     if (!COLUMNS.find(c => c.id === overId)) {
-        const overJob = jobs.find(j => j.id === overId);
-        if (overJob) toStatus = overJob.status;
+      const overJob = jobs.find(j => j.id === overId);
+      if (overJob) toStatus = overJob.status;
     }
 
     const job = jobs.find(j => j.id === jobId);
-    if (!job) return;
+    if (!job || job.status === toStatus) return;
+
+    // Optimistic UI: already handled in onDragOver but we ensure final state is set
+    const oldJobs = [...jobs];
+    const newJobs = jobs.map(j => j.id === jobId ? { ...j, status: toStatus } : j);
+    setJobs(newJobs);
+
+    onStatusChange?.("Saving...");
 
     try {
-      await fetch("/api/jobs/move", {
-        method: "POST",
+      const res = await fetch(`/api/jobs/${jobId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId, toStatus }),
+        body: JSON.stringify({ status: toStatus }),
       });
-    } catch (e) {
-      console.error(e);
-      alert("Failed to persist move.");
-      fetchJobs();
+      
+      const resBody = await res.json();
+      console.log(`[PATCH JOB ${jobId}] Status: ${res.status}`, resBody);
+
+      if (!res.ok) {
+        throw new Error(resBody.error || "Save failed");
+      }
+
+      onStatusChange?.(`Saved at ${new Date().toLocaleTimeString()}`);
+    } catch (e: any) {
+      console.error("[Kanban Persist Error]", e);
+      onStatusChange?.(`Failed to save move. ${e.message}. Reverting...`, true);
+      
+      // Rollback after a short delay
+      setTimeout(() => {
+        setJobs(oldJobs);
+      }, 1000);
     }
   };
 
@@ -161,13 +182,13 @@ export default function KanbanBoard() {
 function KanbanColumn({ id, title, color, jobs }: { id: string, title: string, color: string, jobs: Job[] }) {
   return (
     <div style={{ 
-        display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.03)', 
-        borderRadius: 12, width: 300, flexShrink: 0, border: '1px solid rgba(255,255,255,0.05)',
-        maxHeight: '100%', overflow: 'hidden'
+      display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.03)', 
+      borderRadius: 12, width: 300, flexShrink: 0, border: '1px solid rgba(255,255,255,0.05)',
+      maxHeight: '100%', overflow: 'hidden'
     }}>
       <div style={{ 
-          padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', 
-          background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' 
+        padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', 
+        background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' 
       }}>
         <h2 style={{ fontFamily: 'Permanent Marker', color: color, fontSize: 14, margin: 0 }}>{title}</h2>
         <span style={{ background: 'rgba(255,255,255,0.1)', color: '#aaa', fontSize: 10, padding: '2px 6px', borderRadius: 10 }}>{jobs.length}</span>
@@ -197,7 +218,7 @@ function SortableJobCard({ job }: { job: Job }) {
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0 : 1, // Hide original while dragging
+    opacity: isDragging ? 0 : 1, 
   };
 
   return (
