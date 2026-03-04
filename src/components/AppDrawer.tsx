@@ -1,10 +1,12 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, Layout, Zap, Users, ExternalLink } from 'lucide-react';
+import { Menu, X, Layout, Zap, Users, ExternalLink, ChevronRight, ChevronDown } from 'lucide-react';
 
-export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOpen: boolean; onOpen: () => void; onClose: () => void; authStamp?: string }) {
+export default function AppDrawer({ isOpen, onOpen, onClose }: { isOpen: boolean; onOpen: () => void; onClose: () => void; authStamp?: string }) {
+  const [agentsExpanded, setAgentsExpanded] = useState(false);
+
   const navItems = [
     { label: 'Mission Control', icon: <Zap size={18} />, href: '/' },
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
@@ -108,31 +110,47 @@ export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOp
           </Link>
         ))}
 
-        <div style={{ marginTop: 8, paddingLeft: 8, fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Agents
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {relayItems.map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'rgba(255,255,255,0.02)',
-                color: 'rgba(255,255,255,0.6)',
-                border: '1px solid rgba(255,255,255,0.05)',
-                fontSize: 13
-              }}
-            >
-              {item.label}
-            </div>
-          ))}
-        </div>
+        <button 
+          onClick={() => setAgentsExpanded(!agentsExpanded)}
+          style={{ 
+            marginTop: 16, 
+            padding: '8px 12px', 
+            fontSize: 11, 
+            color: 'rgba(255,255,255,0.5)', 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.08em',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            textAlign: 'left'
+          }}
+        >
+          Agents {agentsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
 
-        <div style={{ marginTop: 'auto', padding: 12, fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-          DRAWER_UI=KANBAN_STYLE<br />
-          AUTH={authStamp || 'false'}
-        </div>
+        {agentsExpanded && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingLeft: 8 }}>
+            {relayItems.map((item, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: 'rgba(255,255,255,0.02)',
+                  color: 'rgba(255,255,255,0.6)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  fontSize: 13
+                }}
+              >
+                {item.label}
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
     </>
   );
