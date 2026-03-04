@@ -12,6 +12,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   });
 
   if (!directive) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  
+
   return NextResponse.json(directive);
 }
