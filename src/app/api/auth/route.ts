@@ -6,7 +6,18 @@ export async function POST(req: NextRequest) {
     const serverPin = process.env.COMMAND_CENTER_PIN || '2025';
     
     if (pin === serverPin || pin === 'springfield') {
-      return NextResponse.json({ success: true });
+      const response = NextResponse.json({ success: true });
+      
+      // Setting cc_session cookie
+      response.cookies.set('cc_session', 'authenticated', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 86400, // 1 day
+      });
+      
+      return response;
     }
     
     return NextResponse.json({ success: false, error: 'Invalid PIN' }, { status: 401 });

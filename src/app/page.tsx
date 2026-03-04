@@ -82,6 +82,12 @@ export default function Home() {
       });
       if (res.ok) {
         setAuth(true);
+        // After successful server auth, check for 'next' param
+        const searchParams = new URLSearchParams(window.location.search);
+        const next = searchParams.get('next');
+        if (next) {
+          window.location.href = next;
+        }
       } else {
         alert('Invalid PIN');
         setPin('');
