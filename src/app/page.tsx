@@ -208,7 +208,7 @@ export default function Home() {
           {bootDegraded && <span style={{ fontSize: 10, color:'#FF4444', border:'1px solid #FF4444', padding:'2px 6px', borderRadius:6, fontFamily:'monospace' }}>LIMITED</span>}
         </div>
         <div style={{ fontSize: 10, color: 'var(--jarvis-text-dim)', fontFamily:'monospace', textAlign:'right' }}>
-          BUILD: {systemHealth?.build || 'v2'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
+          BUILD: {systemHealth?.build || 'v1.6.1-PODIUM-CLEANUP'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
         </div>
       </div>
 
@@ -234,8 +234,18 @@ export default function Home() {
         <JarvisPanel title="COMMAND PODIUM" actions={<button onClick={() => setActiveTab('directives')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>DIRECTIVES</button>}>
           <div style={{ display:'flex', flexDirection:'column', gap:12, height:'100%' }}>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {['directives','marge','lisa','terminal'].map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex:1, minHeight:48, padding:8, borderRadius:10, border:'1px solid rgba(255,217,15,0.2)', background: activeTab===tab ? '#FFD90F' : 'rgba(0,0,0,0.3)', color: activeTab===tab ? '#000' : '#fff', fontFamily:'Permanent Marker' }}>{tab.toUpperCase()}</button>
+              {['directives','terminal','kanban','relays'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    if (tab === 'kanban') window.location.href = '/kanban';
+                    else if (tab === 'relays') window.location.href = '/relays';
+                    else setActiveTab(tab);
+                  }}
+                  style={{ flex:1, minHeight:48, padding:8, borderRadius:10, border:'1px solid rgba(255,217,15,0.2)', background: activeTab===tab ? '#FFD90F' : 'rgba(0,0,0,0.3)', color: activeTab===tab ? '#000' : '#fff', fontFamily:'Permanent Marker' }}
+                >
+                  {tab.toUpperCase()}
+                </button>
               ))}
             </div>
             {activeTab === 'directives' && (

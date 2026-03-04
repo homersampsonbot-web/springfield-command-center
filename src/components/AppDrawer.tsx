@@ -9,7 +9,13 @@ export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOp
     { label: 'Mission Control', icon: <Zap size={18} />, href: '/' },
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
     { label: 'Team (soon)', icon: <Users size={18} />, href: '/team' },
-    { label: 'Relays (soon)', icon: <ExternalLink size={18} />, href: '/relays' },
+    { label: 'Relays', icon: <ExternalLink size={18} />, href: '/relays' },
+  ];
+
+  const relayItems = [
+    { label: 'Homer Relay (soon)', href: '/relays/homer' },
+    { label: 'Marge Relay (soon)', href: '/relays/marge' },
+    { label: 'Lisa Relay (soon)', href: '/relays/lisa' },
   ];
 
   return (
@@ -91,8 +97,7 @@ export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOp
               fontSize: 15,
               fontWeight: 500,
               transition: 'background 0.2s',
-              border: '1px solid transparent',
-              opacity: item.href.includes('soon') ? 0.7 : 1
+              border: '1px solid transparent'
             }}
             onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,217,15,0.05)')}
             onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
@@ -101,6 +106,27 @@ export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOp
             {item.label}
           </Link>
         ))}
+
+        <div style={{ marginTop: 8, paddingLeft: 8, fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Relays
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {relayItems.map((item, idx) => (
+            <div
+              key={idx}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(255,255,255,0.02)',
+                color: 'rgba(255,255,255,0.6)',
+                border: '1px solid rgba(255,255,255,0.05)',
+                fontSize: 13
+              }}
+            >
+              {item.label}
+            </div>
+          ))}
+        </div>
 
         <div style={{ marginTop: 'auto', padding: 12, fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
           DRAWER_UI=KANBAN_STYLE<br />
