@@ -1,3 +1,4 @@
+import Image from 'next/image';
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import EventStream from '@/components/EventStream';
@@ -166,8 +167,21 @@ export default function Home() {
   );
 
   if (!auth) return (
-    <div style={{ minHeight:'100vh', background:'#0D0D1A', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:24 }}>
-      <div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88' }}>SPRINGFIELD</div>
+    <div style={{ position: 'relative',  minHeight:'100vh', background:'#0D0D1A', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:24 }}>
+      
+      {/* LOGIN HERO BACKGROUND */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: -10 }}>
+        <Image 
+          src="/login/springfield-map.png" 
+          alt="Welcome to Springfield" 
+          fill 
+          priority 
+          sizes="100vw"
+          style={{ objectFit: 'cover' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)' }} />
+      </div>
+<div style={{ fontFamily:'Permanent Marker', fontSize:48, color:'#FFD90F', textShadow:'0 0 30px #FFD90F88' }}>SPRINGFIELD</div>
       <input 
         type="password" 
         value={pin} 
