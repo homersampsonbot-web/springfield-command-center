@@ -1,6 +1,7 @@
 'use client';
 import LaunchSplash from '@/components/LaunchSplash';
 import Image from 'next/image';
+import { useVoiceInput } from "@/lib/useVoiceInput";
 import { useState, useEffect, useRef } from 'react';
 import EventStream from '@/components/EventStream';
 
@@ -25,6 +26,15 @@ export default function Home() {
   const [systemHealth, setSystemHealth] = useState<any>(null);
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
   const [bootDegraded, setBootDegraded] = useState(false);
+
+  const voiceCtl = useVoiceInput({ lang: "en-US", maxMs: 30000 });
+
+  // Keep directive box synced with voice transcript (only while listening)
+  useEffect(() => {
+    if (voiceCtl.voice.status === "listening" && voiceCtl.transcript) {
+      setDirective(voiceCtl.transcript);
+    }
+  }, [voiceCtl.voice.status, voiceCtl.transcript, setDirective]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -297,12 +307,47 @@ export default function Home() {
             <div style={{ flex: 1 }}>
               {activeTab === 'directives' && (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 12 }}>
-                  <textarea 
-                    value={directive} 
-                    onChange={e => setDirective(e.target.value)} 
-                    placeholder="Enter strategic directive..." 
-                    style={{ flex: 1, background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,217,15,0.2)', borderRadius:8, padding:12, color:'#FFD90F', fontSize:14, resize:'none', outline:'none' }} 
-                  />
+                  <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <textarea 
+                      value={directive} 
+                      onChange={e => {
+                        setDirective(e.target.value);
+                        voiceCtl.setTranscript(e.target.value);
+                      }} 
+                      placeholder="Enter strategic directive..." 
+                      style={{ flex: 1, background:'rgba(0,0,0,0.3)', border:'1px solid rgba(255,217,15,0.2)', borderRadius:8, padding:12, paddingRight: 48, color:'#FFD90F', fontSize:14, resize:'none', outline:'none' }} 
+                    />
+                    <button 
+                      onClick={voiceCtl.toggle}
+                      style={{ 
+                        position: 'absolute', 
+                        right: 8, 
+                        top: 8, 
+                        width: 32, 
+                        height: 32, 
+                        borderRadius: 8, 
+                        background: voiceCtl.voice.status === 'listening' ? '#FF4444' : 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,217,15,0.2)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 16
+                      }}
+                    >
+                      {voiceCtl.voice.status === 'listening' ? '⏺' : '🎙️'}
+                    </button>
+                  </div>
+                  {voiceCtl.voice.status === 'listening' && (
+                    <div style={{ fontSize: 10, color: '#FFD90F', opacity: 0.8, marginTop: -8 }}>
+                      Listening... (tap ⏺ to stop)
+                    </div>
+                  )}
+                  {voiceCtl.voice.status === 'error' && (
+                    <div style={{ fontSize: 10, color: '#FF4444', marginTop: -8 }}>
+                      Voice Error: {voiceCtl.voice.message}
+                    </div>
+                  )}
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <span style={{ color:'rgba(255,255,255,0.4)', fontSize:11 }}>{status}</span>
                     <button onClick={sendDirective} style={{ padding:'10px 20px', background:'#FFD90F', color:'#000', border:'none', borderRadius:8, fontFamily:'Permanent Marker', fontSize:14, cursor:'pointer' }}>DISPATCH ➤</button>
