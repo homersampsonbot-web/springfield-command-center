@@ -29,6 +29,8 @@ export default function Home() {
   const pollRef = useRef<any>(null);
 
   const [eventCollapsed, setEventCollapsed] = useState(true);
+  const [showAutoPlan, setShowAutoPlan] = useState(false);
+  const [showSimulate, setShowSimulate] = useState(false);
   const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth < 768, []);
 
   const voiceCtl = useVoiceInput({ lang: 'en-US', maxMs: 30000 });
@@ -200,6 +202,45 @@ export default function Home() {
 
   return (
     <div style={{ display:'grid', gap:16, padding:16, maxWidth:1600, margin:'0 auto', gridTemplateColumns: '1fr', gridTemplateRows: 'auto' }}>
+      {/* AUTO PLAN Modal */}
+      {showAutoPlan && (
+        <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'#12121A', border:'1px solid rgba(255,217,15,0.3)', borderRadius:16, width:'min(640px, 100%)', maxHeight:'90vh', overflow:'hidden' }}>
+            <div style={{ padding:16, borderBottom:'1px solid rgba(255,255,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h2 style={{ fontFamily:'Permanent Marker', color:'#FFD90F', margin:0 }}>AUTO PLANNING MODE</h2>
+              <button onClick={() => setShowAutoPlan(false)} style={{ background:'none', border:'none', color:'#fff', fontSize:24, cursor:'pointer' }}>×</button>
+            </div>
+            <div style={{ padding:16, color:'rgba(255,255,255,0.85)' }}>
+              <p>Dump ideas, projects, bots, and research tasks. Maggie will organize them into projects, create jobs, assign owners, and populate Kanban.</p>
+              <p style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>Phase 1: Idea → Jobs</p>
+              <div style={{ display:'flex', gap:10, marginTop:16 }}>
+                <button disabled style={{ flex:1, padding:'12px 16px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, opacity:0.6, cursor:'not-allowed' }}>RUN AUTO PLAN</button>
+                <button onClick={() => setShowAutoPlan(false)} style={{ flex:1, padding:'12px 16px', background:'rgba(255,255,255,0.05)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', borderRadius:10 }}>CLOSE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SIMULATE Modal */}
+      {showSimulate && (
+        <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+          <div style={{ background:'#12121A', border:'1px solid rgba(255,217,15,0.3)', borderRadius:16, width:'min(640px, 100%)', maxHeight:'90vh', overflow:'hidden' }}>
+            <div style={{ padding:16, borderBottom:'1px solid rgba(255,255,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <h2 style={{ fontFamily:'Permanent Marker', color:'#FFD90F', margin:0 }}>PLAN SIMULATION</h2>
+              <button onClick={() => setShowSimulate(false)} style={{ background:'none', border:'none', color:'#fff', fontSize:24, cursor:'pointer' }}>×</button>
+            </div>
+            <div style={{ padding:16, color:'rgba(255,255,255,0.85)' }}>
+              <p>Maggie will simulate the directive and estimate jobs, dependencies, and execution time without creating real jobs.</p>
+              <div style={{ display:'flex', gap:10, marginTop:16 }}>
+                <button disabled style={{ flex:1, padding:'12px 16px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, opacity:0.6, cursor:'not-allowed' }}>RUN SIMULATION</button>
+                <button onClick={() => setShowSimulate(false)} style={{ flex:1, padding:'12px 16px', background:'rgba(255,255,255,0.05)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', borderRadius:10 }}>CLOSE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -208,7 +249,7 @@ export default function Home() {
           {bootDegraded && <span style={{ fontSize: 10, color:'#FF4444', border:'1px solid #FF4444', padding:'2px 6px', borderRadius:6, fontFamily:'monospace' }}>LIMITED</span>}
         </div>
         <div style={{ fontSize: 10, color: 'var(--jarvis-text-dim)', fontFamily:'monospace', textAlign:'right' }}>
-          BUILD: {systemHealth?.build || 'v1.6.1-PODIUM-CLEANUP'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
+          BUILD: {systemHealth?.build || 'v1.6.2-AUTOPLAN-SIMULATE'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
         </div>
       </div>
 
@@ -234,17 +275,20 @@ export default function Home() {
         <JarvisPanel title="COMMAND PODIUM" actions={<button onClick={() => setActiveTab('directives')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>DIRECTIVES</button>}>
           <div style={{ display:'flex', flexDirection:'column', gap:12, height:'100%' }}>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {['directives','terminal','kanban','relays'].map(tab => (
+              {['directives','auto plan','debate','terminal'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => {
-                    if (tab === 'kanban') window.location.href = '/kanban';
-                    else if (tab === 'relays') window.location.href = '/relays';
+                    if (tab === 'auto plan') setShowAutoPlan(true);
+                    else if (tab === 'debate') setActiveTab('debate');
                     else setActiveTab(tab);
                   }}
-                  style={{ flex:1, minHeight:48, padding:8, borderRadius:10, border:'1px solid rgba(255,217,15,0.2)', background: activeTab===tab ? '#FFD90F' : 'rgba(0,0,0,0.3)', color: activeTab===tab ? '#000' : '#fff', fontFamily:'Permanent Marker' }}
+                  style={{ flex:1, minHeight:48, padding:8, borderRadius:10, border:'1px solid rgba(255,217,15,0.2)', background: activeTab===tab ? '#FFD90F' : 'rgba(0,0,0,0.3)', color: activeTab===tab ? '#000' : '#fff', fontFamily:'Permanent Marker', position:'relative' }}
                 >
                   {tab.toUpperCase()}
+                  {tab === 'auto plan' && (
+                    <span style={{ position:'absolute', top:6, right:8, fontSize:9, color:'#FFD90F', opacity:0.8 }}>SOON</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -255,9 +299,12 @@ export default function Home() {
                   <button onClick={voiceCtl.toggle} style={{ position:'absolute', right:10, top:10, width:36, height:36, borderRadius:10, border:'1px solid rgba(255,217,15,0.3)', background: voiceCtl.voice.status==='listening' ? '#FF4444' : 'rgba(0,0,0,0.4)', color:'#FFD90F' }}>{voiceCtl.voice.status==='listening' ? '⏺' : '🎙️'}</button>
                 </div>
                 {voiceCtl.voice.status === 'listening' && <div style={{ fontSize:11, color:'#FFD90F' }}>Listening…</div>}
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10 }}>
                   <span style={{ fontSize:12, color:'var(--jarvis-text-dim)' }}>{status}</span>
-                  <button onClick={sendDirective} style={{ minHeight:48, padding:'10px 18px', borderRadius:12, border:'none', background:'#FFD90F', color:'#000', fontFamily:'Permanent Marker' }}>DISPATCH ➤</button>
+                  <div style={{ display:'flex', gap:10 }}>
+                    <button onClick={() => setShowSimulate(true)} style={{ minHeight:48, padding:'10px 18px', borderRadius:12, border:'1px solid rgba(255,217,15,0.3)', background:'rgba(0,0,0,0.35)', color:'#FFD90F', fontFamily:'Permanent Marker' }}>SIMULATE</button>
+                    <button onClick={sendDirective} style={{ minHeight:48, padding:'10px 18px', borderRadius:12, border:'none', background:'#FFD90F', color:'#000', fontFamily:'Permanent Marker' }}>DISPATCH ➤</button>
+                  </div>
                 </div>
               </>
             )}

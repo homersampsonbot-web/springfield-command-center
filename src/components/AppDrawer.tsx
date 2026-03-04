@@ -9,13 +9,14 @@ export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOp
     { label: 'Mission Control', icon: <Zap size={18} />, href: '/' },
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
     { label: 'Team (soon)', icon: <Users size={18} />, href: '/team' },
-    { label: 'Relays', icon: <ExternalLink size={18} />, href: '/relays' },
+    { label: 'Agents', icon: <ExternalLink size={18} />, href: '/agents' },
   ];
 
   const relayItems = [
-    { label: 'Homer Relay (soon)', href: '/relays/homer' },
-    { label: 'Marge Relay (soon)', href: '/relays/marge' },
-    { label: 'Lisa Relay (soon)', href: '/relays/lisa' },
+    { label: 'Homer (soon)', href: '/agents/homer' },
+    { label: 'Marge (soon)', href: '/agents/marge' },
+    { label: 'Lisa (soon)', href: '/agents/lisa' },
+    { label: 'Maggie (soon)', href: '/agents/maggie' },
   ];
 
   return (
@@ -108,7 +109,7 @@ export default function AppDrawer({ isOpen, onOpen, onClose, authStamp }: { isOp
         ))}
 
         <div style={{ marginTop: 8, paddingLeft: 8, fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Relays
+          Agents
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {relayItems.map((item, idx) => (
