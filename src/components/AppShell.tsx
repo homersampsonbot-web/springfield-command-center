@@ -28,22 +28,24 @@ export default function AppShell({ children, isAuthed: isAuthedProp, onBootCompl
   return (
     <div className="min-h-screen bg-[#080810] text-white">
       {/* Global top-left hamburger */}
-      <button
-        aria-label="Open menu"
-        onClick={() => setOpen(true)}
-        className="fixed z-[110] left-3 top-3 md:left-4 md:top-4 px-3 py-2 rounded-xl border border-white/10 bg-black/40 backdrop-blur"
-        style={{ paddingTop: "calc(env(safe-area-inset-top) + 8px)" as any }}
-      >
-        ☰
-      </button>
+      {isAuthed && (
+        <button
+          aria-label="Open menu"
+          onClick={() => setOpen(true)}
+          className="fixed z-[110] left-3 top-3 md:left-4 md:top-4 px-3 py-2 rounded-xl border border-white/10 bg-black/40 backdrop-blur"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: "12px" }}
+        >
+          ☰
+        </button>
+      )}
 
       {/* Drawer */}
-      {open && (
+      {isAuthed && open && (
         <div className="fixed inset-0 z-[90]">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
           <div
-            className="absolute left-0 top-0 h-full w-[82%] max-w-[320px] bg-black/70 backdrop-blur border-r border-white/10 p-4 z-[100]"
-            style={{ paddingTop: "calc(env(safe-area-inset-top) + 16px)" as any }}
+            className="absolute left-0 top-0 h-full w-[80%] max-w-[340px] bg-black/70 backdrop-blur border-r border-white/10 p-4 z-[100]"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
           >
             <div className="flex items-center justify-between mb-4">
               <div className="font-bold tracking-widest text-[#FFD90F]">SPRINGFIELD</div>
@@ -56,14 +58,14 @@ export default function AppShell({ children, isAuthed: isAuthedProp, onBootCompl
                 Mission Control
               </Link>
               <Link className="block px-3 py-2 rounded-xl bg-white/5 border border-white/10" href="/kanban" onClick={() => setOpen(false)}>
-                Kanban
+                Kanban Ops
               </Link>
-              <button className="w-full text-left px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" disabled>
+              <Link className="block px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" href="/team" onClick={() => setOpen(false)}>
                 Team (soon)
-              </button>
-              <button className="w-full text-left px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" disabled>
-                Relay Chat (soon)
-              </button>
+              </Link>
+              <Link className="block px-3 py-2 rounded-xl bg-white/5 border border-white/10 opacity-70" href="/relays" onClick={() => setOpen(false)}>
+                Relays (soon)
+              </Link>
             </nav>
           </div>
         </div>

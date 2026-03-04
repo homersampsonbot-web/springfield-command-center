@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import KanbanBoard from './KanbanBoard';
 import SaveToast, { SaveToastState } from '@/components/SaveToast';
-import AppDrawer from '@/components/AppDrawer';
 
 export default function KanbanPage() {
   const [saveState, setSaveState] = useState<SaveToastState>(null);
@@ -19,7 +18,6 @@ export default function KanbanPage() {
         flexDirection: 'column',
         fontFamily: 'Inter, sans-serif'
     }}>
-      <AppDrawer />
       <SaveToast state={saveState} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 12 }}>
