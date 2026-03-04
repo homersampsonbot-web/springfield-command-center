@@ -1,31 +1,34 @@
+"use client";
+
 import KanbanBoard from './KanbanBoard';
 
-export const metadata = {
-  title: 'Kanban | Springfield Command Center',
-};
-
 export default function KanbanPage() {
-  const BUILD_STAMP = "v1.1-DND-LISA-" + new Date().toISOString().slice(11, 16);
+  const BUILD_STAMP = "v1.2-DND-FIX-HOMER-" + new Date().toISOString().slice(11, 16);
+  
   return (
-    <main className="min-h-screen bg-[#0D0D1A] text-slate-100 p-8 overflow-hidden flex flex-col">
-      <div className="mb-8 flex items-center justify-between">
+    <main style={{ 
+        minHeight: '100vh', background: '#0D0D1A', color: '#fff', 
+        padding: 32, display: 'flex', flexDirection: 'column',
+        fontFamily: 'Inter, sans-serif'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3 tracking-tight">
-                <span className="text-yellow-400">🏗️</span> Springfield Mission Control
+            <h1 style={{ fontFamily: 'Permanent Marker', fontSize: 32, color: '#FFD90F', margin: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                🏗️ SPRINGFIELD MISSION CONTROL
             </h1>
-            <p className="text-slate-400 text-sm mt-1">Live Operations & Job Orchestration</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 4 }}>Live Operations & Job Orchestration</p>
         </div>
-        <div className="flex items-center gap-4">
-            <div className="text-[10px] font-mono text-slate-600 bg-slate-900 px-2 py-1 rounded border border-slate-800">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.05)' }}>
                 BUILD: {BUILD_STAMP}
             </div>
-            <a href="/" className="text-xs font-mono text-slate-500 hover:text-yellow-400 transition-colors">
+            <a href="/" style={{ fontSize: 11, fontFamily: 'Permanent Marker', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>
                 ← BACK TO PODIUM
             </a>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div style={{ flex: 1, overflow: 'hidden' }}>
         <KanbanBoard />
       </div>
     </main>

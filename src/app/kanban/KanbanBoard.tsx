@@ -1,34 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragStartEvent,
-  DragOverEvent,
   DragEndEvent,
+  DragOverEvent,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { AlertCircle, Clock, CheckCircle2, PlayCircle, StopCircle, Loader2 } from 'lucide-react';
 
 const COLUMNS = [
-  { id: 'QUEUED', title: 'Queued', icon: <Clock className="w-4 h-4" /> },
-  { id: 'IN_PROGRESS', title: 'In Progress', icon: <PlayCircle className="w-4 h-4" /> },
-  { id: 'BLOCKED', title: 'Blocked', icon: <StopCircle className="w-4 h-4 text-red-400" /> },
-  { id: 'QA', title: 'QA', icon: <AlertCircle className="w-4 h-4 text-yellow-400" /> },
-  { id: 'DONE', title: 'Done', icon: <CheckCircle2 className="w-4 h-4 text-green-400" /> },
+  { id: 'QUEUED', title: 'Queued', color: '#4A90D9' },
+  { id: 'IN_PROGRESS', title: 'In Progress', color: '#FFD90F' },
+  { id: 'BLOCKED', title: 'Blocked', color: '#FF4444' },
+  { id: 'QA', title: 'QA', color: '#7ED321' },
+  { id: 'DONE', title: 'Done', color: '#00B4D8' },
 ];
 
 interface Job {
@@ -45,6 +43,8 @@ export default function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const jobIds = useMemo(() => jobs.map(j => j.id), [jobs]);
+
   useEffect(() => {
     fetchJobs();
   }, []);
@@ -53,7 +53,7 @@ export default function KanbanBoard() {
     try {
       const res = await fetch("/api/jobs");
       const data = await res.json();
-      setJobs(data);
+      setJobs(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("Failed to fetch jobs", e);
     } finally {
@@ -62,18 +62,39 @@ export default function KanbanBoard() {
   };
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-        activationConstraint: {
-            distance: 5,
-        },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const activeJob = jobs.find(j => j.id === activeId);
+    if (!activeJob) return;
+
+    // If hovering over a column
+    const isOverColumn = COLUMNS.some(c => c.id === overId);
+    
+    if (isOverColumn) {
+        if (activeJob.status !== overId) {
+            setJobs(prev => prev.map(j => j.id === activeId ? { ...j, status: overId } : j));
+        }
+        return;
+    }
+
+    // If hovering over another job
+    const overJob = jobs.find(j => j.id === overId);
+    if (overJob && activeJob.status !== overJob.status) {
+        setJobs(prev => prev.map(j => j.id === activeId ? { ...j, status: overJob.status } : j));
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -85,56 +106,45 @@ export default function KanbanBoard() {
     const jobId = active.id as string;
     const overId = over.id as string;
 
-    // Check if we dropped over a column or another item
     let toStatus = overId;
     if (!COLUMNS.find(c => c.id === overId)) {
         const overJob = jobs.find(j => j.id === overId);
         if (overJob) toStatus = overJob.status;
     }
 
-    const activeJob = jobs.find(j => j.id === jobId);
-    if (!activeJob || activeJob.status === toStatus) return;
-
-    // Optimistic update
-    const oldJobs = [...jobs];
-    setJobs(jobs.map(j => j.id === jobId ? { ...j, status: toStatus } : j));
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
 
     try {
-      const res = await fetch("/api/jobs/move", {
+      await fetch("/api/jobs/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobId, toStatus }),
       });
-      if (!res.ok) throw new Error("Move failed");
     } catch (e) {
       console.error(e);
-      setJobs(oldJobs);
-      alert("Failed to persist move. Rolling back.");
+      alert("Failed to persist move.");
+      fetchJobs();
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-yellow-500" />
-      </div>
-    );
-  }
+  if (loading) return <div style={{ color: '#FFD90F', padding: 20, fontFamily: 'Permanent Marker' }}>LOADING OPS...</div>;
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-6 overflow-x-auto pb-6 h-full items-start">
+      <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 20, height: '100%', alignItems: 'flex-start' }}>
         {COLUMNS.map((col) => (
           <KanbanColumn
             key={col.id}
             id={col.id}
             title={col.title}
-            icon={col.icon}
+            color={col.color}
             jobs={jobs.filter((j) => j.status === col.id)}
           />
         ))}
@@ -148,21 +158,23 @@ export default function KanbanBoard() {
   );
 }
 
-function KanbanColumn({ id, title, icon, jobs }: { id: string, title: string, icon: React.ReactNode, jobs: Job[] }) {
+function KanbanColumn({ id, title, color, jobs }: { id: string, title: string, color: string, jobs: Job[] }) {
   return (
-    <div className="flex flex-col bg-slate-800/50 rounded-xl w-80 shrink-0 border border-slate-700/50 overflow-hidden max-h-full">
-      <div className="p-4 border-bottom border-slate-700 flex items-center justify-between bg-slate-800">
-        <div className="flex items-center gap-2">
-            <span className="text-slate-400">{icon}</span>
-            <h2 className="font-bold text-slate-200 uppercase tracking-tight text-sm">{title}</h2>
-        </div>
-        <span className="bg-slate-900 text-slate-400 text-xs px-2 py-0.5 rounded-full font-mono">
-          {jobs.length}
-        </span>
+    <div style={{ 
+        display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.03)', 
+        borderRadius: 12, width: 300, flexShrink: 0, border: '1px solid rgba(255,255,255,0.05)',
+        maxHeight: '100%', overflow: 'hidden'
+    }}>
+      <div style={{ 
+          padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', 
+          background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' 
+      }}>
+        <h2 style={{ fontFamily: 'Permanent Marker', color: color, fontSize: 14, margin: 0 }}>{title}</h2>
+        <span style={{ background: 'rgba(255,255,255,0.1)', color: '#aaa', fontSize: 10, padding: '2px 6px', borderRadius: 10 }}>{jobs.length}</span>
       </div>
       
       <SortableContext id={id} items={jobs.map(j => j.id)} strategy={verticalListSortingStrategy}>
-        <div className="p-3 flex flex-col gap-3 overflow-y-auto min-h-[150px]">
+        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', minHeight: 100 }}>
           {jobs.map((job) => (
             <SortableJobCard key={job.id} job={job} />
           ))}
@@ -185,7 +197,7 @@ function SortableJobCard({ job }: { job: Job }) {
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1,
+    opacity: isDragging ? 0 : 1, // Hide original while dragging
   };
 
   return (
@@ -196,30 +208,30 @@ function SortableJobCard({ job }: { job: Job }) {
 }
 
 function JobCard({ job, isDragging }: { job: Job, isDragging?: boolean }) {
+  const cardStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.05)',
+    border: isDragging ? '1px solid #FFD90F' : '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 8,
+    padding: 12,
+    boxShadow: isDragging ? '0 8px 20px rgba(0,0,0,0.4)' : 'none',
+    cursor: isDragging ? 'grabbing' : 'grab',
+    transform: isDragging ? 'scale(1.02)' : 'none',
+    zIndex: isDragging ? 1000 : 1,
+  };
+
   return (
-    <div className={`
-        bg-slate-700 border rounded-lg p-4 shadow-lg transition-all
-        ${isDragging ? 'border-yellow-500 ring-2 ring-yellow-500/20 scale-105 z-50 cursor-grabbing' : 'border-slate-600 hover:border-slate-500 cursor-grab'}
-    `}>
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
-            {job.owner}
-        </span>
-        {job.risk === 'HIGH' && (
-            <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">
-                HIGH RISK
-            </span>
-        )}
+    <div style={cardStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#888' }}>{job.owner}</span>
+        {job.risk === 'HIGH' && <span style={{ fontSize: 9, fontWeight: 'bold', color: '#FF4444' }}>! HIGH</span>}
       </div>
-      <h3 className="text-sm font-medium text-slate-100 leading-tight mb-3">
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.4, marginBottom: 8 }}>
         {job.title}
-      </h3>
+      </div>
       {job.labels && job.labels.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
-          {job.labels.map(label => (
-            <span key={label} className="text-[9px] text-slate-300 bg-slate-600 px-1.5 py-0.5 rounded">
-                {label}
-            </span>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {job.labels.map(l => (
+            <span key={l} style={{ fontSize: 8, background: 'rgba(255,255,255,0.1)', color: '#ccc', padding: '1px 4px', borderRadius: 4 }}>{l}</span>
           ))}
         </div>
       )}
