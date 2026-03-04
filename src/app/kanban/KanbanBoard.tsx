@@ -20,6 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SaveToastState } from '@/components/SaveToast';
 
 const COLUMNS = [
   { id: 'QUEUED', title: 'Queued', color: '#4A90D9' },
@@ -39,9 +40,9 @@ interface Job {
 }
 
 export default function KanbanBoard({ 
-  onStatusChange 
+  onSaveStateChange 
 }: { 
-  onStatusChange?: (msg: string, isError?: boolean) => void 
+  onSaveStateChange?: (state: SaveToastState) => void 
 }) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -57,8 +58,7 @@ export default function KanbanBoard({
       const data = await res.json();
       setJobs(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("Failed to fetch jobs", e);
-      onStatusChange?.("Failed to load jobs.", true);
+      console.error("Failed to load jobs", e);
     } finally {
       setLoading(false);
     }
@@ -116,12 +116,11 @@ export default function KanbanBoard({
     const job = jobs.find(j => j.id === jobId);
     if (!job || job.status === toStatus) return;
 
-    // Optimistic UI: already handled in onDragOver but we ensure final state is set
     const oldJobs = [...jobs];
     const newJobs = jobs.map(j => j.id === jobId ? { ...j, status: toStatus } : j);
     setJobs(newJobs);
 
-    onStatusChange?.("Saving...");
+    onSaveStateChange?.("saving");
 
     try {
       const res = await fetch(`/api/jobs/${jobId}`, {
@@ -130,22 +129,17 @@ export default function KanbanBoard({
         body: JSON.stringify({ status: toStatus }),
       });
       
-      const resBody = await res.json();
-      console.log(`[PATCH JOB ${jobId}] Status: ${res.status}`, resBody);
+      if (!res.ok) throw new Error("Save failed");
 
-      if (!res.ok) {
-        throw new Error(resBody.error || "Save failed");
-      }
-
-      onStatusChange?.(`Saved at ${new Date().toLocaleTimeString()}`);
-    } catch (e: any) {
+      onSaveStateChange?.("saved");
+      setTimeout(() => onSaveStateChange?.(null), 1500);
+    } catch (e) {
       console.error("[Kanban Persist Error]", e);
-      onStatusChange?.(`Failed to save move. ${e.message}. Reverting...`, true);
-      
-      // Rollback after a short delay
+      onSaveStateChange?.("error");
       setTimeout(() => {
         setJobs(oldJobs);
-      }, 1000);
+        onSaveStateChange?.(null);
+      }, 2500);
     }
   };
 
