@@ -81,8 +81,8 @@ export async function GET() {
       agents: {
         homer: "alive",
         bart: "alive",
-        marge: margeStatus,
-        lisa: "available",
+        marge: margeRelay === 'alive' ? 'available' : 'offline',
+        lisa: lisaRelay === 'alive' ? 'available' : 'offline',
         maggie: maggieState === "online" ? "online" : "degraded"
       },
       build: "v1.6.4-HEAL-ESCALATE",

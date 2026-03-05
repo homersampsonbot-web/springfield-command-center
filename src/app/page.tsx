@@ -171,8 +171,8 @@ export default function Home() {
     { label: 'Gateway', value: systemHealth?.gateway || 'offline', status: systemHealth?.gateway === 'online' ? 'ok' : 'bad' },
     { label: 'Database', value: systemHealth?.database || 'offline', status: systemHealth?.database === 'connected' ? 'ok' : 'bad' },
     { label: 'Queue', value: systemHealth?.queue || 'offline', status: systemHealth?.queue === 'connected' ? 'ok' : 'bad' },
-    { label: 'Marge Relay', value: systemHealth?.relays?.marge || 'down', status: systemHealth?.relays?.marge === 'alive' ? 'ok' : 'bad' },
-    { label: 'Lisa Relay', value: systemHealth?.relays?.lisa || 'down', status: systemHealth?.relays?.lisa === 'alive' ? 'ok' : 'bad' }
+    { label: 'Marge (Claude Relay)', value: systemHealth?.agents?.marge || 'offline', status: systemHealth?.agents?.marge === 'available' ? 'ok' : 'bad' },
+    { label: 'Lisa (ChatGPT Relay)', value: systemHealth?.agents?.lisa || 'offline', status: systemHealth?.agents?.lisa === 'available' ? 'ok' : 'bad' }
   ] as { label: string; value: string; status: 'ok'|'bad'|'warn'|'idle' }[];
 
   if (!auth) return (
