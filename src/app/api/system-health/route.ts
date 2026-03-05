@@ -28,6 +28,21 @@ export async function GET() {
       }
     } catch (e) {}
 
+
+    const relayHealth = async (url: string) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timeoutId);
+        return res.ok ? 'alive' : 'down';
+      } catch {
+        return 'down';
+      }
+    };
+
+    const margeRelay = await relayHealth('http://18.190.203.220:3003/health');
+    const lisaRelay = await relayHealth('http://18.190.203.220:3004/health');
     // 2) Maggie Logic & Contract Test
     const maggieProvider = process.env.MAGGIE_PROVIDER || "gemini";
     let maggieLocalStatus = "offline";
@@ -58,6 +73,8 @@ export async function GET() {
       database: dbStatus,
       queue: "connected",
       maggieProvider,
+      relays: { marge: margeRelay, lisa: lisaRelay },
+      sessions: { marge: "unknown", lisa: "unknown" },
       maggieLocalStatus,
       maggieState,
       maggieReason,
