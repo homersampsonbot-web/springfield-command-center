@@ -43,6 +43,23 @@ export async function GET() {
 
     const margeRelay = await relayHealth('http://18.190.203.220:3003/health');
     const lisaRelay = await relayHealth('http://18.190.203.220:3004/health');
+
+    const sessionCheck = async (url: string, key: 'marge' | 'lisa') => {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) return { status: 'offline', reason: 'relay_unreachable' } as const;
+        const data: any = await res.json();
+        if (!data?.browser?.cdpOk) return { status: 'offline', reason: 'cdp_failed' } as const;
+        const s = data?.[key];
+        if (s?.loggedIn) return { status: 'ok', reason: null } as const;
+        return { status: 'degraded', reason: s?.reason || 'logged_out' } as const;
+      } catch {
+        return { status: 'offline', reason: 'relay_unreachable' } as const;
+      }
+    };
+
+    const margeSession = await sessionCheck('http://18.190.203.220:3003/session', 'marge');
+    const lisaSession = await sessionCheck('http://18.190.203.220:3004/session', 'lisa');
     // 2) Maggie Logic & Contract Test
     const maggieProvider = process.env.MAGGIE_PROVIDER || "gemini";
     let maggieLocalStatus = "offline";
@@ -74,15 +91,15 @@ export async function GET() {
       queue: "connected",
       maggieProvider,
       relays: { marge: margeRelay, lisa: lisaRelay },
-      sessions: { marge: "unknown", lisa: "unknown" },
+      sessions: { marge: margeSession, lisa: lisaSession },
       maggieLocalStatus,
       maggieState,
       maggieReason,
       agents: {
         homer: "alive",
         bart: "alive",
-        marge: margeRelay === 'alive' ? 'available' : 'offline',
-        lisa: lisaRelay === 'alive' ? 'available' : 'offline',
+        marge: margeSession.status === 'ok' ? 'available' : (margeSession.status === 'offline' ? 'offline' : 'degraded'),
+        lisa: lisaSession.status === 'ok' ? 'available' : (lisaSession.status === 'offline' ? 'offline' : 'degraded'),
         maggie: maggieState === "online" ? "online" : "degraded"
       },
       build: "v1.6.4-HEAL-ESCALATE",

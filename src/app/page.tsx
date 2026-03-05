@@ -184,8 +184,10 @@ export default function Home() {
     { label: 'Gateway', value: systemHealth?.gateway || 'offline', status: systemHealth?.gateway === 'online' ? 'ok' : 'bad' },
     { label: 'Database', value: systemHealth?.database || 'offline', status: systemHealth?.database === 'connected' ? 'ok' : 'bad' },
     { label: 'Queue', value: systemHealth?.queue || 'offline', status: systemHealth?.queue === 'connected' ? 'ok' : 'bad' },
-    { label: 'Marge (Claude Relay)', value: systemHealth?.agents?.marge || 'offline', status: systemHealth?.agents?.marge === 'available' ? 'ok' : 'bad' },
-    { label: 'Lisa (ChatGPT Relay)', value: systemHealth?.agents?.lisa || 'offline', status: systemHealth?.agents?.lisa === 'available' ? 'ok' : 'bad' }
+    { label: 'Marge (Claude Relay)', value: systemHealth?.agents?.marge || 'offline', status: systemHealth?.agents?.marge === 'available' ? 'ok' : (systemHealth?.agents?.marge === 'degraded' ? 'warn' : 'bad') },
+    { label: 'Lisa (ChatGPT Relay)', value: systemHealth?.agents?.lisa || 'offline', status: systemHealth?.agents?.lisa === 'available' ? 'ok' : (systemHealth?.agents?.lisa === 'degraded' ? 'warn' : 'bad') },
+    { label: 'Marge Session', value: systemHealth?.sessions?.marge?.status || 'offline', status: systemHealth?.sessions?.marge?.status === 'ok' ? 'ok' : (systemHealth?.sessions?.marge?.status === 'degraded' ? 'warn' : 'bad') },
+    { label: 'Lisa Session', value: systemHealth?.sessions?.lisa?.status || 'offline', status: systemHealth?.sessions?.lisa?.status === 'ok' ? 'ok' : (systemHealth?.sessions?.lisa?.status === 'degraded' ? 'warn' : 'bad') }
   ] as { label: string; value: string; status: 'ok'|'bad'|'warn'|'idle' }[];
 
   if (!auth) return (
