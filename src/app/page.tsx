@@ -19,6 +19,7 @@ export default function Home() {
   const [status, setStatus] = useState('Standby');
   const [systemHealth, setSystemHealth] = useState<any>(null);
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
+  const [activeDebateCount, setActiveDebateCount] = useState(0);
 
   const [activeTab, setActiveTab] = useState('directives');
   const [bootDegraded, setBootDegraded] = useState(false);
@@ -79,12 +80,24 @@ export default function Home() {
       } catch {}
     };
 
+    const fetchDebates = async () => {
+      try {
+        const r = await fetch(`/api/debates`);
+        if (r.status === 503) return;
+        const d = await r.json();
+        const active = d.filter((deb: any) => deb.state !== 'DONE');
+        setActiveDebateCount(active.length);
+      } catch {}
+    };
+
     fetchHealth();
     fetchJobs();
+    fetchDebates();
 
     const interval = setInterval(() => {
       fetchHealth();
       fetchJobs();
+      fetchDebates();
     }, 15000);
 
     return () => clearInterval(interval);
@@ -249,6 +262,7 @@ export default function Home() {
           <span style={{ fontSize: 28 }}>🍩</span>
           <h1 style={{ fontFamily:'Permanent Marker', fontSize: 24, color:'#FFD90F' }}>MISSION CONTROL</h1>
           {bootDegraded && <span style={{ fontSize: 10, color:'#FF4444', border:'1px solid #FF4444', padding:'2px 6px', borderRadius:6, fontFamily:'monospace' }}>LIMITED</span>}
+          {activeDebateCount > 0 && <span style={{ fontSize: 10, color:'#FFD90F', border:'1px solid rgba(255,217,15,0.6)', padding:'2px 6px', borderRadius:6, fontFamily:'monospace' }}>ACTIVE DEBATE ×{activeDebateCount}</span>}
         </div>
         <div style={{ fontSize: 10, color: 'var(--jarvis-text-dim)', fontFamily:'monospace', textAlign:'right' }}>
           BUILD: {systemHealth?.build || 'v1.6.4-HEAL-ESCALATE'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
@@ -282,7 +296,7 @@ export default function Home() {
                   key={tab}
                   onClick={() => {
                     if (tab === 'auto plan') setShowAutoPlan(true);
-                    else if (tab === 'debate') setActiveTab('debate');
+                    else if (tab === 'debate') window.location.href = '/debate';
                     else setActiveTab(tab);
                   }}
                   style={{ flex:1, minHeight:48, padding:8, borderRadius:10, border:'1px solid rgba(255,217,15,0.2)', background: activeTab===tab ? '#FFD90F' : 'rgba(0,0,0,0.3)', color: activeTab===tab ? '#000' : '#fff', fontFamily:'Permanent Marker', position:'relative' }}

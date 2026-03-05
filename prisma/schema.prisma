@@ -117,3 +117,50 @@ model JobLock {
   createdAt DateTime @default(now())
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
+
+enum DebateTrigger {
+  HIGH_RISK
+  ARCH_DECISION
+  PARITY_UNCERTAIN
+  REPEATED_FAILURE
+  MANUAL
+}
+
+enum DebateState {
+  PROPOSED
+  DECIDED
+  IMPLEMENTING
+  VERIFIED
+  DONE
+}
+
+model Debate {
+  id               String        @id @default(cuid())
+  title            String
+  trigger          DebateTrigger
+  context          String?       @db.Text
+  options          Json?         // array of {key:"A", summary:"...", pros:[...], cons:[...], risks:[...]}
+  recommendation   String?       @db.Text
+  decision         String?       @db.Text
+  decisionBy       String?       // "marge" | "sms"
+  state            DebateState   @default(PROPOSED)
+  bartVerified     Boolean       @default(false)
+  bartEvidenceUrl  String?
+  smsOverride      Boolean       @default(false)
+  smsOverrideNote  String?       @db.Text
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  events           DebateEvent[]
+}
+
+model DebateEvent {
+  id        String   @id @default(cuid())
+  debateId  String
+  type      String   // CREATED, UPDATED, DECIDED, VERIFIED, STATE_CHANGE
+  message   String   @db.Text
+  meta      Json?
+  createdAt DateTime @default(now())
+  Debate    Debate   @relation(fields: [debateId], references: [id], onDelete: Cascade)
+
+  @@index([debateId])
+}

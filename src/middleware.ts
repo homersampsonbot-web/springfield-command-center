@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedPaths = ['/kanban', '/api/jobs', '/api/kanban'];
+const protectedPaths = ['/kanban', '/debate', '/api/jobs', '/api/kanban', '/api/debates'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -27,7 +27,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/kanban/:path*',
+    '/debate/:path*',
     '/api/jobs/:path*',
     '/api/kanban/:path*',
+    '/api/debates/:path*',
   ],
 };
