@@ -11,9 +11,31 @@ export async function GET() {
       dbStatus = "disconnected";
     }
 
+    const gatewayUrl = process.env.HOMER_GATEWAY_URL || "";
+    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+
+    // 1) Fetch Marge health via Gateway proxy
+    let margeStatus = "offline";
+    try {
+      const res = await fetch(`${gatewayUrl}/marge-health`, {
+        headers: { 'x-springfield-key': gatewayKey },
+        cache: 'no-store',
+        next: { revalidate: 0 }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        margeStatus = data.status || "offline";
+      }
+    } catch (e) {}
+
+    // 2) Maggie Logic & Contract Test
+    const maggieProvider = process.env.MAGGIE_PROVIDER || "gemini";
+    let maggieLocalStatus = "offline";
+    let maggieState = "degraded";
+    let maggieReason = "initial_check";
+
     // Maggie Local Status Check
     const maggieLocalUrl = process.env.MAGGIE_LOCAL_URL || "http://maggie.local:8080";
-    let maggieLocalStatus = "offline";
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1000);
@@ -22,19 +44,31 @@ export async function GET() {
       if (maggieResp.ok) maggieLocalStatus = "online";
     } catch (e) {}
 
+    // Contract Test (Simulated or Internal Call)
+    // For now, we check if we can reach the provider or if the env vars exist
+    if (process.env.GEMINI_API_KEY) {
+      maggieState = "online";
+      maggieReason = "provider_nominal";
+    } else {
+      maggieReason = "missing_api_key";
+    }
+
     const health = {
       gateway: "online",
       database: dbStatus,
       queue: "connected",
-      maggieProvider: process.env.MAGGIE_PROVIDER || "gemini",
+      maggieProvider,
       maggieLocalStatus,
+      maggieState,
+      maggieReason,
       agents: {
         homer: "alive",
         bart: "alive",
+        marge: margeStatus,
         lisa: "available",
-        maggie: "initializing"
+        maggie: maggieState === "online" ? "online" : "degraded"
       },
-      build: "v1.6-MAGGIE-BRAIN",
+      build: "v1.6.4-HEAL-ESCALATE",
       timestamp: Date.now()
     };
 

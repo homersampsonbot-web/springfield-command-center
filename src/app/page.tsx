@@ -249,7 +249,7 @@ export default function Home() {
           {bootDegraded && <span style={{ fontSize: 10, color:'#FF4444', border:'1px solid #FF4444', padding:'2px 6px', borderRadius:6, fontFamily:'monospace' }}>LIMITED</span>}
         </div>
         <div style={{ fontSize: 10, color: 'var(--jarvis-text-dim)', fontFamily:'monospace', textAlign:'right' }}>
-          BUILD: {systemHealth?.build || 'v1.6.3-DRAWER-FINAL'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
+          BUILD: {systemHealth?.build || 'v1.6.4-HEAL-ESCALATE'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
         </div>
       </div>
 
