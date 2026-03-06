@@ -136,7 +136,7 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} style={{ flex:1, minHeight: isMobile ? 380 : 0, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:12, padding:12, paddingBottom:80, display:'flex', flexDirection:'column', gap:8 }}>
+      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:12, padding:12, paddingBottom:12, display:'flex', flexDirection:'column', gap:8 }}>
         {messages.map((m) => {
           const p = m.payload?.participant || 'SYSTEM';
           const isUser = m.payload?.source === 'user';
@@ -506,7 +506,7 @@ export default function Home() {
                 ))}
               </div>
 
-              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', paddingBottom: (isMobile && activeTab === 'team') ? 80 : 0 }}>
+              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', overflow:'hidden' }}>
                 {activeTab === 'directives' && (
                   <div style={{ display:'flex', flexDirection:'column', gap:10, height:'100%' }}>
                      <div style={{ display:'flex', gap:6, flexShrink:0 }}>
