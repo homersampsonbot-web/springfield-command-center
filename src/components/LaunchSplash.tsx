@@ -37,7 +37,7 @@ export default function LaunchSplash({ onComplete }: Props) {
         const criticalReady = (d.gateway === 'online' || d.gateway === 'alive') && (d.database === 'connected' || d.database === 'alive');
         const elapsed = Date.now() - startRef.current;
         const MIN_MS = 3000; // Faster minimum wait
-        const MAX_MS = 8000;  // Quorter timeout for "stuck" feel
+        const MAX_MS = 4000;
 
         setPhase('System Check…');
         setDetail(`Gateway: ${d.gateway} · Database: ${d.database}`);
@@ -69,7 +69,7 @@ export default function LaunchSplash({ onComplete }: Props) {
         setPhase('Connection Error');
         setDetail('Retrying link to command center…');
         const elapsed = Date.now() - startRef.current;
-        if (elapsed >= 15000) {
+        if (elapsed >= 5000) {
             setVisible(false);
             onComplete?.();
             return;

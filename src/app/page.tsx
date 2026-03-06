@@ -176,7 +176,7 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
 
       {/* Sticky Composer */}
       <div style={{ 
-        position:'sticky', bottom:0, background:'#12121A', borderTop:'1px solid rgba(255,255,255,0.1)', padding: '8px 0',
+        position:'relative', bottom:0, background:'#12121A', flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.1)', padding: '8px 0',
         paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 12px)' : 'env(safe-area-inset-bottom)',
         display:'flex', flexDirection:'column', gap:6, zIndex: 10
       }}>
@@ -536,7 +536,7 @@ export default function Home() {
       </div>
 
       {/* Footer Event Stream */}
-      <div style={{ marginTop: isMobile ? 48 : 0 }}>
+      <div style={{ flexShrink:0 }}>
         <JarvisPanel title="EVENT STREAM" actions={<button onClick={() => setEventCollapsed(!eventCollapsed)} style={{ fontSize:10, padding:'6px 10px', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>{eventCollapsed ? 'EXPAND' : 'COLLAPSE'}</button>}>
           {!eventCollapsed && (
             <JarvisConsole lines={maggieEvents.map(e => ({ ts: new Date(e.ts).toLocaleTimeString(), level: e.level || 'INFO', message: e.message }))} />
