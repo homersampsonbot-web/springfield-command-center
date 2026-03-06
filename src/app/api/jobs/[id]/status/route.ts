@@ -1,37 +1,49 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAppAuth } from "@/lib/auth";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAppAuth(req);
     const { id: jobId } = await params;
     const body = await req.json();
     const { status, result, error, metadata } = body;
 
-    if (!['DONE', 'FAILED', 'IN_PROGRESS', 'CLAIMED'].includes(status)) {
-      // Map incoming "COMPLETE" to "DONE" for schema compatibility
-      const targetStatus = status === 'COMPLETE' ? 'DONE' : status;
-      if (!['DONE', 'FAILED', 'IN_PROGRESS', 'CLAIMED'].includes(targetStatus)) {
-        return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-      }
+    // Security: Validate Springfield API Key
+    const apiKey = req.headers.get("x-springfield-key");
+    const validKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+
+    if (apiKey !== validKey) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const targetStatus = status === 'COMPLETE' ? 'DONE' : status;
+    // Map incoming status to JobStatus enum
+    let targetStatus: any;
+    if (status === 'COMPLETE' || status === 'DONE') {
+      targetStatus = 'DONE';
+    } else if (status === 'FAILED') {
+      targetStatus = 'FAILED';
+    } else if (status === 'IN_PROGRESS') {
+      targetStatus = 'IN_PROGRESS';
+    } else if (status === 'CLAIMED') {
+      targetStatus = 'CLAIMED';
+    } else {
+      return NextResponse.json({ error: "Invalid status: " + status }, { status: 400 });
+    }
 
+    // Update Job in Postgres
     const job = await prisma.job.update({
       where: { id: jobId },
       data: {
-        status: targetStatus as any,
+        status: targetStatus,
         lastError: error || null,
         updatedAt: new Date(),
         lastEventAt: new Date(),
       }
     });
 
+    // Create Event record
     const eventType = targetStatus === 'DONE' ? 'JOB_COMPLETED' : 
                      targetStatus === 'FAILED' ? 'JOB_FAILED' : 'JOB_STATUS_UPDATED';
 
