@@ -7,10 +7,10 @@ export async function POST(req: Request) {
   try {
     await requireAppAuth(req);
     const body = await req.json().catch(() => ({}));
-    const { text, title } = body;
+    const { text, title, contextFlags, attachments } = body || {};
 
     if (!text) {
-      return NextResponse.json({ error: "Missing text" }, { status: 400 });
+      return NextResponse.json({ mode: "simulate", error: "Missing text" }, { status: 400 });
     }
 
     await recordEvent({
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
       message: `Maggie started simulation for ${title || text.slice(0, 50)}...`
     });
 
+    // NOTE: contextFlags + attachments reserved for future; no side effects.
     const simulation = await simulateDirective(text);
 
     await recordEvent({
@@ -42,8 +43,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ 
+      mode: "simulate",
       error: "Simulation failed",
-      message: e.message 
+      message: "Simulation failed. Please retry." 
     }, { status: 500 });
   }
 }

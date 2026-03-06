@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const debate = await prisma.debate.create({
       data: {
         title: body.title,
-        trigger: body.trigger,
+        trigger: body.trigger || "PLAN_APPROVAL",
         context: body.context || null,
         options: body.options || null,
         recommendation: body.recommendation || null,

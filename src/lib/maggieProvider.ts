@@ -61,9 +61,51 @@ export async function simulateDirective(
   text: string,
   opts?: { provider?: string }
 ) {
-  const prompt = buildSimulationPrompt(text);
-  const out = await geminiJSON(prompt);
-  return safeParseSimulation(out.text);
+  const provider = opts?.provider || process.env.MAGGIE_PROVIDER || "gemini";
+
+  // If local provider is available, reuse parseDirectiveToJobs to construct a simulation shape
+  if (provider === "local") {
+    const plan = await parseDirectiveToJobs(text, { provider: "local" });
+    return {
+      summary: plan.summary,
+      objectives: plan.jobs.map(j => j.title).slice(0, 5),
+      projects: [{
+        title: "Execution Plan",
+        description: plan.summary,
+        estimatedComplexity: "medium"
+      }],
+      proposedJobs: plan.jobs.map((j, idx) => ({
+        title: j.title,
+        owner: j.owner || "MAGGIE",
+        priority: j.priority === "HIGH" ? 5 : j.priority === "MED" ? 3 : 1,
+        dependsOn: j.dependsOn || [],
+        reason: j.notes || "Derived from directive planning"
+      })),
+      risks: ["Local provider used; verify external dependencies."],
+      requiresDebate: false,
+      debateReason: "",
+      estimatedExecutionPhases: ["Plan", "Execute", "Verify"]
+    };
+  }
+
+  // Default: Gemini-based simulation
+  try {
+    const prompt = buildSimulationPrompt(text);
+    const out = await geminiJSON(prompt);
+    return safeParseSimulation(out.text);
+  } catch (e) {
+    // Fallback: return minimal safe simulation to avoid runtime failure
+    return {
+      summary: `Simulation fallback for: ${text.slice(0, 120)}`,
+      objectives: ["Manual planning required"],
+      projects: [{ title: "Fallback Plan", description: "Provider unavailable", estimatedComplexity: "low" }],
+      proposedJobs: [{ title: "Review directive manually", owner: "MAGGIE", priority: 3, dependsOn: [], reason: "Provider unavailable" }],
+      risks: ["Simulation provider unavailable"],
+      requiresDebate: true,
+      debateReason: "Provider unavailable; debate recommended",
+      estimatedExecutionPhases: ["Review", "Decide", "Execute"]
+    };
+  }
 }
 
 function normalize(data: any): ParseResult {

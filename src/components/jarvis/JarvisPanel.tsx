@@ -29,7 +29,7 @@ export default function JarvisPanel({ title, children, actions }: { title?: stri
           {actions}
         </div>
       )}
-      <div style={{ padding: 16, flex: 1 }}>{children}</div>
+      <div style={{ padding: 'var(--panel-padding, 16px)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>{children}</div>
     </div>
   );
 }

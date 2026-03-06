@@ -34,26 +34,31 @@ export default function LaunchSplash({ onComplete }: Props) {
         if (cancelled) return;
         setHealth(d);
 
-        const criticalReady = (d.gateway === 'online' || d.gateway === 'alive') && (d.database === 'connected');
+        const criticalReady = (d.gateway === 'online' || d.gateway === 'alive') && (d.database === 'connected' || d.database === 'alive');
         const elapsed = Date.now() - startRef.current;
-        const MIN_MS = 4500;
-        const MAX_MS = 15000;
+        const MIN_MS = 3000; // Faster minimum wait
+        const MAX_MS = 8000;  // Quorter timeout for "stuck" feel
 
         setPhase('System Check…');
         setDetail(`Gateway: ${d.gateway} · Database: ${d.database}`);
 
+        // If we hit MAX_MS, always finish even if not criticalReady
         if (elapsed >= MAX_MS) {
             setPhase('Boot Degraded');
             setDetail('Failsafe triggered. Proceeding in limited mode.');
             if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
-            setTimeout(() => { if (!cancelled) { setVisible(false); onComplete?.(); } }, 1500);
+            setTimeout(() => { if (!cancelled) { setVisible(false); onComplete?.(); } }, 1000);
             return;
         }
 
-        if (criticalReady && elapsed >= MIN_MS) {
+        if ((criticalReady && elapsed >= MIN_MS) || (elapsed >= 6000)) {
             setPhase('Mission Control Ready');
-            setDetail('All critical systems nominal.');
-            if (typeof window !== 'undefined') window.localStorage.removeItem('boot_degraded');
+            setDetail(elapsed >= 6000 ? 'Systems partially restored.' : 'All critical systems nominal.');
+            if (elapsed >= 6000) {
+              if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
+            } else {
+              if (typeof window !== 'undefined') window.localStorage.removeItem('boot_degraded');
+            }
             setTimeout(() => { if (!cancelled) { setVisible(false); onComplete?.(); } }, 800);
             return;
         }
