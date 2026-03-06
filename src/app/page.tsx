@@ -491,7 +491,7 @@ export default function Home() {
         </div>
 
         {/* CENTER: Command Podium */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight: isMobile ? 480 : 0, marginBottom: isMobile ? 72 : 0 }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight:0 }}>
           <JarvisPanel 
             title="COMMAND PODIUM" 
             actions={<button onClick={() => setMode('DIRECTIVE')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>RESET</button>}
@@ -536,7 +536,7 @@ export default function Home() {
       </div>
 
       {/* Footer Event Stream */}
-      <div style={{ flexShrink:0 }}>
+      <div style={{ flexShrink:0, position:'relative', zIndex:1, display: isMobile ? 'none' : 'block' }}>
         <JarvisPanel title="EVENT STREAM" actions={<button onClick={() => setEventCollapsed(!eventCollapsed)} style={{ fontSize:10, padding:'6px 10px', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>{eventCollapsed ? 'EXPAND' : 'COLLAPSE'}</button>}>
           {!eventCollapsed && (
             <JarvisConsole lines={maggieEvents.map(e => ({ ts: new Date(e.ts).toLocaleTimeString(), level: e.level || 'INFO', message: e.message }))} />

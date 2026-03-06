@@ -36,8 +36,8 @@ export default function LaunchSplash({ onComplete }: Props) {
 
         const criticalReady = (d.gateway === 'online' || d.gateway === 'alive') && (d.database === 'connected' || d.database === 'alive');
         const elapsed = Date.now() - startRef.current;
-        const MIN_MS = 3000; // Faster minimum wait
-        const MAX_MS = 4000;
+        const MIN_MS = 1500;
+        const MAX_MS = 3000;
 
         setPhase('System Check…');
         setDetail(`Gateway: ${d.gateway} · Database: ${d.database}`);
@@ -51,10 +51,10 @@ export default function LaunchSplash({ onComplete }: Props) {
             return;
         }
 
-        if ((criticalReady && elapsed >= MIN_MS) || (elapsed >= 6000)) {
+        if ((criticalReady && elapsed >= MIN_MS) || (elapsed >= 3000)) {
             setPhase('Mission Control Ready');
-            setDetail(elapsed >= 6000 ? 'Systems partially restored.' : 'All critical systems nominal.');
-            if (elapsed >= 6000) {
+            setDetail(elapsed >= 3000 ? 'Systems partially restored.' : 'All critical systems nominal.');
+            if (elapsed >= 3000) {
               if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
             } else {
               if (typeof window !== 'undefined') window.localStorage.removeItem('boot_degraded');
@@ -69,7 +69,7 @@ export default function LaunchSplash({ onComplete }: Props) {
         setPhase('Connection Error');
         setDetail('Retrying link to command center…');
         const elapsed = Date.now() - startRef.current;
-        if (elapsed >= 5000) {
+        if (elapsed >= 2000) {
             setVisible(false);
             onComplete?.();
             return;
