@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const events = await prisma.jobEvent.findMany({
+    const events = await prisma.event.findMany({
       where: { jobId: id },
       orderBy: { createdAt: 'desc' }
     });
@@ -19,10 +19,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { id } = await params;
     const body = await req.json();
     
-    const event = await prisma.jobEvent.create({
+    const event = await prisma.event.create({
       data: {
         jobId: id,
+        scope: 'JOB',
         type: body.type || 'LOG',
+        level: body.level || 'INFO',
         message: body.message,
         payload: body.payload || {}
       }

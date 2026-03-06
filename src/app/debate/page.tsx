@@ -69,6 +69,9 @@ export default function DebatePage() {
 
   useEffect(() => {
     fetchDebates();
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) selectDebate(id);
   }, []);
 
   return (

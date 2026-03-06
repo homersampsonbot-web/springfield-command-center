@@ -9,10 +9,12 @@ datasource db {
 
 enum JobStatus {
   QUEUED
+  CLAIMED
   IN_PROGRESS
-  BLOCKED
   QA
   DONE
+  FAILED
+  BLOCKED
 }
 
 enum Owner {
@@ -33,91 +35,100 @@ enum Risk {
 
 enum DirectiveStatus {
   QUEUED
-  PROCESSING
+  RECEIVED
+  PLANNING
   PLANNED
+  PROCESSING
+  COMPLETED
   FAILED
 }
 
-model Directive {
-  id           String          @id @default(cuid())
-  createdAt    DateTime        @default(now())
-  createdBy    String          @default("sms")
-  text         String
-  status       DirectiveStatus @default(QUEUED)
-  provider     String          @default("gemini")
-  jobsCreated  Int             @default(0)
-  rawModelJson String?         @db.Text
-  error        String?         @db.Text
-  jobs         Job[]
-  events       DirectiveEvent[]
+enum EventScope {
+  DIRECTIVE
+  JOB
+  SYSTEM
+  AGENT
 }
 
-model DirectiveEvent {
-  id          String   @id @default(cuid())
-  directiveId String
-  createdAt   DateTime @default(now())
-  level       String   // INFO|WARN|ERROR|SUCCESS
-  message     String   @db.Text
-  directive   Directive @relation(fields: [directiveId], references: [id], onDelete: Cascade)
+model Directive {
+  id              String          @id @default(cuid())
+  idempotencyKey  String?         @unique
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  createdBy       String          @default("sms")
+  mode            String          @default("DIRECTIVE") // DIRECTIVE | AUTO_PLAN
+  title           String?
+  text            String          @db.Text
+  status          DirectiveStatus @default(RECEIVED)
+  jobs            Job[]
+  events          Event[]         @relation("DirectiveEvents")
+  metadata        Json?
+  
+  // Legacy fields for compatibility
+  provider        String          @default("gemini")
+  jobsCreated     Int             @default(0)
+  rawModelJson    String?         @db.Text
+  error           String?         @db.Text
 
-  @@index([directiveId])
+  @@index([status])
   @@index([createdAt])
 }
 
 model Job {
   id               String          @id @default(uuid())
+  idempotencyKey   String?         @unique
+  directiveId      String?
+  directive        Directive?      @relation(fields: [directiveId], references: [id], onDelete: SetNull)
   title            String
-  description      String?
+  description      String?         @db.Text
   status           JobStatus       @default(QUEUED)
   owner            Owner           @default(MAGGIE)
   risk             Risk            @default(LOW)
   labels           String[]
   requiresApproval Boolean         @default(false)
   blockedReason    String?
-  links            Json?
+  dependsOn        Json?           // Array of Job IDs or specific dependency criteria
+  
+  // Leasing/Durability
+  leaseToken       String?         @unique
+  leaseUntil       DateTime?
+  lastHeartbeatAt  DateTime?
+  attempts         Int             @default(0)
+  lastError        String?         @db.Text
+  
+  lastEventAt      DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
-  lastEventAt      DateTime?
-  events           JobEvent[]
-  lock             JobLock?
-  directiveId      String?
-  directive        Directive?      @relation(fields: [directiveId], references: [id], onDelete: SetNull)
-  dependencies     JobDependency[] @relation("JobDeps")
-  dependentOn      JobDependency[] @relation("JobDepsOn")
+  
+  events           Event[]         @relation("JobEvents")
+
+  @@index([status, owner])
+  @@index([leaseUntil])
+  @@index([directiveId])
 }
 
-model JobDependency {
-  id             String @id @default(cuid())
-  jobId          String
-  dependsOnJobId String
-  job            Job    @relation("JobDeps", fields: [jobId], references: [id], onDelete: Cascade)
-  dependsOn      Job    @relation("JobDepsOn", fields: [dependsOnJobId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, dependsOnJobId])
-}
-
-model JobEvent {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  jobId     String?
-  type      String   // INFO|STATUS_CHANGE|ERROR|DIRECTIVE
-  message   String   @db.Text
-  payload   Json?
-  job       Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+model Event {
+  id          String      @id @default(cuid())
+  scope       EventScope
+  type        String      // e.g., DIRECTIVE_RECEIVED, JOB_LEASED, PLAN_GENERATED
+  level       String      @default("INFO") // INFO|WARN|ERROR|SUCCESS (for legacy compatibility)
+  message     String      @db.Text
+  payload     Json?
+  createdAt   DateTime    @default(now())
+  
+  directiveId String?
+  directive   Directive?  @relation("DirectiveEvents", fields: [directiveId], references: [id], onDelete: Cascade)
+  
+  jobId       String?
+  job         Job?        @relation("JobEvents", fields: [jobId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
+  @@index([scope, type])
+  @@index([directiveId])
   @@index([jobId])
 }
 
-model JobLock {
-  id        String   @id @default(uuid())
-  jobId     String   @unique
-  ownerId   String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-}
-
+// Keep Debates for now but separate from Maggie core lifecycle
 enum DebateTrigger {
   HIGH_RISK
   ARCH_DECISION

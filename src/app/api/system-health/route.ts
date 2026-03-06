@@ -51,10 +51,20 @@ export async function GET() {
         const data: any = await res.json();
         if (!data?.browser?.cdpOk) return { status: 'offline', reason: 'cdp_failed' } as const;
         const s = data?.[key];
-        if (s?.loggedIn) return { status: 'ok', reason: null } as const;
-        return { status: 'degraded', reason: s?.reason || 'logged_out' } as const;
+        
+        // Fetch keepalive status if available
+        let keepalive = { lastRunTs: null, lastResult: null };
+        try {
+          const kaRes = await fetch(url.replace('/session', '/keepalive-status'), { cache: 'no-store' });
+          if (kaRes.ok) {
+            keepalive = await kaRes.json();
+          }
+        } catch (e) {}
+
+        if (s?.loggedIn) return { status: 'ok', reason: null, keepalive } as const;
+        return { status: 'degraded', reason: s?.reason || 'logged_out', keepalive } as const;
       } catch {
-        return { status: 'offline', reason: 'relay_unreachable' } as const;
+        return { status: 'offline', reason: 'relay_unreachable', keepalive: { lastRunTs: null, lastResult: null } } as const;
       }
     };
 
@@ -102,7 +112,17 @@ export async function GET() {
         lisa: lisaSession.status === 'ok' ? 'available' : (lisaSession.status === 'offline' ? 'offline' : 'degraded'),
         maggie: maggieState === "online" ? "online" : "degraded"
       },
-      build: "v1.6.4-HEAL-ESCALATE",
+      counts: {
+        jobs: await prisma.job.groupBy({ by: ['status'], _count: true }),
+        directives: await prisma.directive.groupBy({ by: ['status'], _count: true }),
+        stuckLeases: await prisma.job.count({
+          where: {
+            leaseUntil: { lt: new Date() },
+            status: { in: ['CLAIMED', 'IN_PROGRESS', 'QA'] }
+          }
+        })
+      },
+      build: process.env.NEXT_PUBLIC_BUILD_STAMP || "v1.6.4-HEAL-ESCALATE",
       timestamp: Date.now()
     };
 

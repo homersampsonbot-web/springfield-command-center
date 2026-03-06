@@ -46,12 +46,49 @@ Directive: ${JSON.stringify(directiveText)}
 `.trim();
 }
 
+export function buildSimulationPrompt(directiveText: string) {
+  return `
+You are Maggie, a strategic planning agent. 
+Simulate the implementation of the following directive. 
+Return STRICT JSON ONLY with this shape:
+
+{
+  "summary": "string (1-2 sentences of the overall approach)",
+  "objectives": ["string (key success criteria)"],
+  "projects": [
+    {
+      "title": "string",
+      "description": "string",
+      "estimatedComplexity": "low|medium|high"
+    }
+  ],
+  "proposedJobs": [
+    {
+      "title": "string (unique)",
+      "owner": "HOMER|BART|LISA|MARGE|SMS|MAGGIE",
+      "priority": 1-5,
+      "dependsOn": ["string (titles of other proposed jobs)"],
+      "reason": "string (why this job is needed)"
+    }
+  ],
+  "risks": ["string (technical or operational risks)"],
+  "requiresDebate": boolean,
+  "debateReason": "string (optional; why a debate is recommended)",
+  "estimatedExecutionPhases": ["string (high-level phases)"]
+}
+
+Directive: ${JSON.stringify(directiveText)}
+`.trim();
+}
+
 export function safeParsePlan(jsonText: string): MaggiePlan {
   let obj: any;
   try {
-    obj = JSON.parse(jsonText);
+    // Basic cleanup for markdown blocks
+    const cleaned = jsonText.replace(/```json\n?/, '').replace(/\n?```/, '').trim();
+    obj = JSON.parse(cleaned);
   } catch {
-    throw new Error("Invalid JSON from Gemini");
+    throw new Error("Invalid JSON from Maggie provider");
   }
 
   if (!obj || typeof obj.summary !== "string" || !Array.isArray(obj.jobs)) {
@@ -65,4 +102,20 @@ export function safeParsePlan(jsonText: string): MaggiePlan {
   });
 
   return obj as MaggiePlan;
+}
+
+export function safeParseSimulation(jsonText: string) {
+  let obj: any;
+  try {
+    const cleaned = jsonText.replace(/```json\n?/, '').replace(/\n?```/, '').trim();
+    obj = JSON.parse(cleaned);
+  } catch {
+    throw new Error("Invalid JSON from Maggie provider");
+  }
+
+  if (!obj || typeof obj.summary !== "string" || !Array.isArray(obj.proposedJobs)) {
+    throw new Error("Bad simulation shape");
+  }
+
+  return obj;
 }

@@ -10,3 +10,4 @@ node_modules/
 *id_rsa*
 
 .env*.local
+.vercel

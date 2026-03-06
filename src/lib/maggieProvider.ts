@@ -1,5 +1,5 @@
 import { geminiJSON } from "./maggie/gemini";
-import { buildPrompt, safeParsePlan, MaggieJob } from "./maggie/parser";
+import { buildPrompt, buildSimulationPrompt, safeParsePlan, safeParseSimulation, MaggieJob } from "./maggie/parser";
 
 export type NormalizedJob = {
   title: string;
@@ -55,6 +55,15 @@ export async function parseDirectiveToJobs(
     })),
     meta: { model: process.env.MAGGIE_MODEL || "gemini-1.5-flash" }
   };
+}
+
+export async function simulateDirective(
+  text: string,
+  opts?: { provider?: string }
+) {
+  const prompt = buildSimulationPrompt(text);
+  const out = await geminiJSON(prompt);
+  return safeParseSimulation(out.text);
 }
 
 function normalize(data: any): ParseResult {

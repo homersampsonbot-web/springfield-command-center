@@ -22,6 +22,7 @@ export default function Home() {
   const [activeDebateCount, setActiveDebateCount] = useState(0);
 
   const [activeTab, setActiveTab] = useState('directives');
+  const [mode, setMode] = useState<'DIRECTIVE'|'AUTO_PLAN'>('DIRECTIVE');
   const [bootDegraded, setBootDegraded] = useState(false);
 
   const [maggieStatus, setMaggieStatus] = useState<'Idle'|'Thinking'|'Planning'|'Planned'|'Failed'>('Idle');
@@ -32,6 +33,8 @@ export default function Home() {
   const [eventCollapsed, setEventCollapsed] = useState(true);
   const [showAutoPlan, setShowAutoPlan] = useState(false);
   const [showSimulate, setShowSimulate] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<any>(null);
+  const [simulating, setSimulating] = useState(false);
   const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth < 768, []);
 
   const voiceCtl = useVoiceInput({ lang: 'en-US', maxMs: 30000 });
@@ -162,7 +165,7 @@ export default function Home() {
       const r = await fetch(`/api/directives`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: directive })
+        body: JSON.stringify({ text: directive, mode })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || 'Failed');
@@ -178,6 +181,54 @@ export default function Home() {
       setStatus('❌ Send failed');
       if (navigator.vibrate) navigator.vibrate([30,30,30]);
     }
+  };
+
+  const runSimulation = async () => {
+    if (!directive.trim()) return;
+    setSimulating(true);
+    setMaggieStatus('Planning');
+    try {
+      const r = await fetch(`/api/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: directive, title: directive.slice(0, 30) })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message || 'Simulation failed');
+      setSimulationResult(data);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSimulating(false);
+      setMaggieStatus('Idle');
+    }
+  };
+
+  const createDebateFromSim = async () => {
+    if (!simulationResult) return;
+    try {
+      const r = await fetch(`/api/debates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `SIM: ${directive.slice(0, 40)}`,
+          trigger: 'PLAN_APPROVAL',
+          context: simulationResult.summary,
+          recommendation: simulationResult.debateReason || 'Simulation recommendation',
+          options: simulationResult.projects
+        })
+      });
+      const data = await r.json();
+      if (r.ok) window.location.href = `/debate?id=${data.id}`;
+    } catch (e: any) {
+      alert(`Failed to create debate: ${e.message}`);
+    }
+  };
+
+  const convertToAutoPlan = async () => {
+    setMode('AUTO_PLAN');
+    setShowSimulate(false);
+    // User can now click "AUTO PLAN ➤" button which is already wired to directives with mode=AUTO_PLAN
   };
 
   const telemetryKPIs = [
@@ -241,18 +292,123 @@ export default function Home() {
 
       {/* SIMULATE Modal */}
       {showSimulate && (
-        <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div style={{ background:'#12121A', border:'1px solid rgba(255,217,15,0.3)', borderRadius:16, width:'min(640px, 100%)', maxHeight:'90vh', overflow:'hidden' }}>
-            <div style={{ padding:16, borderBottom:'1px solid rgba(255,255,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:isMobile ? 0 : 20 }}>
+          <div style={{ background:'#12121A', border:'1px solid rgba(255,217,15,0.3)', borderRadius:isMobile ? 0 : 16, width:'min(800px, 100%)', height:isMobile ? '100%' : 'auto', maxHeight:isMobile ? '100%' : '90vh', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+            <div style={{ padding:16, borderBottom:'1px solid rgba(255,255,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(0,0,0,0.2)' }}>
               <h2 style={{ fontFamily:'Permanent Marker', color:'#FFD90F', margin:0 }}>PLAN SIMULATION</h2>
-              <button onClick={() => setShowSimulate(false)} style={{ background:'none', border:'none', color:'#fff', fontSize:24, cursor:'pointer' }}>×</button>
+              <button onClick={() => { setShowSimulate(false); setSimulationResult(null); }} style={{ background:'none', border:'none', color:'#fff', fontSize:24, cursor:'pointer' }}>×</button>
             </div>
-            <div style={{ padding:16, color:'rgba(255,255,255,0.85)' }}>
-              <p>Maggie will simulate the directive and estimate jobs, dependencies, and execution time without creating real jobs.</p>
-              <div style={{ display:'flex', gap:10, marginTop:16 }}>
-                <button disabled style={{ flex:1, padding:'12px 16px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, opacity:0.6, cursor:'not-allowed' }}>RUN SIMULATION</button>
-                <button onClick={() => setShowSimulate(false)} style={{ flex:1, padding:'12px 16px', background:'rgba(255,255,255,0.05)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', borderRadius:10 }}>CLOSE</button>
-              </div>
+            
+            <div style={{ padding:16, color:'rgba(255,255,255,0.85)', overflowY:'auto', flex:1 }}>
+              {!simulationResult ? (
+                <div style={{ textAlign:'center', padding:'40px 20px' }}>
+                  <p style={{ fontSize:18, marginBottom:24 }}>Maggie will simulate the directive and estimate jobs, dependencies, and risks without side effects.</p>
+                  <button 
+                    onClick={runSimulation} 
+                    disabled={simulating || !directive.trim()}
+                    style={{ 
+                      width:'100%', maxWidth:300, padding:'16px 24px', background:'#FFD90F', color:'#000', 
+                      border:'none', borderRadius:12, fontFamily:'Permanent Marker', fontSize: 18, 
+                      cursor: simulating ? 'wait' : 'pointer', opacity: (simulating || !directive.trim()) ? 0.5 : 1 
+                    }}
+                  >
+                    {simulating ? 'SIMULATING...' : 'RUN SIMULATION'}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+                  <section>
+                    <h3 style={{ color:'#FFD90F', fontSize:14, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>Summary</h3>
+                    <div style={{ background:'rgba(255,255,255,0.05)', padding:12, borderRadius:8, fontSize:15, lineHeight:1.5 }}>
+                      {simulationResult.summary}
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 style={{ color:'#FFD90F', fontSize:14, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>Objectives</h3>
+                    <ul style={{ margin:0, paddingLeft:20, fontSize:14, display:'flex', flexDirection:'column', gap:4 }}>
+                      {simulationResult.objectives?.map((obj: string, i: number) => (
+                        <li key={i}>{obj}</li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h3 style={{ color:'#FFD90F', fontSize:14, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>Projects</h3>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                      {simulationResult.projects?.map((p: any, i: number) => (
+                        <div key={i} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.1)', padding:12, borderRadius:8 }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                            <strong style={{ fontSize:15 }}>{p.title}</strong>
+                            <span style={{ fontSize:10, padding:'2px 6px', background:'rgba(255,217,15,0.1)', color:'#FFD90F', borderRadius:4 }}>{p.estimatedComplexity?.toUpperCase()}</span>
+                          </div>
+                          <p style={{ fontSize:13, margin:0, color:'rgba(255,255,255,0.6)' }}>{p.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 style={{ color:'#FFD90F', fontSize:14, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>Proposed Jobs</h3>
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      {simulationResult.proposedJobs?.map((j: any, i: number) => (
+                        <details key={i} style={{ background:'rgba(0,0,0,0.2)', border:'1px solid rgba(255,217,15,0.1)', borderRadius:8 }}>
+                          <summary style={{ padding:10, cursor:'pointer', fontSize:14, fontWeight:600 }}>
+                            {j.title} <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:400, fontSize:11 }}>— {j.owner}</span>
+                          </summary>
+                          <div style={{ padding:10, paddingTop:0, fontSize:13, color:'rgba(255,255,255,0.7)' }}>
+                            <p style={{ marginBottom:8 }}>{j.reason}</p>
+                            {j.dependsOn?.length > 0 && (
+                              <div style={{ fontSize:11 }}>
+                                <span style={{ color:'#FFD90F' }}>Depends on:</span> {j.dependsOn.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 style={{ color:'#FFD90F', fontSize:14, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>Risks</h3>
+                    <div style={{ background:'rgba(255,68,68,0.05)', border:'1px solid rgba(255,68,68,0.2)', padding:12, borderRadius:8, fontSize:14, color:'#FF8888' }}>
+                      <ul style={{ margin:0, paddingLeft:20 }}>
+                        {simulationResult.risks?.map((r: string, i: number) => (
+                          <li key={i}>{r}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </section>
+
+                  {simulationResult.requiresDebate && (
+                    <section style={{ background:'rgba(255,217,15,0.05)', border:'1px solid #FFD90F44', padding:12, borderRadius:8 }}>
+                      <h3 style={{ color:'#FFD90F', fontSize:14, textTransform:'uppercase', letterSpacing:1, margin:0, marginBottom:4 }}>Debate Recommended</h3>
+                      <p style={{ fontSize:13, margin:0 }}>{simulationResult.debateReason}</p>
+                    </section>
+                  )}
+
+                  <section>
+                    <h3 style={{ color:'#FFD90F', fontSize:14, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>Execution Phases</h3>
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      {simulationResult.estimatedExecutionPhases?.map((p: string, i: number) => (
+                        <div key={i} style={{ display:'flex', gap:12, alignItems:'center' }}>
+                          <span style={{ width:24, height:24, borderRadius:'50%', background:'rgba(255,217,15,0.2)', color:'#FFD90F', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 }}>{i+1}</span>
+                          <span style={{ fontSize:14 }}>{p}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <div style={{ display:'flex', gap:12, marginTop:8, flexWrap:'wrap' }}>
+                    <button onClick={createDebateFromSim} style={{ flex:1, minWidth:200, padding:'14px', background:'rgba(255,217,15,0.1)', color:'#FFD90F', border:'1px solid #FFD90F', borderRadius:10, fontFamily:'Permanent Marker', cursor:'pointer' }}>CREATE DEBATE</button>
+                    <button onClick={convertToAutoPlan} style={{ flex:1, minWidth:200, padding:'14px', background:'#FFD90F', color:'#000', border:'none', borderRadius:10, fontFamily:'Permanent Marker', cursor:'pointer' }}>CONVERT TO AUTO PLAN</button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ padding:16, borderTop:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.1)' }}>
+              <button onClick={() => { setShowSimulate(false); setSimulationResult(null); }} style={{ width:'100%', padding:'12px', background:'rgba(255,255,255,0.05)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', borderRadius:10 }}>CLOSE</button>
             </div>
           </div>
         </div>
@@ -267,7 +423,7 @@ export default function Home() {
           {activeDebateCount > 0 && <span style={{ fontSize: 10, color:'#FFD90F', border:'1px solid rgba(255,217,15,0.6)', padding:'2px 6px', borderRadius:6, fontFamily:'monospace' }}>ACTIVE DEBATE ×{activeDebateCount}</span>}
         </div>
         <div style={{ fontSize: 10, color: 'var(--jarvis-text-dim)', fontFamily:'monospace', textAlign:'right' }}>
-          BUILD: {systemHealth?.build || 'v1.6.4-HEAL-ESCALATE'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
+          BUILD: {process.env.NEXT_PUBLIC_BUILD_STAMP || systemHealth?.build || 'v1.6.4-HEAL-ESCALATE'}<br/>PROVIDER: {systemHealth?.maggieProvider?.toUpperCase() || 'GEMINI'}
         </div>
       </div>
 
@@ -290,30 +446,38 @@ export default function Home() {
         </JarvisPanel>
 
         {/* CENTER: Command Podium */}
-        <JarvisPanel title="COMMAND PODIUM" actions={<button onClick={() => setActiveTab('directives')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>DIRECTIVES</button>}>
+        <JarvisPanel title="COMMAND PODIUM" actions={<button onClick={() => setMode('DIRECTIVE')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>RESET MODE</button>}>
           <div style={{ display:'flex', flexDirection:'column', gap:12, height:'100%' }}>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {['directives','auto plan','debate','terminal'].map(tab => (
+              {['DIRECTIVE', 'AUTO_PLAN'].map(m => (
                 <button
-                  key={tab}
-                  onClick={() => {
-                    if (tab === 'auto plan') setShowAutoPlan(true);
-                    else if (tab === 'debate') window.location.href = '/debate';
-                    else setActiveTab(tab);
-                  }}
-                  style={{ flex:1, minHeight:48, padding:8, borderRadius:10, border:'1px solid rgba(255,217,15,0.2)', background: activeTab===tab ? '#FFD90F' : 'rgba(0,0,0,0.3)', color: activeTab===tab ? '#000' : '#fff', fontFamily:'Permanent Marker', position:'relative' }}
+                  key={m}
+                  onClick={() => setMode(m as any)}
+                  style={{ flex:1, minHeight:48, padding:8, borderRadius:10, border: mode===m ? '2px solid #FFD90F' : '1px solid rgba(255,217,15,0.2)', background: mode===m ? '#FFD90F' : 'rgba(0,0,0,0.3)', color: mode===m ? '#000' : '#fff', fontFamily:'Permanent Marker', transition: 'all 0.2s' }}
                 >
-                  {tab.toUpperCase()}
-                  {tab === 'auto plan' && (
-                    <span style={{ position:'absolute', top:6, right:8, fontSize:9, color:'#FFD90F', opacity:0.8 }}>SOON</span>
-                  )}
+                  {m.replace('_', ' ')}
                 </button>
               ))}
             </div>
-            {activeTab === 'directives' && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {['debate','terminal','kanban'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    if (tab === 'debate') window.location.href = '/debate';
+                    else if (tab === 'kanban') window.location.href = '/kanban';
+                    else setActiveTab(tab);
+                  }}
+                  style={{ flex:1, minHeight:36, padding:8, borderRadius:10, border:'1px solid rgba(255,217,15,0.1)', background: activeTab===tab ? 'rgba(255,217,15,0.1)' : 'rgba(0,0,0,0.2)', color: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.6)', fontFamily:'Permanent Marker', fontSize: 12 }}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            {activeTab !== 'terminal' && (
               <>
                 <div style={{ position:'relative' }}>
-                  <textarea value={directive} onChange={e => { setDirective(e.target.value); voiceCtl.setTranscript(e.target.value); }} placeholder="Enter strategic directive..." style={{ width:'100%', minHeight:160, borderRadius:12, border:'1px solid rgba(255,217,15,0.2)', background:'rgba(0,0,0,0.35)', padding:14, paddingRight:48, color:'#FFD90F', resize:'none' }} />
+                  <textarea value={directive} onChange={e => { setDirective(e.target.value); voiceCtl.setTranscript(e.target.value); }} placeholder={mode === 'DIRECTIVE' ? "Enter strategic directive..." : "Dump ideas, projects, or research goals for Maggie to plan..."} style={{ width:'100%', minHeight:160, borderRadius:12, border: mode === 'AUTO_PLAN' ? '1px solid #FFD90F' : '1px solid rgba(255,217,15,0.2)', background:'rgba(0,0,0,0.35)', padding:14, paddingRight:48, color: mode === 'AUTO_PLAN' ? '#FFD90F' : '#fff', resize:'none' }} />
                   <button onClick={voiceCtl.toggle} style={{ position:'absolute', right:10, top:10, width:36, height:36, borderRadius:10, border:'1px solid rgba(255,217,15,0.3)', background: voiceCtl.voice.status==='listening' ? '#FF4444' : 'rgba(0,0,0,0.4)', color:'#FFD90F' }}>{voiceCtl.voice.status==='listening' ? '⏺' : '🎙️'}</button>
                 </div>
                 {voiceCtl.voice.status === 'listening' && <div style={{ fontSize:11, color:'#FFD90F' }}>Listening…</div>}
@@ -321,7 +485,7 @@ export default function Home() {
                   <span style={{ fontSize:12, color:'var(--jarvis-text-dim)' }}>{status}</span>
                   <div style={{ display:'flex', gap:10 }}>
                     <button onClick={() => setShowSimulate(true)} style={{ minHeight:48, padding:'10px 18px', borderRadius:12, border:'1px solid rgba(255,217,15,0.3)', background:'rgba(0,0,0,0.35)', color:'#FFD90F', fontFamily:'Permanent Marker' }}>SIMULATE</button>
-                    <button onClick={sendDirective} style={{ minHeight:48, padding:'10px 18px', borderRadius:12, border:'none', background:'#FFD90F', color:'#000', fontFamily:'Permanent Marker' }}>DISPATCH ➤</button>
+                    <button onClick={sendDirective} style={{ minHeight:48, padding:'10px 18px', borderRadius:12, border:'none', background:'#FFD90F', color:'#000', fontFamily:'Permanent Marker' }}>{mode === 'AUTO_PLAN' ? 'AUTO PLAN ➤' : 'DISPATCH ➤'}</button>
                   </div>
                 </div>
               </>

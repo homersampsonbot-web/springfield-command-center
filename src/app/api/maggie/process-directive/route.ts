@@ -16,15 +16,15 @@ export async function POST(req: Request) {
     data: { status: "PROCESSING", error: null }
   });
 
-  await prisma.directiveEvent.create({
-    data: { directiveId, level: "INFO", message: "Maggie: Parsing directive" }
+  await prisma.event.create({
+    data: { directiveId, scope: "DIRECTIVE", type: "PLANNING_STARTED", level: "INFO", message: "Maggie: Parsing directive" }
   });
 
   try {
     const plan = await parseDirectiveToJobs(directive.text);
 
-    await prisma.directiveEvent.create({
-      data: { directiveId, level: "INFO", message: "Maggie: Decomposing tasks" }
+    await prisma.event.create({
+      data: { directiveId, scope: "DIRECTIVE", type: "DECOMPOSING_TASKS", level: "INFO", message: "Maggie: Decomposing tasks" }
     });
 
     const created = await prisma.$transaction(async (tx) => {
@@ -43,21 +43,14 @@ export async function POST(req: Request) {
           },
         });
         jobs.push({ job, dependsOnTitles: j.dependsOn || [] });
-        await tx.jobEvent.create({
-          data: { jobId: job.id, type: "INFO", message: `Job created: ${job.title}` }
+        await tx.event.create({
+          data: { jobId: job.id, scope: "JOB", type: "JOB_CREATED", level: "INFO", message: `Job created: ${job.title}` }
         });
       }
 
       const byTitle = new Map(jobs.map(x => [x.job.title, x.job.id]));
-      for (const x of jobs) {
-        for (const depTitle of x.dependsOnTitles) {
-          const depId = byTitle.get(depTitle);
-          if (!depId) continue;
-          await tx.jobDependency.create({
-            data: { jobId: x.job.id, dependsOnJobId: depId }
-          });
-        }
-      }
+      // Note: JobDependency table removed in v2 schema. Dependencies stored in JSON.
+      // Skipping relational dependency creation for now as per v2 spec.
       return jobs.map(x => x.job);
     });
 
@@ -70,8 +63,8 @@ export async function POST(req: Request) {
       }
     });
 
-    await prisma.directiveEvent.create({
-      data: { directiveId, level: "SUCCESS", message: "Maggie: Plan complete" }
+    await prisma.event.create({
+      data: { directiveId, scope: "DIRECTIVE", type: "PLAN_COMPLETE", level: "SUCCESS", message: "Maggie: Plan complete" }
     });
 
     return NextResponse.json({ ok: true, jobs: created.length });
@@ -82,8 +75,8 @@ export async function POST(req: Request) {
       data: { status: "FAILED", error: String(e?.message || e) }
     });
 
-    await prisma.directiveEvent.create({
-      data: { directiveId, level: "ERROR", message: `Maggie: ${String(e?.message || e)}` }
+    await prisma.event.create({
+      data: { directiveId, scope: "DIRECTIVE", type: "PLAN_ERROR", level: "ERROR", message: `Maggie: ${String(e?.message || e)}` }
     });
 
     return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });

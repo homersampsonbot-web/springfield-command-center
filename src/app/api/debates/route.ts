@@ -28,6 +28,8 @@ export async function POST(req: Request) {
         title: body.title,
         trigger: body.trigger,
         context: body.context || null,
+        options: body.options || null,
+        recommendation: body.recommendation || null,
         events: {
           create: {
             type: "CREATED",

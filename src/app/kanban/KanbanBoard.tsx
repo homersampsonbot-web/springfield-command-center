@@ -27,10 +27,12 @@ import { SaveToastState } from '@/components/SaveToast';
 
 const COLUMNS = [
   { id: 'QUEUED', title: 'Queued', color: '#4A90D9' },
-  { id: 'IN_PROGRESS', title: 'In Progress', color: '#FFD90F' },
+  { id: 'CLAIMED', title: 'Claimed', color: '#A061CF' },
+  { id: 'IN_PROGRESS', title: 'Running', color: '#FFD90F' },
   { id: 'BLOCKED', title: 'Blocked', color: '#FF4444' },
   { id: 'QA', title: 'QA', color: '#7ED321' },
   { id: 'DONE', title: 'Done', color: '#00B4D8' },
+  { id: 'FAILED', title: 'Failed', color: '#888' },
 ];
 
 interface Job {

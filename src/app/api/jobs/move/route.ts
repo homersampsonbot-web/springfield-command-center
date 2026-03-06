@@ -23,10 +23,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Log the event
-    await prisma.jobEvent.create({
+    await prisma.event.create({
       data: {
         jobId: jobId,
+        scope: "JOB",
         type: "STATUS_CHANGE",
+        level: "INFO",
         message: `Status moved from ${oldJob.status} to ${toStatus}`,
         payload: { from: oldJob.status, to: toStatus }
       },

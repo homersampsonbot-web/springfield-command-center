@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-const VALID_STATUSES = ["QUEUED", "IN_PROGRESS", "BLOCKED", "QA", "DONE"];
+const VALID_STATUSES = ["QUEUED", "CLAIMED", "IN_PROGRESS", "QA", "DONE", "FAILED", "BLOCKED"];
 
 export async function PATCH(
   req: NextRequest,
@@ -30,10 +30,12 @@ export async function PATCH(
     });
 
     if (oldJob.status !== status) {
-      await prisma.jobEvent.create({
+      await prisma.event.create({
         data: {
           jobId: id,
+          scope: 'JOB',
           type: 'STATUS_CHANGE',
+          level: 'INFO',
           message: `Status changed from ${oldJob.status} to ${status}`,
           payload: { old: oldJob.status, new: status }
         }

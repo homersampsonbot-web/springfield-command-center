@@ -26,10 +26,12 @@ export async function PATCH(req: Request) {
     });
 
     // Log the event
-    await prisma.jobEvent.create({
+    await prisma.event.create({
       data: {
         jobId: id,
+        scope: "JOB",
         type: "STATUS_CHANGE",
+        level: "INFO",
         message: `Status changed to ${status}`,
       },
     });
