@@ -13,7 +13,6 @@ export async function POST(req: Request) {
     }
 
     const senderNorm = (sender || "SMS").toUpperCase();
-    const isAgentSender = ["HOMER","MARGE","LISA","MAGGIE"].includes(senderNorm);
 
     // 1. Fetch latest checkpoint for context restoration if needed
     const lastCheckpoint = await prisma.event.findFirst({
@@ -39,11 +38,7 @@ export async function POST(req: Request) {
 
     const callRelay = async (agent: string) => {
       try {
-        // Context Restoration: If this agent was previously unavailable, we could prepend the checkpoint summary.
-        // For now, we'll just log that we are using the proxy.
         let enhancedMessage = message;
-        // In a real recovery scenario, we'd check if agent was 'offline' in systemHealth
-        // and prepend lastCheckpoint.payload.summary if it exists.
         
         const res = await fetch(`${baseUrl}/api/relay/${agent}`, {
           method: "POST",
@@ -92,6 +87,7 @@ export async function POST(req: Request) {
               participant: agent.toUpperCase(),
               source: (data.error || isRateLimited) ? "system" : "relay",
               target: agent.toUpperCase(),
+              raw: data,
             },
           },
         });
@@ -150,9 +146,9 @@ export async function POST(req: Request) {
     if (targets.includes("marge")) responses.push(await callRelay("marge"));
     if (targets.includes("lisa")) responses.push(await callRelay("lisa"));
 
-    // Agent-to-agent: check each response for @mentions and fire relay
+    // Agent-to-agent relay
     for (const r of [...responses]) {
-      const txt = r?.payload?.message || r?.message || "";
+      const txt = r?.message || "";
       const match = txt.match(/@(homer|marge|lisa)/i);
       if (match) {
         const target = match[1].toLowerCase();
@@ -208,7 +204,7 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ userEvent, responses });
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

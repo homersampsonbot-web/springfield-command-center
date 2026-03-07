@@ -51,7 +51,18 @@ function RelayWorkspace() {
       <div style={{ flex:1, minHeight:0, overflowY:'auto', background:'rgba(0,0,0,0.35)', borderRadius:10, padding:10, fontSize:12 }}>
         {filteredMessages.map((m, i) => (
           <div key={i} style={{ marginBottom:6, textAlign: m.sender === 'user' ? 'right' : 'left' }}>
-            <span style={{ display:'inline-block', padding:'6px 8px', borderRadius:8, background: m.sender === 'user' ? '#FFD90F' : 'rgba(255,255,255,0.08)', color: m.sender === 'user' ? '#000' : '#fff' }}>
+            <span style={{ 
+              display:'inline-block', 
+              padding:'6px 8px', 
+              borderRadius:8, 
+              background: m.sender === 'user' ? '#FFD90F' : 'rgba(255,255,255,0.08)', 
+              color: m.sender === 'user' ? '#000' : '#fff',
+              maxWidth: '90%',
+              height: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              overflow: 'visible'
+            }}>
               {m.text}
             </span>
           </div>
@@ -136,7 +147,7 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:12, padding:12, paddingBottom:12, display:'flex', flexDirection:'column', gap:8 }}>
+      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:12, padding:12, paddingBottom:120, display:'flex', flexDirection:'column', gap:8 }}>
         {messages.map((m) => {
           const p = m.payload?.participant || 'SYSTEM';
           const isUser = m.payload?.source === 'user';
@@ -157,14 +168,19 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
                 <span>{new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
               </div>
               <div style={{ 
-                maxWidth:'85%', 
+                maxWidth:'90%', 
+                height: 'auto',
                 padding:'8px 12px', 
                 borderRadius:12, 
                 background: isUser ? '#FFD90F' : 'rgba(255,255,255,0.05)', 
                 color: isUser ? '#000' : '#fff',
                 fontSize:13,
                 border: isUser ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                whiteSpace: 'pre-wrap'
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                overflow: 'visible',
+                maxHeight: '60vh',
+                overflowY: 'auto'
               }}>
                 {m.message}
               </div>
@@ -176,9 +192,9 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
 
       {/* Sticky Composer */}
       <div style={{ 
-        position:'relative', bottom:0, background:'#12121A', flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.1)', padding: '8px 0',
-        paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 12px)' : 'env(safe-area-inset-bottom)',
-        display:'flex', flexDirection:'column', gap:6, zIndex: 10
+        position:'sticky', bottom:-1, background:'#12121A', borderTop:'1px solid rgba(255,255,255,0.1)', padding: '6px 0',
+        paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 6px)' : 'env(safe-area-inset-bottom)',
+        display:'flex', flexDirection:'column', gap:4, zIndex: 10
       }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 4px' }}>
           <button 
@@ -491,7 +507,7 @@ export default function Home() {
         </div>
 
         {/* CENTER: Command Podium */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight:0 }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight: 0 }}>
           <JarvisPanel 
             title="COMMAND PODIUM" 
             actions={<button onClick={() => setMode('DIRECTIVE')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>RESET</button>}
@@ -506,7 +522,7 @@ export default function Home() {
                 ))}
               </div>
 
-              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', paddingBottom: (isMobile && activeTab === 'team') ? 120 : 0, overflow:'hidden' }}>
                 {activeTab === 'directives' && (
                   <div style={{ display:'flex', flexDirection:'column', gap:10, height:'100%' }}>
                      <div style={{ display:'flex', gap:6, flexShrink:0 }}>
@@ -536,7 +552,7 @@ export default function Home() {
       </div>
 
       {/* Footer Event Stream */}
-      <div style={{ flexShrink:0, position:'relative', zIndex:1, display: isMobile ? 'none' : 'block' }}>
+      <div style={{ flexShrink:0, position:'relative', zIndex:1, display: isMobile ? 'none' : 'block', marginTop: isMobile ? 72 : 0 }}>
         <JarvisPanel title="EVENT STREAM" actions={<button onClick={() => setEventCollapsed(!eventCollapsed)} style={{ fontSize:10, padding:'6px 10px', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>{eventCollapsed ? 'EXPAND' : 'COLLAPSE'}</button>}>
           {!eventCollapsed && (
             <JarvisConsole lines={maggieEvents.map(e => ({ ts: new Date(e.ts).toLocaleTimeString(), level: e.level || 'INFO', message: e.message }))} />

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -9,7 +11,8 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb"
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(55000),
     });
 
     const raw = await res.text();
@@ -20,7 +23,7 @@ export async function POST(req: Request) {
     } catch (e) {
       return NextResponse.json({ 
         error: "Relay returned non-JSON response", 
-        preview: raw.slice(0, 200),
+        raw: raw,
         relay: "homer"
       }, { status: 502 });
     }

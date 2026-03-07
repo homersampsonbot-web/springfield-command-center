@@ -20,9 +20,24 @@ export default function LaunchSplash({ onComplete }: Props) {
   const startRef = React.useRef<number>(0);
   const pollTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Dedicated one-shot failsafe effect
   React.useEffect(() => {
     setVisible(true);
     startRef.current = Date.now();
+    
+    // Force bypass after 3 seconds regardless of backend status
+    const failsafe = setTimeout(() => {
+      console.log("[BOOT] Failsafe triggered. Forcing UI load.");
+      if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
+      setVisible(false);
+      onComplete?.();
+    }, 3000);
+
+    return () => clearTimeout(failsafe);
+  }, [onComplete]);
+
+  // Polling logic for branding/visual progress only
+  React.useEffect(() => {
     let cancelled = false;
 
     async function tick() {
@@ -35,46 +50,22 @@ export default function LaunchSplash({ onComplete }: Props) {
         setHealth(d);
 
         const criticalReady = (d.gateway === 'online' || d.gateway === 'alive') && (d.database === 'connected' || d.database === 'alive');
-        const elapsed = Date.now() - startRef.current;
-        const MIN_MS = 1500;
-        const MAX_MS = 3000;
-
+        
         setPhase('System Check…');
         setDetail(`Gateway: ${d.gateway} · Database: ${d.database}`);
 
-        // If we hit MAX_MS, always finish even if not criticalReady
-        if (elapsed >= MAX_MS) {
-            setPhase('Boot Degraded');
-            setDetail('Failsafe triggered. Proceeding in limited mode.');
-            if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
-            setTimeout(() => { if (!cancelled) { setVisible(false); onComplete?.(); } }, 1000);
-            return;
-        }
-
-        if ((criticalReady && elapsed >= MIN_MS) || (elapsed >= 3000)) {
+        if (criticalReady) {
             setPhase('Mission Control Ready');
-            setDetail(elapsed >= 3000 ? 'Systems partially restored.' : 'All critical systems nominal.');
-            if (elapsed >= 3000) {
-              if (typeof window !== 'undefined') window.localStorage.setItem('boot_degraded', 'true');
-            } else {
-              if (typeof window !== 'undefined') window.localStorage.removeItem('boot_degraded');
-            }
+            setDetail('All critical systems nominal.');
+            if (typeof window !== 'undefined') window.localStorage.removeItem('boot_degraded');
+            // We still honor the visual wait if ready very fast
             setTimeout(() => { if (!cancelled) { setVisible(false); onComplete?.(); } }, 800);
             return;
         }
 
         pollTimerRef.current = setTimeout(tick, 500);
-
-      } catch (e: any) {
-        setPhase('Connection Error');
-        setDetail('Retrying link to command center…');
-        const elapsed = Date.now() - startRef.current;
-        if (elapsed >= 2000) {
-            setVisible(false);
-            onComplete?.();
-            return;
-        }
-        pollTimerRef.current = setTimeout(tick, 500);
+      } catch (e) {
+        pollTimerRef.current = setTimeout(tick, 1000);
       }
     }
 
@@ -156,7 +147,7 @@ export default function LaunchSplash({ onComplete }: Props) {
                height: '100%', 
                background: '#FFD90F', 
                boxShadow: '0 0 10px #FFD90F',
-               width: `${Math.min(100, ((Date.now() - startRef.current) / 4500) * 100)}%`,
+               width: `${Math.min(100, ((Date.now() - startRef.current) / 3000) * 100)}%`,
                transition: 'width 0.3s ease-out'
              }} />
           </div>
@@ -179,7 +170,7 @@ export default function LaunchSplash({ onComplete }: Props) {
 [BOOT] gateway: ${health?.gateway || 'polling...'}
 [BOOT] database: ${health?.database || 'polling...'}
 [BOOT] queue: ${health?.queue || 'polling...'}
-[BOOT] critical_ready: ${((health?.gateway === 'online' || health?.gateway === 'alive') && (health?.database === 'connected'))}
+[BOOT] critical_ready: ${((health?.gateway === 'online' || health?.gateway === 'alive') && (health?.database === 'connected' || health?.database === 'alive'))}
 [BOOT] elapsed_ms: ${Date.now() - startRef.current}`}
           </pre>
         </div>

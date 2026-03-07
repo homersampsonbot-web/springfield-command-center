@@ -11,20 +11,22 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Invalid thread" }, { status: 400 });
     }
 
+    // Fix: Fetch the most RECENT messages by sorting DESC first, then take the limit.
     const messages = await prisma.event.findMany({
       where: {
-        scope: "SYSTEM" as any, // Re-purposing SYSTEM scope for THREAD
+        scope: "SYSTEM" as any,
         type: "THREAD_MESSAGE",
         payload: {
           path: ["thread"],
           equals: "team",
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
       take: limit,
     });
 
-    return NextResponse.json(messages);
+    // Re-sort back to ASC for the UI message list order.
+    return NextResponse.json(messages.reverse());
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
