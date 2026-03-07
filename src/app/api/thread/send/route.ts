@@ -39,6 +39,9 @@ export async function POST(req: Request) {
     const callRelay = async (agent: string) => {
       try {
         let enhancedMessage = message;
+        if (agent === "marge") {
+          enhancedMessage = "[TEAM THREAD - be concise, max 3 sentences] " + message;
+        }
         
         const res = await fetch(`${baseUrl}/api/relay/${agent}`, {
           method: "POST",
