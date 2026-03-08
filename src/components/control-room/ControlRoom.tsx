@@ -19,358 +19,217 @@ const C = {
   floorLine: '#3c261a',
   console: '#8b7ba8',
   consoleDark: '#6f6388',
-  blue: '#42d9f5',
   amber: '#f5c518',
   orange: '#e85c00',
   green: '#00e87a',
   red: '#ff3322',
 };
 
-function Pipes({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg style={{ position:'absolute', ...style }} viewBox="0 0 60 200" width="60" height="200">
-      <rect x="10" y="0" width="8" height="200" fill="#1e2218" stroke="#2a2e22" strokeWidth="1"/>
-      <rect x="30" y="0" width="5" height="200" fill="#181c14" stroke="#252920" strokeWidth="1"/>
-      <rect x="45" y="0" width="10" height="200" fill="#1e2218" stroke="#2a2e22" strokeWidth="1"/>
-      <rect x="8" y="60" width="12" height="8" rx="2" fill="#2a2e22"/>
-      <rect x="43" y="120" width="14" height="8" rx="2" fill="#2a2e22"/>
-      <circle cx="14" cy="30" r="4" fill="#333" stroke="#444" strokeWidth="1"/>
-      <circle cx="50" cy="90" r="4" fill="#333" stroke="#444" strokeWidth="1"/>
-    </svg>
-  );
-}
+const EV_COLORS: Record<string, string> = {
+  THREAD_MESSAGE: '#42d9f5',
+  JOB_CREATED: C.orange,
+  JOB_COMPLETED: C.green,
+  JOB_FAILED: C.red,
+  RELAY_REQUEST: '#c542f5',
+  THREAD_CHECKPOINT: '#f5a142',
+  DIRECTIVE_RECEIVED: '#42d9f5',
+  THREAD_CLASSIFICATION: '#42c5f5',
+  THREAD_ROUTING: '#f5c542',
+  WORKER_COMPLETE: '#00cc66',
+  SYSTEM: '#7a8a6a',
+};
 
 function HazardStripe({ width = 120, height = 10, colors = ['#e85c00', '#111'], rotate = 0 }: { width?: number; height?: number; colors?: [string, string]; rotate?: number }) {
   return (
     <svg width={width} height={height} style={{ display:'block', transform: `rotate(${rotate}deg)` }}>
       <defs>
         <pattern id={`hz-${width}-${height}-${rotate}`} x="0" y="0" width="20" height={height} patternUnits="userSpaceOnUse">
-          <rect width="10" height={height} fill={colors[0]}/>
-          <rect x="10" width="10" height={height} fill={colors[1]}/>
+          <rect width="10" height={height} fill={colors[0]} />
+          <rect x="10" width="10" height={height} fill={colors[1]} />
         </pattern>
       </defs>
-      <rect width={width} height={height} fill={`url(#hz-${width}-${height}-${rotate})`} opacity="0.85"/>
+      <rect width={width} height={height} fill={`url(#hz-${width}-${height}-${rotate})`} opacity="0.85" />
     </svg>
   );
 }
 
-function Monitor({ color = '#00e87a', label = '', lines = 4, style }: { color?: string; label?: string; lines?: number; style?: React.CSSProperties; }) {
+function FloorPerspective() {
   return (
-    <div style={{
-      background: '#050805',
-      border: `1px solid ${color}33`,
-      borderRadius: 3,
-      padding: '4px 6px',
-      boxShadow: `inset 0 0 8px ${color}22, 0 0 6px ${color}22`,
-      ...style,
-    }}>
-      {label && <div style={{ fontFamily: FONT, fontSize: 7, color, letterSpacing:'0.1em', marginBottom: 3, opacity: 0.8 }}>{label}</div>}
-      {Array.from({length: lines}).map((_, i) => (
-        <div key={i} style={{
-          height: 2,
-          background: color,
-          opacity: 0.15 + (i % 2) * 0.1,
-          marginBottom: 2,
-          borderRadius: 1,
-          animation: `consoleFade ${1.5 + i * 0.3}s ease-in-out infinite`,
-          animationDelay: `${i * 0.2}s`,
-        }}/>
-      ))}
+    <div style={{ position:'absolute', inset:0, zIndex:0, background: C.floor }}>
+      <div style={{ position:'absolute', inset:0, backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, transparent 40%), repeating-linear-gradient(90deg, ${C.floor} 0, ${C.floor} 79px, ${C.floorLine} 79px, ${C.floorLine} 80px), repeating-linear-gradient(0deg, ${C.floor} 0, ${C.floor} 39px, ${C.floorLine} 39px, ${C.floorLine} 40px)` }} />
+      <div className="floor-shimmer" style={{ position:'absolute', inset:0, opacity:0.2, background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)' }} />
     </div>
   );
 }
 
-function ServerRack({ style }: { style?: React.CSSProperties }) {
+function BackWall() {
   return (
-    <div style={{ background: '#111410', border: '1px solid #2a2e22', borderRadius: 4, padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 2, ...style, }}>
-      {Array.from({length: 8}).map((_, i) => (
-        <div key={i} style={{ height: 8, background: '#1a1e14', border: '1px solid #252920', borderRadius: 2, display: 'flex', alignItems: 'center', padding: '0 4px', gap: 3, }}>
-          <div style={{
-            width: 4,
-            height: 4,
-            borderRadius:'50%',
-            background: i < 5 ? C.green : i === 5 ? C.orange : '#333',
-            boxShadow: i < 5 ? `0 0 4px ${C.green}` : i === 5 ? `0 0 4px ${C.orange}` : 'none',
-            animation: i < 5 ? 'machineBreath 2s ease-in-out infinite' : 'none',
-            animationDelay: `${i * 0.3}s`,
-          }}/>
-          <div style={{ flex: 1, height: 2, background: '#252920', borderRadius: 1 }}/>
-          <div style={{ width: 8, height: 4, background: '#1e2218', borderRadius: 1 }}/>
-        </div>
-      ))}
+    <div style={{ position:'absolute', inset:0, zIndex:1, background: C.wall }}>
+      <div style={{ position:'absolute', inset:0, backgroundImage: `repeating-linear-gradient(0deg, ${C.wallPanel} 0px, ${C.wallPanel} 2px, transparent 2px, transparent 18px)` }} />
+      <div style={{ position:'absolute', top:0, left:0, right:0, height:6, background:'#4e6b86' }} />
+      <div style={{ position:'absolute', left:0, top:0, bottom:0, width:14, background:'#2b3f55' }} />
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:14, background:'#2b3f55' }} />
+      <div style={{ position:'absolute', top:210, left:0, right:0, height:4, background: C.orange }} />
     </div>
   );
 }
 
-function DeskConsole({ color, children, style }: { color: string; children?: React.ReactNode; style?: React.CSSProperties; }) {
+function RearDoor() {
   return (
-    <div style={{
-      background: `linear-gradient(180deg, ${C.console} 0%, ${C.consoleDark} 100%)`,
-      border: `2px solid ${color}55`,
-      borderRadius: '50% 50% 0 0',
-      padding: '10px 12px 6px',
-      boxShadow: `0 0 12px ${color}22`,
-      position: 'relative',
-      ...style,
-    }}>
-      <div style={{ position:'absolute', top: 0, left: 0, right: 0, height: 4, background: color, opacity: 0.25, borderRadius:'50% 50% 0 0' }}/>
-      {children}
-    </div>
-  );
-}
-
-function SpeechBubble({ text, color, style }: { text: string; color: string; style?: React.CSSProperties }) {
-  if (!text) return null;
-  return (
-    <div style={{
-      position: 'relative',
-      background: '#ffffff',
-      border: `2px solid ${color}`,
-      borderRadius: 8,
-      padding: '4px 8px',
-      fontFamily: FONT,
-      fontSize: 9,
-      color: '#111',
-      maxWidth: 140,
-      lineHeight: 1.4,
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      zIndex: 10,
-      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-      marginBottom: 4,
-      alignSelf: 'center',
-      ...style,
-    }}>
-      {text.slice(0, 50)}{text.length > 50 ? '…' : ''}
-      <div style={{ position: 'absolute', bottom: -6, left: 16, width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: `6px solid ${color}`, }}/>
-      <div style={{ position: 'absolute', bottom: -4, left: 17, width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #ffffff' }}/>
-    </div>
-  );
-}
-
-function StatusBadge({ state }: { state: AgentState }) {
-  const color = STATE_COLORS[state];
-  const labels: Record<AgentState, string> = {
-    idle:'STANDBY',
-    thinking:'PROCESSING',
-    active:'ONLINE',
-    complete:'COMPLETE',
-    failed:'FAULT',
-    offline:'OFFLINE',
-    rate_limited:'THROTTLED',
-  };
-
-  return (
-    <div style={{ display:'flex', alignItems:'center', gap: 4, background:'rgba(0,0,0,0.6)', borderRadius: 3, padding:'2px 6px', border:`1px solid ${color}44`, }}>
-      <div style={{ width:5, height:5, borderRadius:'50%', background:color, boxShadow:`0 0 6px ${color}` }}/>
-      <span style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.15em', color }}>{labels[state]}</span>
-    </div>
-  );
-}
-
-function BackWall({ health, lastUpdated }: { health: any; lastUpdated: Date | null }) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setTick(n => n+1), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const timeStr = lastUpdated ? lastUpdated.toLocaleTimeString('en-US',{hour12:false}) : '--:--:--';
-  const statusColor = health.status === 'healthy' ? C.green : health.status === 'degraded' ? C.orange : C.red;
-  const warnOn = health.status !== 'healthy';
-
-  return (
-    <div style={{
-      position:'absolute',
-      top:0,
-      left:0,
-      right:0,
-      height:170,
-      background: C.wall,
-      backgroundImage: `repeating-linear-gradient(0deg, ${C.wallPanel} 0px, ${C.wallPanel} 2px, transparent 2px, transparent 18px)`,
-      borderBottom: `4px solid ${C.orange}`,
-      display:'flex',
-      alignItems:'flex-start',
-      padding:'0 20px',
-      gap:12,
-      overflow:'hidden',
-      zIndex: 1,
-    }}>
-      <div style={{ position:'absolute', left:0, top:0, bottom:0, width:70, background: C.wallDeep, borderRight:'3px solid #2b3f55', display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <div style={{ transform:'rotate(-90deg)' }}><HazardStripe width={120} height={10} colors={[C.orange, '#111']} /></div>
-        <div style={{ position:'absolute', top:20, left:8, fontSize:24 }}>☢</div>
+    <div style={{ position:'absolute', top:38, left:'50%', transform:'translateX(-50%)', width:240, height:130, zIndex:1 }}>
+      <div style={{ position:'absolute', inset:0, background:'#7f93a7', border:'3px solid #4e6b86', borderRadius:6 }} />
+      <div style={{ position:'absolute', top:10, left:'50%', transform:'translateX(-50%)', width:64, height:64, borderRadius:'50%', border:'4px solid #d24a4a', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        ☢️
       </div>
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:70, background: C.wallDeep, borderLeft:'3px solid #2b3f55', display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <div style={{ transform:'rotate(-90deg)' }}><HazardStripe width={120} height={10} colors={[C.orange, '#111']} /></div>
-        <div style={{ position:'absolute', top:20, right:10, fontSize:24 }}>☢</div>
+      <div style={{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)' }}>
+        <HazardStripe width={170} height={14} colors={[C.orange, '#111']} />
       </div>
+    </div>
+  );
+}
 
-      <div style={{ width:130, height:130, marginTop:16, background:C.wallPanel, border:'2px solid #2b3f55', borderRadius:4, padding:'8px 10px', display:'flex', flexDirection:'column', gap:6, }}>
-        <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.2em', color:'#2b3f55' }}>SPRINGFIELD NUCLEAR</div>
-        <div style={{ fontFamily:FONT, fontSize:11, fontWeight:700, letterSpacing:'0.25em', color:C.orange, lineHeight:1.2 }}> COMMAND<br/>CENTER </div>
-        <div style={{ display:'flex', gap:6, marginTop:4 }}>
-          {['#00e87a','#e85c00','#ff3322'].map((col, i) => (
-            <div key={i} style={{ width:10, height:10, borderRadius:'50%', background: (i===0&&health.status==='healthy')||(i===1&&health.status==='degraded')||(i===2&&health.status==='offline') ? col : '#1a1e14', boxShadow: warnOn ? `0 0 10px ${col}` : 'none', animation: warnOn ? 'indicatorPulse 1.2s ease-in-out infinite' : 'none', border:'1px solid #333', }}/>
-          ))}
-        </div>
-        <HazardStripe width={110} height={6} colors={[C.orange, '#111']} />
-        <div style={{ fontFamily:FONT, fontSize:8, color:statusColor, letterSpacing:'0.1em' }}> ◉ {health.status?.toUpperCase()||'ONLINE'} </div>
-      </div>
-
-      <div style={{ flex:1, display:'flex', gap:8, marginTop:12, height:130 }}>
-        <div style={{ flex:2, background:'#d7e2ec', border:'2px solid #2b3f55', borderRadius:6, padding:'8px 12px', display:'flex', flexDirection:'column', gap:6 }}>
-          <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.2em', color:'#2b3f55' }}>SYSTEM STATUS</div>
-          <div style={{ display:'flex', gap:16 }}>
-            {[
-              { label:'ACTIVE', val:health.activeJobs, color:C.green },
-              { label:'QUEUED', val:health.queuedJobs, color:C.orange },
-              { label:'FAILED', val:health.failedJobs, color:C.red },
-              { label:'RELAY', val:health.relayQueueDepth, color:'#a855f7' },
-            ].map(m => (
-              <div key={m.label} style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:FONT, fontSize:18, fontWeight:700, color:m.color, lineHeight:1, animation:'meterFlicker 6s ease-in-out infinite' }}>{m.val}</div>
-                <div style={{ fontFamily:FONT, fontSize:6, letterSpacing:'0.1em', color:'rgba(30,40,50,0.7)', marginTop:2 }}>{m.label}</div>
-                <div style={{ height:2, background:'rgba(0,0,0,0.1)', borderRadius:1, marginTop:2, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${Math.min(m.val/5,1)*100}%`, background:m.color, transition:'width 1s' }}/>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4 }}>
-            <Monitor color={C.green} label="NEON BRIDGE" lines={3}/>
-            <Monitor color={C.orange} label="RELAY WORKER" lines={3}/>
-          </div>
-        </div>
-        <div style={{ width:90, background:'#d7e2ec', border:'2px solid #2b3f55', borderRadius:6, padding:'8px', display:'flex', flexDirection:'column', justifyContent:'space-between', }}>
-          <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.15em', color:'#2b3f55' }}>SYNC TIME</div>
-          <div style={{ fontFamily:FONT, fontSize:16, fontWeight:700, color:'#223240', letterSpacing:'0.05em', animation:'consoleFade 4s ease-in-out infinite' }}> {timeStr} </div>
-          <div style={{ fontFamily:FONT, fontSize:6, color:'rgba(30,40,50,0.6)', letterSpacing:'0.1em' }}>UTC · 10s POLL</div>
-          <HazardStripe width={74} height={5} colors={[C.orange, '#111']} />
-        </div>
-        <ServerRack style={{ width:70, flexShrink:0 }}/>
-      </div>
-
-      <div style={{ width:90, height:130, marginTop:16, background:C.wallPanel, border:'2px solid #2b3f55', borderRadius:4, padding:'6px 8px', display:'flex', flexDirection:'column', gap:4 }}>
-        <div style={{ fontFamily:FONT, fontSize:6, letterSpacing:'0.15em', color:'#2b3f55' }}>DIAGNOSTICS</div>
-        {['TASK-WKR','NEON-BRG','RELAY-WK','PM2 FLEET'].map((label, i) => (
-          <div key={label} style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <div style={{ width:5, height:5, borderRadius:'50%', background:C.green, boxShadow:`0 0 4px ${C.green}`, animation:'machineBreath 2s ease-in-out infinite', animationDelay:`${i*0.4}s` }}/>
-            <span style={{ fontFamily:FONT, fontSize:6, color:'rgba(30,40,50,0.8)', letterSpacing:'0.08em' }}>{label}</span>
-          </div>
+function SystemMonitorLeft() {
+  return (
+    <div style={{ position:'absolute', top:30, left:40, width:180, height:120, background:'#0b0f10', border:'3px solid #1c2d3a', borderRadius:6, zIndex:2 }}>
+      <div className="monitor-lines" style={{ padding:10, display:'flex', flexDirection:'column', gap:6 }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} style={{ height:4, background:'#34d399', opacity:0.25 + i * 0.08 }} />
         ))}
-        <HazardStripe width={64} height={5} colors={[C.orange, '#111']} />
-        <Monitor color={C.blue} lines={4} style={{ marginTop:2 }}/>
-      </div>
-
-      <div style={{ position:'absolute', bottom:-4, left:'50%', transform:'translateX(-50%)', width:160, height:30, background:C.wallDeep, border:'2px solid #2b3f55', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <HazardStripe width={140} height={8} colors={[C.orange, '#111']} />
       </div>
     </div>
   );
 }
 
-function Floor() {
+function SystemMonitorRight() {
   return (
-    <div style={{ position:'absolute', top:0, bottom:44, left:0, right:0, background: C.floor, backgroundImage:`repeating-linear-gradient(90deg, ${C.floor} 0, ${C.floor} 79px, ${C.floorLine} 79px, ${C.floorLine} 80px), repeating-linear-gradient(0deg, ${C.floor} 0, ${C.floor} 39px, ${C.floorLine} 39px, ${C.floorLine} 40px)`, borderTop:`4px solid ${C.orange}`, zIndex: 0 }}/>
+    <div style={{ position:'absolute', top:30, right:40, width:180, height:120, background:'#0b0f10', border:'3px solid #1c2d3a', borderRadius:6, zIndex:2 }}>
+      <div style={{ display:'flex', gap:8, padding:10 }}>
+        {['#34d399', '#f59e0b', '#ef4444', '#a855f7'].map((col, i) => (
+          <div key={i} style={{ width:26, height:26, borderRadius:6, border:`2px solid ${col}`, boxShadow:`0 0 8px ${col}55` }} />
+        ))}
+      </div>
+    </div>
   );
 }
 
-const STATION_CFG = {
-  maggie: { color:'#ec4899', label:'CENTRAL COMMAND', role:'ORCHESTRATOR', deskW:220 },
-  homer: { color:'#f97316', label:'EXECUTION TERMINAL', role:'EXECUTOR', deskW:160 },
-  marge: { color:'#3b82f6', label:'ARCHITECTURE DESK', role:'ARCH LEAD', deskW:160 },
-  lisa: { color:'#a855f7', label:'STRATEGY BOARD', role:'STRATEGIST', deskW:160 },
-  bart: { color:'#22c55e', label:'QA / GUI OPS', role:'BROWSER AGENT', deskW:160 },
-};
+function RadiationWallSymbols() {
+  return (
+    <>
+      <div style={{ position:'absolute', left:24, top:70, fontSize:34, color:'#c43b3b', zIndex:2 }}>☢</div>
+      <div style={{ position:'absolute', right:24, top:70, fontSize:34, color:'#c43b3b', zIndex:2 }}>☢</div>
+      <div style={{ position:'absolute', left:10, top:10, width:10, height:180, background:`repeating-linear-gradient(180deg, ${C.orange} 0 10px, #111 10px 20px)` }} />
+      <div style={{ position:'absolute', right:10, top:10, width:10, height:180, background:`repeating-linear-gradient(180deg, ${C.orange} 0 10px, #111 10px 20px)` }} />
+    </>
+  );
+}
 
-const AVATAR_MAP = { homer:HomerAvatar, marge:MargeAvatar, lisa:LisaAvatar, bart:BartAvatar, maggie:MaggieAvatar };
+function DeskConsole({ width = 180, height = 70, color = C.console, label, right = false }: { width?: number; height?: number; color?: string; label?: string; right?: boolean }) {
+  return (
+    <div style={{ position:'relative', width, height, background: color, border:'2px solid #3b2c4e', borderRadius:10, boxShadow:'0 4px 0 #2b2038', zIndex:3 }}>
+      <div style={{ position:'absolute', top:8, left:10, right:10, height:22, background:'#161316', borderRadius:6, border:'1px solid #2a2330' }} />
+      <div style={{ position:'absolute', top:38, left:10, display:'flex', gap:6 }}>
+        {[C.green, C.orange, '#f472b6', '#8b5cf6'].map((col, i) => (
+          <div key={i} style={{ width:10, height:10, borderRadius:'50%', background: col, boxShadow:`0 0 6px ${col}99` }} />
+        ))}
+      </div>
+      {label && (
+        <div style={{ position:'absolute', bottom:6, right:10, fontFamily: FONT, fontSize:8, color:'#1f1b27', opacity:0.75 }}>
+          {label}
+        </div>
+      )}
+      {right && (
+        <div style={{ position:'absolute', right:-24, top:10, width:18, height:50, background:'#2b2038', borderRadius:4 }} />
+      )}
+    </div>
+  );
+}
 
-interface StationProps {
-  agentId: 'homer'|'marge'|'lisa'|'bart'|'maggie';
+function Station({
+  id,
+  label,
+  state,
+  lastMessage,
+  Avatar,
+  color,
+  consoleLabel,
+  scale = 1,
+  align = 'center',
+}: {
+  id: 'homer'|'marge'|'lisa'|'bart'|'maggie';
+  label: string;
   state: AgentState;
   lastMessage: string;
-  avatarSize?: number;
-  stateClass: string;
-}
-
-function AgentStation({ agentId, state, lastMessage, avatarSize = 80, stateClass }: StationProps) {
-  const cfg = STATION_CFG[agentId];
-  const Avatar = AVATAR_MAP[agentId];
+  Avatar: any;
+  color: string;
+  consoleLabel: string;
+  scale?: number;
+  align?: 'center'|'left'|'right';
+}) {
   const stateColor = STATE_COLORS[state];
-
   return (
-    <div className={stateClass} style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative' }}>
+    <div className={`station ${ANIMATION_CLASSES[state]}`} style={{ position:'relative', transform:`scale(${scale})`, transformOrigin:'center' }}>
       {lastMessage && (
-        <SpeechBubble text={lastMessage} color={cfg.color}/>
-      )}
-      <div style={{ position:'relative', zIndex:2 }}>
-        <Avatar state={state} size={avatarSize}/>
-      </div>
-      <DeskConsole color={cfg.color} style={{ width:cfg.deskW, marginTop:-8, zIndex:1 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-          <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.15em', color:'#1f1b27', opacity:0.8 }}>{cfg.label}</div>
-          <StatusBadge state={state}/>
-        </div>
-        <div style={{ display:'flex', gap:4 }}>
-          <Monitor color={cfg.color} lines={3} style={{ flex:1 }}/>
-          <Monitor color={stateColor} lines={3} style={{ flex:1 }}/>
-          <div style={{ display:'flex', flexDirection:'column', gap:3, justifyContent:'center', padding:'0 4px' }}>
-            {[cfg.color, stateColor, '#333'].map((col, i) => (
-              <div key={i} style={{ width:7, height:7, borderRadius:'50%', background: i < 2 ? col : '#222', boxShadow: i < 2 && state !== 'idle' ? `0 0 5px ${col}` : 'none', border:'1px solid rgba(255,255,255,0.1)', }}/>
-            ))}
+        <div className="bubble" style={{ position:'absolute', top:-50, left: align==='left' ? -20 : align==='right' ? 60 : 10 }}>
+          <div style={{ background:'#fff', border:`2px solid ${color}`, borderRadius:10, padding:'4px 8px', fontSize:9, color:'#111', maxWidth:120 }}>
+            {lastMessage.slice(0, 40)}
           </div>
         </div>
-        <div style={{ display:'flex', gap:6, marginTop:6 }}>
-          <div style={{ flex:1, height:6, borderRadius:3, background:'rgba(0,0,0,0.15)' }} />
-          <div style={{ flex:1, height:6, borderRadius:3, background:'rgba(0,0,0,0.15)' }} />
-          <div style={{ width:24, height:6, borderRadius:3, background:cfg.color, opacity:0.7 }} />
+      )}
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+        <DeskConsole width={id==='maggie' ? 210 : 170} height={id==='maggie' ? 90 : 70} color={C.console} label={consoleLabel} right={id==='lisa'} />
+        <div style={{ position:'relative', marginTop:-10, zIndex:4 }}>
+          <Avatar state={state} size={id==='maggie' ? 120 : 92} />
         </div>
-        <div style={{ marginTop:4, textAlign:'center', fontFamily:FONT, fontSize:8, fontWeight:700, letterSpacing:'0.2em', color:'#1f1b27' }}>
-          {agentId.toUpperCase()} · <span style={{ color:cfg.color, fontSize:7 }}>{cfg.role}</span>
-        </div>
-      </DeskConsole>
-      <div style={{ width:cfg.deskW, height:12, background:`linear-gradient(180deg, ${C.consoleDark} 0%, ${C.console} 100%)`, borderLeft:'2px solid #4d4361', borderRight:'2px solid #4d4361', borderBottom:'2px solid #4d4361', borderRadius:'0 0 4px 4px', }}/>
+        <div style={{ marginTop:4, fontFamily: FONT, fontSize:8, letterSpacing:'0.2em', color:'#1f1b27' }}>{label}</div>
+        <div style={{ width:70, height:6, borderRadius:3, background: stateColor, opacity:0.7, marginTop:2, boxShadow:`0 0 6px ${stateColor}` }} />
+      </div>
     </div>
   );
 }
 
-const EV_COLORS: Record<string,string> = {
-  THREAD_MESSAGE:'#42d9f5',
-  JOB_CREATED:C.orange,
-  JOB_COMPLETED:C.green,
-  JOB_FAILED:C.red,
-  RELAY_REQUEST:'#c542f5',
-  THREAD_CHECKPOINT:'#f5a142',
-  DIRECTIVE_RECEIVED:'#42d9f5',
-  THREAD_CLASSIFICATION:'#42c5f5',
-  THREAD_ROUTING:'#f5c542',
-  WORKER_COMPLETE:'#00cc66',
-  SYSTEM:'#7a8a6a',
-};
+function ConnectionLines() {
+  return (
+    <svg style={{ position:'absolute', inset:0, zIndex:5, pointerEvents:'none' }} viewBox="0 0 100 100" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="pulse" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#f472b6" stopOpacity="0" />
+          <stop offset="50%" stopColor="#f472b6" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#f472b6" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[
+        { x1: 50, y1: 56, x2: 18, y2: 40 },
+        { x1: 50, y1: 56, x2: 82, y2: 40 },
+        { x1: 50, y1: 56, x2: 28, y2: 63 },
+        { x1: 50, y1: 56, x2: 72, y2: 63 },
+      ].map((l, i) => (
+        <g key={i}>
+          <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#d27bff" strokeDasharray="2 3" strokeWidth="0.4" opacity="0.7" />
+          <line className="line-pulse" x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="url(#pulse)" strokeWidth="0.6" />
+        </g>
+      ))}
+    </svg>
+  );
+}
 
 function PlantLog({ events }: { events: any[] }) {
   const display = events.length > 0 ? events : [
-    {id:'s1',type:'SYSTEM'},{id:'s2',type:'WORKER_COMPLETE'},
-    {id:'s3',type:'JOB_COMPLETED'},{id:'s4',type:'THREAD_ROUTING'},
-    {id:'s5',type:'SYSTEM'},{id:'s6',type:'RELAY_REQUEST'},
+    { id:'s1', type:'SYSTEM' }, { id:'s2', type:'WORKER_COMPLETE' }, { id:'s3', type:'JOB_COMPLETED' },
   ];
-  const items = [...display,...display,...display];
+  const items = [...display, ...display, ...display];
   return (
-    <div style={{ position:'absolute', bottom:0, left:0, right:0, height:44, background:'rgba(4,6,4,0.97)', borderTop:`1px solid ${C.orange}`, display:'flex', alignItems:'center', overflow:'hidden', zIndex:5, }}>
-      <div style={{ flexShrink:0, width:90, height:'100%', background:'rgba(0,0,0,0.5)', borderRight:'1px solid rgba(120,140,90,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, }}>
+    <div style={{ position:'absolute', bottom:0, left:0, right:0, height:44, background:'rgba(4,6,4,0.97)', borderTop:`1px solid ${C.orange}`, display:'flex', alignItems:'center', overflow:'hidden', zIndex:6 }}>
+      <div style={{ flexShrink:0, width:90, height:'100%', background:'rgba(0,0,0,0.5)', borderRight:'1px solid rgba(120,140,90,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2 }}>
         <div style={{ fontFamily:FONT, fontSize:6, letterSpacing:'0.2em', color:C.orange }}>PLANT LOG</div>
-        <div style={{ width:8, height:8, borderRadius:'50%', background:C.green, boxShadow:`0 0 6px ${C.green}`, animation:'indicatorPulse 2s ease-in-out infinite' }}/>
+        <div style={{ width:8, height:8, borderRadius:'50%', background:C.green, boxShadow:`0 0 6px ${C.green}`, animation:'indicatorPulse 2s ease-in-out infinite' }} />
       </div>
-      <div style={{ position:'absolute', left:90, top:0, bottom:0, width:40, background:'linear-gradient(to right, rgba(4,6,4,0.98),transparent)', zIndex:2, pointerEvents:'none' }}/>
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:40, background:'linear-gradient(to left, rgba(4,6,4,0.98),transparent)', zIndex:2, pointerEvents:'none' }}/>
       <div style={{ display:'flex', animation:'tickerScroll 40s linear infinite', whiteSpace:'nowrap', willChange:'transform', paddingLeft:100 }}>
-        {items.map((ev,i) => {
-          const color = EV_COLORS[ev.type]||'#6b7280';
+        {items.map((ev, i) => {
+          const color = EV_COLORS[ev.type] || '#6b7280';
           return (
-            <span key={`${ev.id}-${i}`} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'0 18px', fontFamily:FONT, fontSize:10, letterSpacing:'0.1em' }}>
-              <span style={{ color, fontWeight:700 }}>{ev.type}</span>
-              <span style={{ color:'rgba(255,255,255,0.15)', fontSize:7 }}>◆</span>
+            <span key={`${ev.id}-${i}`} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'0 18px', fontFamily:FONT, fontSize:10, letterSpacing:'0.1em', color }}>
+              <span style={{ width:6, height:6, borderRadius:'50%', background: color }} />
+              {ev.type.replace('_',' ')}
             </span>
           );
         })}
@@ -392,59 +251,47 @@ export default function ControlRoom() {
       <style>{ANIMATION_CSS}</style>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        .cr-scene-root { width: 100vw; height: 100vh; background: ${C.wall}; position: relative; overflow: hidden; }
-        .cr-scene-root::after {
-          content: '';
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 999;
-          opacity: 0.25;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-        }
-        .agents-layer { position: absolute; inset: 0; z-index: 4; }
-        .agent-center-wrap { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%) scale(1.18); display: flex; flex-direction: column; align-items: center; margin-bottom: 4px; }
-        .agent-center-label { font-family: "Courier New", monospace; font-size: 7px; letter-spacing: 0.3em; color: rgba(236,72,153,0.8); margin-bottom: 2px; }
-        .station-homer { position: absolute; left: 50%; top: 78%; transform: translate(-50%, -50%) scale(1.05); }
-        .station-marge { position: absolute; left: 20%; top: 54%; transform: translate(-50%, -50%) scale(1.10); }
-        .station-lisa { position: absolute; left: 80%; top: 54%; transform: translate(-50%, -50%) scale(1.10); }
-        .station-bart { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%) scale(1.00); }
-        @media (max-width: 768px) {
-          .cr-scene-root { height: auto; min-height: 100vh; overflow-y: auto; }
-          .agent-center-wrap { left: 50%; top: 57%; transform: translate(-50%, -50%) scale(1.08); }
-          .station-homer { left: 50%; top: 80%; transform: translate(-50%, -50%) scale(0.96); }
-          .station-marge { left: 24%; top: 56%; transform: translate(-50%, -50%) scale(1.00); }
-          .station-lisa { left: 76%; top: 56%; transform: translate(-50%, -50%) scale(1.00); }
-          .station-bart { left: 50%; top: 34%; transform: translate(-50%, -50%) scale(0.92); }
-        }
+        .cr-scene-root { width: 100vw; height: 100vh; position: relative; overflow: hidden; background:${C.wall}; }
+        .monitor-lines { animation: monitorScroll 3s linear infinite; }
+        .floor-shimmer { animation: floorShimmer 6s linear infinite; }
+        .line-pulse { animation: linePulse 2.5s ease-in-out infinite; }
+        .station { transition: transform 0.2s ease; }
+        @keyframes monitorScroll { 0%{transform:translateY(0);} 100%{transform:translateY(-10px);} }
+        @keyframes floorShimmer { 0%{transform:translateX(-20%);} 100%{transform:translateX(20%);} }
+        @keyframes linePulse { 0%{stroke-dashoffset:0; opacity:0.2;} 50%{opacity:0.9;} 100%{stroke-dashoffset:10; opacity:0.2;} }
       `}</style>
       <div className="cr-scene-root">
-        <BackWall health={systemHealth} lastUpdated={lastUpdated}/>
-        <Pipes style={{ left:0, top:110, opacity:0.5, zIndex: 2 }}/>
-        <Pipes style={{ right:0, top:90, opacity:0.5, transform:'scaleX(-1)', zIndex: 2 }}/>
-        <Floor/>
-        <div style={{ position:'absolute', top:150, left:'50%', transform:'translateX(-50%)', width:600, height:200, background:'radial-gradient(ellipse at center top, rgba(245,197,24,0.06) 0%, transparent 70%)', pointerEvents:'none', zIndex: 3 }}/>
-        <div className="agents-layer">
-          <div className="agent-center-wrap">
-            <div className="agent-center-label">✦ CENTRAL COMMAND ✦</div>
-            <AgentStation agentId="maggie" state={maggie.state} lastMessage={maggie.lastMessage} stateClass={ANIMATION_CLASSES[maggie.state]} avatarSize={140}/>
+        <FloorPerspective />
+        <BackWall />
+        <RadiationWallSymbols />
+        <SystemMonitorLeft />
+        <SystemMonitorRight />
+        <RearDoor />
+
+        <div style={{ position:'absolute', inset:0, zIndex:3 }}>
+          <div style={{ position:'absolute', left:'50%', top:'56%', transform:'translate(-50%, -50%)' }}>
+            <Station id="maggie" label="MAGGIE" state={maggie.state} lastMessage={maggie.lastMessage} Avatar={MaggieAvatar} color="#ec4899" consoleLabel="ORCH" scale={1.18} />
           </div>
-          <div className="station-homer">
-            <AgentStation agentId="homer" state={homer.state} lastMessage={homer.lastMessage} stateClass={ANIMATION_CLASSES[homer.state]} avatarSize={105}/>
+          <div style={{ position:'absolute', left:'18%', top:'40%' }}>
+            <Station id="homer" label="HOMER" state={homer.state} lastMessage={homer.lastMessage} Avatar={HomerAvatar} color="#f97316" consoleLabel="EXEC" scale={1.05} align="left" />
           </div>
-          <div className="station-marge">
-            <AgentStation agentId="marge" state={marge.state} lastMessage={marge.lastMessage} stateClass={ANIMATION_CLASSES[marge.state]} avatarSize={115}/>
+          <div style={{ position:'absolute', left:'82%', top:'40%', transform:'translate(-100%, 0)' }}>
+            <Station id="marge" label="MARGE" state={marge.state} lastMessage={marge.lastMessage} Avatar={MargeAvatar} color="#3b82f6" consoleLabel="ARCH" scale={1.1} align="right" />
           </div>
-          <div className="station-lisa">
-            <AgentStation agentId="lisa" state={lisa.state} lastMessage={lisa.lastMessage} stateClass={ANIMATION_CLASSES[lisa.state]} avatarSize={115}/>
+          <div style={{ position:'absolute', left:'28%', top:'63%' }}>
+            <Station id="bart" label="BART" state={bart.state} lastMessage={bart.lastMessage} Avatar={BartAvatar} color="#22c55e" consoleLabel="QA" scale={1.0} align="left" />
           </div>
-          <div className="station-bart">
-            <AgentStation agentId="bart" state={bart.state} lastMessage={bart.lastMessage} stateClass={ANIMATION_CLASSES[bart.state]} avatarSize={105}/>
+          <div style={{ position:'absolute', left:'72%', top:'63%' }}>
+            <Station id="lisa" label="LISA" state={lisa.state} lastMessage={lisa.lastMessage} Avatar={LisaAvatar} color="#a855f7" consoleLabel="STRAT" scale={1.1} align="right" />
           </div>
         </div>
-        <PlantLog events={tickerEvents}/>
+
+        <ConnectionLines />
+        <PlantLog events={tickerEvents} />
         {error && (
-          <div style={{ position:'fixed', bottom:52, left:'50%', transform:'translateX(-50%)', background:'rgba(255,51,51,0.12)', border:'2px solid rgba(255,51,51,0.5)', borderRadius:4, padding:'5px 14px', fontFamily:FONT, fontSize:10, color:C.red, letterSpacing:'0.1em', zIndex:300, }}> ⚠ COMMS FAULT </div>
+          <div style={{ position:'fixed', bottom:52, left:'50%', transform:'translateX(-50%)', background:'rgba(255,51,51,0.12)', border:'2px solid rgba(255,51,51,0.5)', borderRadius:4, padding:'5px 14px', fontFamily:FONT, fontSize:10, color:C.red, letterSpacing:'0.1em', zIndex:300 }}>
+            ⚠ COMMS FAULT
+          </div>
         )}
       </div>
     </>
