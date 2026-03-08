@@ -1,352 +1,342 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useControlRoomData } from './useControlRoomData';
-import { ANIMATION_CSS, STATE_COLORS, STATE_LABELS, ANIMATION_CLASSES, AgentState } from './animations';
+import { AgentState, STATE_COLORS, ANIMATION_CSS, ANIMATION_CLASSES } from './animations';
 import { HomerAvatar } from './agents/HomerAvatar';
 import { MargeAvatar } from './agents/MargeAvatar';
 import { LisaAvatar } from './agents/LisaAvatar';
 import { BartAvatar } from './agents/BartAvatar';
 import { MaggieAvatar } from './agents/MaggieAvatar';
+import { useControlRoomData } from './useControlRoomData';
 
-const FONT_MONO = '"Courier New", "Lucida Console", monospace';
+const FONT = '"Courier New", monospace';
 
-const ROOM_VARS = `
-  :root {
-    --plant-bg: #0c0e0a;
-    --plant-floor: #111410;
-    --panel-bg: rgba(12,16,10,0.97);
-    --panel-border: rgba(120,140,90,0.25);
-    --amber: #f5c842;
-    --green-run: #00ff88;
-    --red-alert: #ff3333;
-    --text-dim: rgba(180,200,160,0.5);
-    --text-mid: rgba(200,220,180,0.75);
-    --text-bright: rgba(220,240,200,0.95);
-    --scanline: rgba(0,0,0,0.06);
-  }
-`;
+const C = {
+  floor: '#1a1c14',
+  floorLine: '#22261a',
+  wall: '#0e100c',
+  wallPanel: '#141810',
+  concrete: '#1e2218',
+  metal: '#2a2e22',
+  amber: '#f5c518',
+  amberDim: '#7a620c',
+  green: '#00e87a',
+  greenDim: '#006633',
+  red: '#ff3322',
+  blue: '#4488ff',
+  steam: 'rgba(200,220,180,0.06)',
+  glow: 'rgba(245,197,24,0.12)',
+};
 
-function hexToRgb(hex: string) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return `${r},${g},${b}`;
-}
-
-function StatusLight({ state, size = 8 }: { state: AgentState; size?: number }) {
-  const color = STATE_COLORS[state];
+function Pipes({ style }: { style?: React.CSSProperties }) {
   return (
-    <div className="status-light" style={{
-      width: size,
-      height: size,
-      borderRadius: '50%',
-      background: color,
-      boxShadow: `0 0 ${size}px ${color}`,
-      flexShrink: 0,
-      transition: 'background 0.5s, box-shadow 0.5s',
-    }}/>
+    <svg style={{ position:'absolute', ...style }} viewBox="0 0 60 200" width="60" height="200">
+      <rect x="10" y="0" width="8" height="200" fill="#1e2218" stroke="#2a2e22" strokeWidth="1"/>
+      <rect x="30" y="0" width="5" height="200" fill="#181c14" stroke="#252920" strokeWidth="1"/>
+      <rect x="45" y="0" width="10" height="200" fill="#1e2218" stroke="#2a2e22" strokeWidth="1"/>
+      <rect x="8" y="60" width="12" height="8" rx="2" fill="#2a2e22"/>
+      <rect x="43" y="120" width="14" height="8" rx="2" fill="#2a2e22"/>
+      <circle cx="14" cy="30" r="4" fill="#333" stroke="#444" strokeWidth="1"/>
+      <circle cx="50" cy="90" r="4" fill="#333" stroke="#444" strokeWidth="1"/>
+    </svg>
   );
 }
 
-function WarningLight({ color = '#f5c842', on = true }: { color?: string; on?: boolean }) {
+function HazardStripe({ width = 120, height = 10 }: { width?: number; height?: number }) {
+  return (
+    <svg width={width} height={height} style={{ display:'block' }}>
+      <defs>
+        <pattern id="hz" x="0" y="0" width="20" height={height} patternUnits="userSpaceOnUse">
+          <rect width="10" height={height} fill="#f5c518"/>
+          <rect x="10" width="10" height={height} fill="#111"/>
+        </pattern>
+      </defs>
+      <rect width={width} height={height} fill="url(#hz)" opacity="0.7"/>
+    </svg>
+  );
+}
+
+function Monitor({ color = '#00e87a', label = '', lines = 4, style }: { color?: string; label?: string; lines?: number; style?: React.CSSProperties; }) {
   return (
     <div style={{
-      width: 10,
-      height: 10,
-      borderRadius: '50%',
-      background: on ? color : '#2a2a2a',
-      boxShadow: on ? `0 0 8px ${color}` : 'none',
-      border: '1px solid rgba(255,255,255,0.1)',
-      animation: on ? 'machineBreath 2s ease-in-out infinite' : 'none',
-    }}/>
-  );
-}
-
-function GaugeBar({ value = 0.6, color = '#00ff88', label = '' }: { value?: number; color?: string; label?: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {label && <div style={{ fontFamily: FONT_MONO, fontSize: 7, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{label}</div>}
-      <div style={{ height: 4, width: 60, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${value * 100}%`,
+      background: '#050805',
+      border: `1px solid ${color}33`,
+      borderRadius: 3,
+      padding: '4px 6px',
+      boxShadow: `inset 0 0 8px ${color}22, 0 0 6px ${color}22`,
+      ...style,
+    }}>
+      {label && <div style={{ fontFamily: FONT, fontSize: 7, color, letterSpacing:'0.1em', marginBottom: 3, opacity: 0.8 }}>{label}</div>}
+      {Array.from({length: lines}).map((_, i) => (
+        <div key={i} style={{
+          height: 2,
           background: color,
-          boxShadow: `0 0 4px ${color}`,
-          animation: 'consoleFade 2s ease-in-out infinite',
-          transition: 'width 1s ease',
+          opacity: 0.15 + (i % 2) * 0.1,
+          marginBottom: 2,
+          borderRadius: 1,
+          animation: `consoleFade ${1.5 + i * 0.3}s ease-in-out infinite`,
+          animationDelay: `${i * 0.2}s`,
         }}/>
-      </div>
+      ))}
     </div>
   );
 }
 
-const AVATAR_MAP = {
-  homer: HomerAvatar,
-  marge: MargeAvatar,
-  lisa: LisaAvatar,
-  bart: BartAvatar,
-  maggie: MaggieAvatar,
-};
-
-const STATION_CONFIG = {
-  maggie: {
-    label: 'CENTRAL COMMAND',
-    role: 'ORCHESTRATOR',
-    color: '#EC4899',
-    borderColor: 'rgba(236,72,153,0.35)',
-    props: [
-      { icon: '⬡', label: 'ROUTING ENGINE' },
-      { icon: '◎', label: 'THREAD MONITOR' },
-      { icon: '✦', label: 'CLASSIFICATION' },
-    ],
-  },
-  homer: {
-    label: 'EXECUTION TERMINAL',
-    role: 'EXECUTOR',
-    color: '#F97316',
-    borderColor: 'rgba(249,115,22,0.35)',
-    props: [
-      { icon: '▣', label: 'DEPLOY QUEUE' },
-      { icon: '⚙', label: 'TASK WORKER' },
-      { icon: '◈', label: 'PM2 FLEET' },
-    ],
-  },
-  marge: {
-    label: 'ARCHITECTURE DESK',
-    role: 'ARCH LEAD',
-    color: '#3B82F6',
-    borderColor: 'rgba(59,130,246,0.35)',
-    props: [
-      { icon: '◧', label: 'BLUEPRINT REVIEW' },
-      { icon: '◫', label: 'GOVERNANCE LOG' },
-      { icon: '◨', label: 'SCOPE REGISTRY' },
-    ],
-  },
-  lisa: {
-    label: 'STRATEGY BOARD',
-    role: 'STRATEGIST',
-    color: '#A855F7',
-    borderColor: 'rgba(168,85,247,0.35)',
-    props: [
-      { icon: '◇', label: 'ANALYSIS ENGINE' },
-      { icon: '◈', label: 'DEBATE PREP' },
-      { icon: '◉', label: 'RELAY INFRA' },
-    ],
-  },
-  bart: {
-    label: 'QA / GUI OPS',
-    role: 'BROWSER AGENT',
-    color: '#22C55E',
-    borderColor: 'rgba(34,197,94,0.35)',
-    props: [
-      { icon: '▦', label: 'PLAYWRIGHT OPS' },
-      { icon: '◱', label: 'UI VALIDATION' },
-      { icon: '◲', label: 'CHROME RELAY' },
-    ],
-  },
-};
-
-interface AgentData {
-  id: 'homer'|'marge'|'lisa'|'bart'|'maggie';
-  name: string;
-  state: AgentState;
-  lastMessage: string;
+function ServerRack({ style }: { style?: React.CSSProperties }) {
+  return (
+    <div style={{ background: '#111410', border: '1px solid #2a2e22', borderRadius: 4, padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 2, ...style, }}>
+      {Array.from({length: 8}).map((_, i) => (
+        <div key={i} style={{ height: 8, background: '#1a1e14', border: '1px solid #252920', borderRadius: 2, display: 'flex', alignItems: 'center', padding: '0 4px', gap: 3, }}>
+          <div style={{
+            width: 4,
+            height: 4,
+            borderRadius:'50%',
+            background: i < 5 ? '#00e87a' : i === 5 ? '#f5c518' : '#333',
+            boxShadow: i < 5 ? '0 0 4px #00e87a' : i === 5 ? '0 0 4px #f5c518' : 'none',
+            animation: i < 5 ? 'machineBreath 2s ease-in-out infinite' : 'none',
+            animationDelay: `${i * 0.3}s`,
+          }}/>
+          <div style={{ flex: 1, height: 2, background: '#252920', borderRadius: 1 }}/>
+          <div style={{ width: 8, height: 4, background: '#1e2218', borderRadius: 1 }}/>
+        </div>
+      ))}
+    </div>
+  );
 }
 
-function AgentStation({ agent, isCentral = false }: { agent: AgentData; isCentral?: boolean }) {
-  const Avatar = AVATAR_MAP[agent.id];
-  const cfg = STATION_CONFIG[agent.id];
-  const stateColor = STATE_COLORS[agent.state];
-  const stateClass = ANIMATION_CLASSES[agent.state];
-  const avatarSize = isCentral ? 110 : 80;
+function DeskConsole({ color, children, style }: { color: string; children?: React.ReactNode; style?: React.CSSProperties; }) {
+  return (
+    <div style={{
+      background: 'linear-gradient(180deg, #1a1e14 0%, #141810 100%)',
+      border: `1px solid ${color}44`,
+      borderRadius: '6px 6px 0 0',
+      padding: '8px 10px 4px',
+      boxShadow: `0 0 12px ${color}18`,
+      inset: `0 1px 0 ${color}22`,
+      position: 'relative',
+      ...style,
+    }}>
+      <div style={{ position:'absolute', top: 0, left: 0, right: 0, height: 2, background: color, opacity: 0.3, borderRadius:'6px 6px 0 0' }}/>
+      {children}
+    </div>
+  );
+}
+
+function SpeechBubble({ text, color, style }: { text: string; color: string; style?: React.CSSProperties }) {
+  if (!text) return null;
+  return (
+    <div style={{
+      position: 'relative',
+      background: 'rgba(8,10,6,0.95)',
+      border: `1px solid ${color}55`,
+      borderRadius: 6,
+      padding: '4px 8px',
+      fontFamily: FONT,
+      fontSize: 9,
+      color: `${color}cc`,
+      maxWidth: 140,
+      lineHeight: 1.4,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      zIndex: 10,
+      boxShadow: `0 0 8px ${color}22`,
+      marginBottom: 4,
+      alignSelf: 'center',
+      ...style,
+    }}>
+      {text.slice(0, 50)}{text.length > 50 ? '…' : ''}
+      <div style={{ position: 'absolute', bottom: -5, left: 16, width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `5px solid ${color}55`, }}/>
+    </div>
+  );
+}
+
+function StatusBadge({ state }: { state: AgentState }) {
+  const color = STATE_COLORS[state];
+  const labels: Record<AgentState, string> = {
+    idle:'STANDBY',
+    thinking:'PROCESSING',
+    active:'ONLINE',
+    complete:'COMPLETE',
+    failed:'FAULT',
+    offline:'OFFLINE',
+    rate_limited:'THROTTLED',
+  };
 
   return (
-    <div className={stateClass} style={{ height: '100%', animation: 'stationBoot 0.5s ease-out forwards' }}>
-      <div className="station-console" style={{
-        height: '100%',
-        background: 'linear-gradient(160deg, rgba(10,14,8,0.98) 0%, rgba(14,18,10,0.95) 100%)',
-        border: `1px solid ${cfg.borderColor}`,
-        borderRadius: isCentral ? 12 : 8,
-        padding: isCentral ? '16px 20px' : '12px 14px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        position: 'relative',
-        overflow: 'hidden',
-        transition: 'border-color 0.5s, box-shadow 0.5s',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, backgroundImage: 'repeating-linear-gradient(0deg, var(--scanline) 0px, var(--scanline) 1px, transparent 1px, transparent 3px)', }}/>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 8, letterSpacing: '0.2em', color: cfg.color, opacity: 0.8 }}>
-            {cfg.label}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <StatusLight state={agent.state} size={7}/>
-            <div style={{ fontFamily: FONT_MONO, fontSize: 7, letterSpacing: '0.15em', color: stateColor }}>
-              {STATE_LABELS[agent.state]}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-          <div style={{ position: 'absolute', bottom: -4, left: '10%', right: '10%', height: 14, background: 'rgba(30,40,20,0.8)', border: '1px solid rgba(100,140,60,0.3)', borderRadius: '4px 4px 0 0', }}>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, paddingTop: 4 }}>
-              {[cfg.color, '#f5c842', stateColor].map((col, i) => (
-                <WarningLight key={i} color={col} on={i !== 1 || agent.state !== 'idle'}/>
-              ))}
-            </div>
-          </div>
-          <Avatar state={agent.state} size={avatarSize}/>
-        </div>
-        <div style={{ textAlign: 'center', zIndex: 1 }}>
-          <div style={{ fontFamily: FONT_MONO, fontSize: isCentral ? 13 : 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text-bright)' }}>
-            {agent.name.toUpperCase()}
-          </div>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 7, letterSpacing: '0.15em', color: cfg.color, marginTop: 2 }}>
-            {cfg.role}
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, zIndex: 1 }}>
-          {cfg.props.map((p, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ color: cfg.color, fontSize: 9, opacity: 0.7 }}>{p.icon}</span>
-              <div style={{ fontFamily: FONT_MONO, fontSize: 7, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{p.label}</div>
-              <div style={{ marginLeft: 'auto' }}>
-                <GaugeBar value={agent.state === 'active' ? 0.85 : agent.state === 'thinking' ? 0.5 : 0.2} color={cfg.color}/>
-              </div>
-            </div>
-          ))}
-        </div>
-        {agent.lastMessage && (
-          <div style={{marginTop: 'auto', zIndex: 1, background: 'rgba(0,0,0,0.4)', border: `1px solid rgba(${hexToRgb(cfg.color)}, 0.2)`, borderRadius: 4, padding: '5px 8px', }}>
-            <p style={{ fontFamily: FONT_MONO, fontSize: 9, lineHeight: 1.5, color: 'var(--text-dim)', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', }}>
-              {agent.lastMessage}
-            </p>
-          </div>
-        )}
-      </div>
+    <div style={{ display:'flex', alignItems:'center', gap: 4, background:'rgba(0,0,0,0.6)', borderRadius: 3, padding:'2px 6px', border:`1px solid ${color}44`, }}>
+      <div style={{ width:5, height:5, borderRadius:'50%', background:color, boxShadow:`0 0 6px ${color}` }}/>
+      <span style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.15em', color }}>{labels[state]}</span>
     </div>
   );
 }
 
-function SystemWall({ health, lastUpdated }: { health: any; lastUpdated: Date | null }) {
+function BackWall({ health, lastUpdated }: { health: any; lastUpdated: Date | null }) {
   const [, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick(n => n+1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const timeStr = lastUpdated ? lastUpdated.toLocaleTimeString('en-US', { hour12: false }) : '--:--:--';
-  const statusColor = health.status === 'healthy' ? '#00ff88' : health.status === 'degraded' ? '#f5c842' : '#ff3333';
+  const timeStr = lastUpdated ? lastUpdated.toLocaleTimeString('en-US',{hour12:false}) : '--:--:--';
+  const statusColor = health.status === 'healthy' ? '#00e87a' : health.status === 'degraded' ? '#f5c518' : '#ff3322';
 
   return (
-    <div style={{
-      gridArea: 'wall',
-      background: 'linear-gradient(180deg, rgba(4,6,4,0.99) 0%, rgba(10,14,8,0.97) 100%)',
-      borderBottom: '1px solid rgba(120,140,90,0.3)',
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0 20px',
-      gap: 16,
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <WarningLight color="#00ff88" on={health.status === 'healthy'}/>
-          <WarningLight color="#f5c842" on={health.status === 'degraded'}/>
-          <WarningLight color="#ff3333" on={health.status === 'offline'}/>
+    <div style={{ position:'absolute', top:0, left:0, right:0, height:160, background:'linear-gradient(180deg, #080a06 0%, #0e100c 60%, transparent 100%)', display:'flex', alignItems:'flex-start', padding:'0 20px', gap:12, overflow:'hidden', }}>
+      <div style={{ width:130, height:130, marginTop:10, background:'#0e100c', border:'1px solid #2a2e22', borderRadius:4, padding:'8px 10px', display:'flex', flexDirection:'column', gap:6, }}>
+        <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.2em', color:'#7a620c' }}>SPRINGFIELD NUCLEAR</div>
+        <div style={{ fontFamily:FONT, fontSize:11, fontWeight:700, letterSpacing:'0.25em', color:'#f5c518', lineHeight:1.2 }}> COMMAND<br/>CENTER </div>
+        <div style={{ display:'flex', gap:4, marginTop:4 }}>
+          {['#00e87a','#f5c518','#ff3322'].map((col, i) => (
+            <div key={i} style={{ width:10, height:10, borderRadius:'50%', background: (i===0&&health.status==='healthy')||(i===1&&health.status==='degraded')||(i===2&&health.status==='offline') ? col : '#1a1e14', boxShadow: i===0&&health.status==='healthy' ? `0 0 8px ${col}` : 'none', border:'1px solid #333', }}/>
+          ))}
         </div>
-        <div>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 9, letterSpacing: '0.25em', color: 'var(--text-dim)' }}>SPRINGFIELD NUCLEAR</div>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 13, fontWeight: 700, letterSpacing: '0.3em', color: 'var(--amber)' }}>COMMAND CENTER</div>
-          <div style={{ fontFamily: FONT_MONO, fontSize: 8, color: statusColor, letterSpacing: '0.15em', marginTop: 2 }}> ◉ SYSTEM {health.status?.toUpperCase() || 'ONLINE'} </div>
-        </div>
+        <HazardStripe width={110} height={6}/>
+        <div style={{ fontFamily:FONT, fontSize:8, color:statusColor, letterSpacing:'0.1em' }}> ◉ {health.status?.toUpperCase()||'ONLINE'} </div>
       </div>
-      <div style={{ width: 1, height: 48, background: 'rgba(120,140,90,0.25)', flexShrink: 0 }}/>
-      <div style={{ display: 'flex', gap: 20, flex: 1, justifyContent: 'center' }}>
-        {[
-          { label: 'ACTIVE', value: health.activeJobs, color: '#00ff88' },
-          { label: 'QUEUED', value: health.queuedJobs, color: '#f5c842' },
-          { label: 'FAILED', value: health.failedJobs, color: '#ff3333' },
-          { label: 'RELAY Q', value: health.relayQueueDepth, color: '#c542f5' },
-        ].map(m => (
-          <div key={m.label} style={{ textAlign: 'center', minWidth: 40 }}>
-            <div style={{ fontFamily: FONT_MONO, fontSize: 22, fontWeight: 700, color: m.color, lineHeight: 1, animation: 'meterFlicker 8s ease-in-out infinite' }}>
-              {m.value}
-            </div>
-            <GaugeBar value={Math.min(m.value / 5, 1)} color={m.color} label={m.label}/>
+      <div style={{ flex:1, display:'flex', gap:8, marginTop:8, height:130 }}>
+        <div style={{ flex:2, background:'#0a0c08', border:'1px solid #2a2e22', borderRadius:4, padding:'8px 12px', display:'flex', flexDirection:'column', gap:6, }}>
+          <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.2em', color:'#7a620c' }}>SYSTEM STATUS</div>
+          <div style={{ display:'flex', gap:16 }}>
+            {[
+              { label:'ACTIVE', val:health.activeJobs, color:'#00e87a' },
+              { label:'QUEUED', val:health.queuedJobs, color:'#f5c518' },
+              { label:'FAILED', val:health.failedJobs, color:'#ff3322' },
+              { label:'RELAY', val:health.relayQueueDepth, color:'#a855f7' },
+            ].map(m => (
+              <div key={m.label} style={{ textAlign:'center' }}>
+                <div style={{ fontFamily:FONT, fontSize:18, fontWeight:700, color:m.color, lineHeight:1, animation:'meterFlicker 6s ease-in-out infinite' }}>{m.val}</div>
+                <div style={{ fontFamily:FONT, fontSize:6, letterSpacing:'0.1em', color:'rgba(180,200,160,0.4)', marginTop:2 }}>{m.label}</div>
+                <div style={{ height:2, background:'rgba(255,255,255,0.06)', borderRadius:1, marginTop:2, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${Math.min(m.val/5,1)*100}%`, background:m.color, transition:'width 1s' }}/>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4 }}>
+            <Monitor color="#00e87a" label="NEON BRIDGE" lines={3}/>
+            <Monitor color="#f5c518" label="RELAY WORKER" lines={3}/>
+          </div>
+        </div>
+        <div style={{ width:90, background:'#0a0c08', border:'1px solid #2a2e22', borderRadius:4, padding:'8px', display:'flex', flexDirection:'column', justifyContent:'space-between', }}>
+          <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.15em', color:'#7a620c' }}>SYNC TIME</div>
+          <div style={{ fontFamily:FONT, fontSize:16, fontWeight:700, color:'rgba(220,240,200,0.9)', letterSpacing:'0.05em', animation:'consoleFade 4s ease-in-out infinite' }}> {timeStr} </div>
+          <div style={{ fontFamily:FONT, fontSize:6, color:'rgba(180,200,160,0.35)', letterSpacing:'0.1em' }}>UTC · 10s POLL</div>
+          <HazardStripe width={74} height={5}/>
+        </div>
+        <ServerRack style={{ width:70, flexShrink:0 }}/>
+      </div>
+      <div style={{ width:80, height:130, marginTop:10, background:'#0e100c', border:'1px solid #2a2e22', borderRadius:4, padding:'6px 8px', display:'flex', flexDirection:'column', gap:4, }}>
+        <div style={{ fontFamily:FONT, fontSize:6, letterSpacing:'0.15em', color:'#7a620c' }}>DIAGNOSTICS</div>
+        {['TASK-WKR','NEON-BRG','RELAY-WK','PM2 FLEET'].map((label, i) => (
+          <div key={label} style={{ display:'flex', alignItems:'center', gap:4 }}>
+            <div style={{ width:5, height:5, borderRadius:'50%', background:'#00e87a', boxShadow:'0 0 4px #00e87a', animation:'machineBreath 2s ease-in-out infinite', animationDelay:`${i*0.4}s` }}/>
+            <span style={{ fontFamily:FONT, fontSize:6, color:'rgba(180,200,160,0.5)', letterSpacing:'0.08em' }}>{label}</span>
           </div>
         ))}
-      </div>
-      <div style={{ width: 1, height: 48, background: 'rgba(120,140,90,0.25)', flexShrink: 0 }}/>
-      <div style={{ flexShrink: 0, textAlign: 'right' }}>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 20, fontWeight: 700, color: 'var(--text-bright)', letterSpacing: '0.08em', animation: 'consoleFade 4s ease-in-out infinite' }}>
-          {timeStr}
-        </div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 7, color: 'var(--text-dim)', letterSpacing: '0.12em' }}>LAST SYNC · UTC</div>
-        <div style={{ fontFamily: FONT_MONO, fontSize: 7, color: 'var(--amber)', letterSpacing: '0.1em', marginTop: 2 }}>POLL INTERVAL 10s</div>
+        <HazardStripe width={64} height={5}/>
+        <Monitor color="#4488ff" lines={4} style={{ marginTop:2 }}/>
       </div>
     </div>
   );
 }
 
-const EVENT_COLORS: Record<string, string> = {
-  THREAD_MESSAGE: '#42d9f5',
-  JOB_CREATED: '#f5c842',
-  JOB_COMPLETED: '#00ff88',
-  JOB_FAILED: '#ff3333',
-  RELAY_REQUEST: '#c542f5',
-  THREAD_CHECKPOINT: '#f5a142',
-  DIRECTIVE_RECEIVED: '#42d9f5',
-  DEBATE_CREATED: '#f542a1',
-  GOVERNANCE_PROTOCOL: '#a1f542',
-  THREAD_CLASSIFICATION: '#42c5f5',
-  THREAD_ROUTING: '#f5c542',
-  WORKER_COMPLETE: '#00cc66',
-  SYSTEM: '#7a8a6a',
+function Floor() {
+  return (
+    <div style={{ position:'absolute', bottom:44, left:0, right:0, height:'50%', backgroundImage:`repeating-linear-gradient(90deg, ${C.floor} 0, ${C.floor} 79px, ${C.floorLine} 79px, ${C.floorLine} 80px), repeating-linear-gradient(0deg, ${C.floor} 0, ${C.floor} 39px, ${C.floorLine} 39px, ${C.floorLine} 40px)`, borderTop:`2px solid ${C.floorLine}`, }}/>
+  );
+}
+
+const STATION_CFG = {
+  maggie: { color:'#ec4899', label:'CENTRAL COMMAND', role:'ORCHESTRATOR', deskW:220 },
+  homer: { color:'#f97316', label:'EXECUTION TERMINAL', role:'EXECUTOR', deskW:160 },
+  marge: { color:'#3b82f6', label:'ARCHITECTURE DESK', role:'ARCH LEAD', deskW:160 },
+  lisa: { color:'#a855f7', label:'STRATEGY BOARD', role:'STRATEGIST', deskW:160 },
+  bart: { color:'#22c55e', label:'QA / GUI OPS', role:'BROWSER AGENT', deskW:160 },
 };
 
-function ActivityTicker({ events }: { events: any[] }) {
-  const display = events.length > 0 ? events : [
-    { id:'s1', type:'SYSTEM', message:'SPRINGFIELD COMMAND CENTER ONLINE' },
-    { id:'s2', type:'SYSTEM', message:'ALL STATIONS NOMINAL' },
-    { id:'s3', type:'WORKER_COMPLETE', message:'RELAY WORKER ACTIVE' },
-    { id:'s4', type:'SYSTEM', message:'NEON BRIDGE POLLING' },
-  ];
-  const items = [...display, ...display, ...display];
+const AVATAR_MAP = { homer:HomerAvatar, marge:MargeAvatar, lisa:LisaAvatar, bart:BartAvatar, maggie:MaggieAvatar };
+
+interface StationProps {
+  agentId: 'homer'|'marge'|'lisa'|'bart'|'maggie';
+  state: AgentState;
+  lastMessage: string;
+  avatarSize?: number;
+  stateClass: string;
+}
+
+function AgentStation({ agentId, state, lastMessage, avatarSize = 80, stateClass }: StationProps) {
+  const cfg = STATION_CFG[agentId];
+  const Avatar = AVATAR_MAP[agentId];
+  const stateColor = STATE_COLORS[state];
+
   return (
-    <div style={{
-      gridArea: 'ticker',
-      background: 'rgba(4,6,4,0.98)',
-      borderTop: '1px solid rgba(120,140,90,0.3)',
-      overflow: 'hidden',
-      display: 'flex',
-      alignItems: 'center',
-      position: 'relative',
-    }}>
-      <div style={{
-        flexShrink: 0,
-        padding: '0 14px',
-        borderRight: '1px solid rgba(120,140,90,0.25)',
-        fontFamily: FONT_MONO,
-        fontSize: 8,
-        letterSpacing: '0.2em',
-        color: 'var(--amber)',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        background: 'rgba(0,0,0,0.4)',
-      }}> PLANT LOG </div>
-      <div style={{ position: 'absolute', left: 90, top: 0, bottom: 0, width: 40, background: 'linear-gradient(to right, rgba(4,6,4,0.95), transparent)', zIndex: 2, pointerEvents: 'none' }}/>
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 40, background: 'linear-gradient(to left, rgba(4,6,4,0.95), transparent)', zIndex: 2, pointerEvents: 'none' }}/>
-      <div style={{ display: 'flex', animation: 'tickerScroll 50s linear infinite', whiteSpace: 'nowrap', willChange: 'transform' }}>
-        {items.map((ev, i) => {
-          const color = EVENT_COLORS[ev.type] || '#6b7280';
+    <div className={stateClass} style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative' }}>
+      {lastMessage && (
+        <SpeechBubble text={lastMessage} color={cfg.color}/>
+      )}
+      <div style={{ position:'relative', zIndex:2 }}>
+        <Avatar state={state} size={avatarSize}/>
+      </div>
+      <DeskConsole color={cfg.color} style={{ width:cfg.deskW, marginTop:-8, zIndex:1 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <div style={{ fontFamily:FONT, fontSize:7, letterSpacing:'0.15em', color:cfg.color, opacity:0.8 }}>{cfg.label}</div>
+          <StatusBadge state={state}/>
+        </div>
+        <div style={{ display:'flex', gap:4 }}>
+          <Monitor color={cfg.color} lines={3} style={{ flex:1 }}/>
+          <Monitor color={stateColor} lines={3} style={{ flex:1 }}/>
+          <div style={{ display:'flex', flexDirection:'column', gap:3, justifyContent:'center', padding:'0 4px' }}>
+            {[cfg.color, stateColor, '#333'].map((col, i) => (
+              <div key={i} style={{ width:7, height:7, borderRadius:'50%', background: i < 2 ? col : '#222', boxShadow: i < 2 && state !== 'idle' ? `0 0 5px ${col}` : 'none', border:'1px solid rgba(255,255,255,0.1)', }}/>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginTop:4, textAlign:'center', fontFamily:FONT, fontSize:8, fontWeight:700, letterSpacing:'0.2em', color:'rgba(220,240,200,0.7)' }}>
+          {agentId.toUpperCase()} · <span style={{ color:cfg.color, fontSize:7 }}>{cfg.role}</span>
+        </div>
+      </DeskConsole>
+      <div style={{ width:cfg.deskW, height:12, background:'linear-gradient(180deg, #252920 0%, #1a1e14 100%)', borderLeft:'1px solid #2a2e22', borderRight:'1px solid #2a2e22', borderBottom:'1px solid #2a2e22', borderRadius:'0 0 4px 4px', }}/>
+    </div>
+  );
+}
+
+const EV_COLORS: Record<string,string> = {
+  THREAD_MESSAGE:'#42d9f5',
+  JOB_CREATED:'#f5c518',
+  JOB_COMPLETED:'#00e87a',
+  JOB_FAILED:'#ff3322',
+  RELAY_REQUEST:'#c542f5',
+  THREAD_CHECKPOINT:'#f5a142',
+  DIRECTIVE_RECEIVED:'#42d9f5',
+  THREAD_CLASSIFICATION:'#42c5f5',
+  THREAD_ROUTING:'#f5c542',
+  WORKER_COMPLETE:'#00cc66',
+  SYSTEM:'#7a8a6a',
+};
+
+function PlantLog({ events }: { events: any[] }) {
+  const display = events.length > 0 ? events : [
+    {id:'s1',type:'SYSTEM'},{id:'s2',type:'WORKER_COMPLETE'},
+    {id:'s3',type:'JOB_COMPLETED'},{id:'s4',type:'THREAD_ROUTING'},
+    {id:'s5',type:'SYSTEM'},{id:'s6',type:'RELAY_REQUEST'},
+  ];
+  const items = [...display,...display,...display];
+  return (
+    <div style={{ position:'absolute', bottom:0, left:0, right:0, height:44, background:'rgba(4,6,4,0.97)', borderTop:'1px solid rgba(120,140,90,0.35)', display:'flex', alignItems:'center', overflow:'hidden', zIndex:20, }}>
+      <div style={{ flexShrink:0, width:90, height:'100%', background:'rgba(0,0,0,0.5)', borderRight:'1px solid rgba(120,140,90,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, }}>
+        <div style={{ fontFamily:FONT, fontSize:6, letterSpacing:'0.2em', color:'#7a620c' }}>PLANT LOG</div>
+        <div style={{ width:8, height:8, borderRadius:'50%', background:'#00e87a', boxShadow:'0 0 6px #00e87a', animation:'indicatorPulse 2s ease-in-out infinite' }}/>
+      </div>
+      <div style={{ position:'absolute', left:90, top:0, bottom:0, width:40, background:'linear-gradient(to right, rgba(4,6,4,0.98),transparent)', zIndex:2, pointerEvents:'none' }}/>
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:40, background:'linear-gradient(to left, rgba(4,6,4,0.98),transparent)', zIndex:2, pointerEvents:'none' }}/>
+      <div style={{ display:'flex', animation:'tickerScroll 40s linear infinite', whiteSpace:'nowrap', willChange:'transform', paddingLeft:100 }}>
+        {items.map((ev,i) => {
+          const color = EV_COLORS[ev.type]||'#6b7280';
           return (
-            <span key={`${ev.id}-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 20px', fontFamily: FONT_MONO, fontSize: 10, letterSpacing: '0.1em' }}>
-              <span style={{ color, fontWeight: 700 }}>{ev.type}</span>
-              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 7 }}>◆</span>
+            <span key={`${ev.id}-${i}`} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'0 18px', fontFamily:FONT, fontSize:10, letterSpacing:'0.1em' }}>
+              <span style={{ color, fontWeight:700 }}>{ev.type}</span>
+              <span style={{ color:'rgba(255,255,255,0.15)', fontSize:7 }}>◆</span>
             </span>
           );
         })}
@@ -365,95 +355,47 @@ export default function ControlRoom() {
 
   return (
     <>
-      <style>{ROOM_VARS}</style>
       <style>{ANIMATION_CSS}</style>
       <style>{`
-        * { box-sizing: border-box; }
-        .cr-root {
-          height: 100vh;
-          width: 100%;
-          background: var(--plant-bg);
-          background-image:
-            radial-gradient(ellipse at 50% 0%, rgba(120,140,80,0.05) 0%, transparent 55%),
-            radial-gradient(ellipse at 20% 100%, rgba(249,115,22,0.04) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 100%, rgba(59,130,246,0.04) 0%, transparent 50%);
-          color: var(--text-bright);
-          overflow: hidden;
-          position: relative;
-        }
-        .cr-root::before {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        .cr-scene-root { width: 100vw; height: 100vh; background: #080a06; position: relative; overflow: hidden; }
+        .cr-scene-root::after {
           content: '';
           position: fixed;
           inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
           pointer-events: none;
-          z-index: 1000;
-          opacity: 0.4;
+          z-index: 999;
+          opacity: 0.35;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
         }
-        .cr-scene {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          grid-template-rows: 76px 1fr 1fr 48px;
-          grid-template-areas:
-            "wall wall"
-            "maggie maggie"
-            "left-band right-band"
-            "ticker ticker";
-          height: 100vh;
-        }
-        .cr-wall { grid-area: wall; }
-        .cr-maggie { grid-area: maggie; padding: 10px 20px; display: flex; justify-content: center; }
-        .cr-left { grid-area: left-band; display: grid; grid-template-rows: 1fr 1fr; }
-        .cr-right { grid-area: right-band; display: grid; grid-template-rows: 1fr 1fr; }
-        .cr-ticker { grid-area: ticker; }
-        .station-slot {
-          padding: 8px 12px;
-          border-top: 1px solid rgba(120,140,90,0.12);
-        }
-        .cr-left .station-slot {
-          border-right: 1px solid rgba(120,140,90,0.12);
-        }
+        .agents-layer { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 16px; }
+        .agent-center-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
+        .agent-center-label { font-family: "Courier New", monospace; font-size: 7px; letter-spacing: 0.3em; color: rgba(236,72,153,0.6); margin-bottom: 4px; }
         @media (max-width: 768px) {
-          .cr-root { height: auto; min-height: 100vh; overflow-y: auto; }
-          .cr-scene { display: flex; flex-direction: column; height: auto; }
-          .cr-wall { min-height: 76px; }
-          .cr-maggie { padding: 10px 14px; min-height: 280px; }
-          .cr-left, .cr-right { display: flex; flex-direction: column; }
-          .station-slot { min-height: 220px; border-right: none !important; }
-          .cr-ticker { position: sticky; bottom: 0; z-index: 50; }
+          .cr-scene-root { height: auto; min-height: 100vh; overflow-y: auto; }
+          .agents-layer { position: relative; bottom: auto; flex-direction: column; align-items: center; padding: 170px 16px 60px; gap: 20px; }
+          .agent-center-wrap { margin-bottom: 0; }
         }
       `}</style>
-      <div className="cr-root">
-        <div className="cr-scene">
-          <div className="cr-wall">
-            <SystemWall health={systemHealth} lastUpdated={lastUpdated}/>
+      <div className="cr-scene-root">
+        <BackWall health={systemHealth} lastUpdated={lastUpdated}/>
+        <Pipes style={{ left:0, top:100, opacity:0.6 }}/>
+        <Pipes style={{ right:0, top:80, opacity:0.5, transform:'scaleX(-1)' }}/>
+        <Floor/>
+        <div style={{ position:'absolute', top:150, left:'50%', transform:'translateX(-50%)', width:600, height:200, background:'radial-gradient(ellipse at center top, rgba(245,197,24,0.06) 0%, transparent 70%)', pointerEvents:'none', }}/>
+        <div className="agents-layer">
+          <AgentStation agentId="homer" state={homer.state} lastMessage={homer.lastMessage} stateClass={ANIMATION_CLASSES[homer.state]} avatarSize={72}/>
+          <AgentStation agentId="marge" state={marge.state} lastMessage={marge.lastMessage} stateClass={ANIMATION_CLASSES[marge.state]} avatarSize={78}/>
+          <div className="agent-center-wrap">
+            <div className="agent-center-label">✦ CENTRAL COMMAND ✦</div>
+            <AgentStation agentId="maggie" state={maggie.state} lastMessage={maggie.lastMessage} stateClass={ANIMATION_CLASSES[maggie.state]} avatarSize={100}/>
           </div>
-          <div className="cr-maggie">
-            <div style={{ width: '100%', maxWidth: 560 }}>
-              <AgentStation agent={maggie} isCentral={true}/>
-            </div>
-          </div>
-          <div className="cr-left">
-            <div className="station-slot"><AgentStation agent={homer}/></div>
-            <div className="station-slot"><AgentStation agent={bart}/></div>
-          </div>
-          <div className="cr-right">
-            <div className="station-slot"><AgentStation agent={marge}/></div>
-            <div className="station-slot"><AgentStation agent={lisa}/></div>
-          </div>
-          <div className="cr-ticker">
-            <ActivityTicker events={tickerEvents}/>
-          </div>
+          <AgentStation agentId="lisa" state={lisa.state} lastMessage={lisa.lastMessage} stateClass={ANIMATION_CLASSES[lisa.state]} avatarSize={78}/>
+          <AgentStation agentId="bart" state={bart.state} lastMessage={bart.lastMessage} stateClass={ANIMATION_CLASSES[bart.state]} avatarSize={72}/>
         </div>
+        <PlantLog events={tickerEvents}/>
         {error && (
-          <div style={{
-            position: 'fixed', bottom: 56, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(255,51,51,0.12)',
-            border: '1px solid rgba(255,51,51,0.5)',
-            borderRadius: 4, padding: '6px 16px',
-            fontFamily: FONT_MONO, fontSize: 10, color: '#ff3333',
-            letterSpacing: '0.1em', zIndex: 200,
-          }}> ⚠ {error.toUpperCase()} </div>
+          <div style={{ position:'fixed', bottom:52, left:'50%', transform:'translateX(-50%)', background:'rgba(255,51,51,0.12)', border:'1px solid rgba(255,51,51,0.5)', borderRadius:4, padding:'5px 14px', fontFamily:FONT, fontSize:10, color:'#ff3322', letterSpacing:'0.1em', zIndex:300, }}> ⚠ COMMS FAULT </div>
         )}
       </div>
     </>
