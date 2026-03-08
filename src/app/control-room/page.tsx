@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 
 const ControlRoom = dynamic(
-  () => import('@/components/control-room/ControlRoom'),
+  () => import('@/components/control-room/ControlRoomScene'),
   {
     ssr: false,
     loading: () => (
