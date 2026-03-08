@@ -402,12 +402,12 @@ export default function ControlRoom() {
           opacity: 0.25;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
         }
-        .agents-layer { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 16px; z-index: 4; }
-        .agent-center-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
-        .agent-center-label { font-family: "Courier New", monospace; font-size: 7px; letter-spacing: 0.3em; color: rgba(236,72,153,0.8); margin-bottom: 4px; }
+        .agents-layer { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 6px; z-index: 4; }
+        .agent-center-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 8px; }
+        .agent-center-label { font-family: "Courier New", monospace; font-size: 7px; letter-spacing: 0.3em; color: rgba(236,72,153,0.8); margin-bottom: 2px; }
         @media (max-width: 768px) {
           .cr-scene-root { height: auto; min-height: 100vh; overflow-y: auto; }
-          .agents-layer { position: relative; bottom: auto; flex-direction: column; align-items: center; padding: 190px 16px 60px; gap: 20px; }
+          .agents-layer { position: relative; bottom: auto; flex-direction: column; align-items: center; padding: 150px 16px 40px; gap: 14px; }
           .agent-center-wrap { margin-bottom: 0; }
         }
       `}</style>
@@ -418,14 +418,14 @@ export default function ControlRoom() {
         <Floor/>
         <div style={{ position:'absolute', top:150, left:'50%', transform:'translateX(-50%)', width:600, height:200, background:'radial-gradient(ellipse at center top, rgba(245,197,24,0.06) 0%, transparent 70%)', pointerEvents:'none', zIndex: 3 }}/>
         <div className="agents-layer">
-          <AgentStation agentId="homer" state={homer.state} lastMessage={homer.lastMessage} stateClass={ANIMATION_CLASSES[homer.state]} avatarSize={72}/>
-          <AgentStation agentId="marge" state={marge.state} lastMessage={marge.lastMessage} stateClass={ANIMATION_CLASSES[marge.state]} avatarSize={78}/>
+          <AgentStation agentId="homer" state={homer.state} lastMessage={homer.lastMessage} stateClass={ANIMATION_CLASSES[homer.state]} avatarSize={105}/>
+          <AgentStation agentId="marge" state={marge.state} lastMessage={marge.lastMessage} stateClass={ANIMATION_CLASSES[marge.state]} avatarSize={115}/>
           <div className="agent-center-wrap">
             <div className="agent-center-label">✦ CENTRAL COMMAND ✦</div>
-            <AgentStation agentId="maggie" state={maggie.state} lastMessage={maggie.lastMessage} stateClass={ANIMATION_CLASSES[maggie.state]} avatarSize={100}/>
+            <AgentStation agentId="maggie" state={maggie.state} lastMessage={maggie.lastMessage} stateClass={ANIMATION_CLASSES[maggie.state]} avatarSize={140}/>
           </div>
-          <AgentStation agentId="lisa" state={lisa.state} lastMessage={lisa.lastMessage} stateClass={ANIMATION_CLASSES[lisa.state]} avatarSize={78}/>
-          <AgentStation agentId="bart" state={bart.state} lastMessage={bart.lastMessage} stateClass={ANIMATION_CLASSES[bart.state]} avatarSize={72}/>
+          <AgentStation agentId="lisa" state={lisa.state} lastMessage={lisa.lastMessage} stateClass={ANIMATION_CLASSES[lisa.state]} avatarSize={115}/>
+          <AgentStation agentId="bart" state={bart.state} lastMessage={bart.lastMessage} stateClass={ANIMATION_CLASSES[bart.state]} avatarSize={105}/>
         </div>
         <PlantLog events={tickerEvents}/>
         {error && (
