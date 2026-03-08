@@ -127,7 +127,7 @@ export async function GET() {
           }
         })
       },
-      build: process.env.NEXT_PUBLIC_BUILD_STAMP || "v1.6.4-HEAL-ESCALATE",
+      build: process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_URL || process.env.NEXT_PUBLIC_BUILD_STAMP || "v1.6.4-HEAL-ESCALATE",
       timestamp: Date.now()
     };
 

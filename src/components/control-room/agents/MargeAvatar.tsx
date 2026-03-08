@@ -6,48 +6,40 @@ interface MargeAvatarProps {
   size?: number;
 }
 
-export const MargeAvatar: React.FC<MargeAvatarProps> = ({ state, size = 100 }) => {
-  const glowColor = STATE_COLORS[state];
+export const MargeAvatar: React.FC<MargeAvatarProps> = ({ state, size = 90 }) => {
+  const c = STATE_COLORS[state];
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="marge-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={glowColor} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={glowColor} stopOpacity="0" />
+        <radialGradient id="m-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={c} stopOpacity="0.25"/>
+          <stop offset="100%" stopColor={c} stopOpacity="0"/>
         </radialGradient>
       </defs>
-      <circle cx="50" cy="50" r="48" fill="url(#marge-glow)" />
-      {/* Body - red dress */}
-      <ellipse cx="50" cy="80" rx="18" ry="14" fill="#C0392B" />
-      {/* Neck */}
-      <rect x="44" y="63" width="12" height="8" rx="4" fill="#F5C542" />
-      {/* Head */}
-      <ellipse cx="50" cy="58" rx="18" ry="20" fill="#F5C542" />
-      {/* Eyes */}
-      <circle cx="43" cy="55" r="3.5" fill="white" />
-      <circle cx="57" cy="55" r="3.5" fill="white" />
-      <circle cx="43.5" cy="55.5" r="2" fill="#2a1a0a" />
-      <circle cx="57.5" cy="55.5" r="2" fill="#2a1a0a" />
-      <circle cx="44" cy="54.5" r="0.8" fill="white" opacity="0.6" />
-      <circle cx="58" cy="54.5" r="0.8" fill="white" opacity="0.6" />
-      {/* Eyelashes */}
-      <path d="M40 52.5 Q41 51 43 52" stroke="#2a1a0a" strokeWidth="1" fill="none" />
-      <path d="M54 52.5 Q55 51 57 52" stroke="#2a1a0a" strokeWidth="1" fill="none" />
-      {/* Nose */}
-      <ellipse cx="50" cy="60" rx="3" ry="2.5" fill="#E8A830" />
-      {/* Smile */}
-      <path d="M44 65 Q50 69 56 65" stroke="#c07020" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-      {/* Ears */}
-      <ellipse cx="32" cy="57" rx="3.5" ry="4" fill="#F5C542" />
-      <ellipse cx="68" cy="57" rx="3.5" ry="4" fill="#F5C542" />
-      {/* Marge's iconic tall blue hair */}
-      <path d="M32 48 Q30 30 38 18 Q44 8 50 6 Q56 8 62 18 Q70 30 68 48" fill="#1E3A8A" />
-      <path d="M35 46 Q33 28 40 16 Q46 7 50 6" fill="#2563EB" opacity="0.4" />
-      {/* Hair texture lines */}
-      <path d="M42 10 Q44 20 42 32" stroke="#1E3A8A" strokeWidth="1" fill="none" opacity="0.6" />
-      <path d="M50 6 Q50 18 49 30" stroke="#3B82F6" strokeWidth="1" fill="none" opacity="0.4" />
-      {/* State dot */}
-      <circle cx="82" cy="18" r="5" fill={glowColor} opacity="0.9" />
+      <circle cx="45" cy="45" r="43" fill="url(#m-glow)"/>
+      <path d="M18 90 Q22 70 45 67 Q68 70 72 90Z" fill="#1e2d5a"/>
+      <path d="M38 67 L45 75 L35 72Z" fill="#2a3d6e"/>
+      <path d="M52 67 L45 75 L55 72Z" fill="#2a3d6e"/>
+      <ellipse cx="45" cy="65" rx="10" ry="3" fill="none" stroke="#d4d4d4" strokeWidth="2" strokeDasharray="3 2"/>
+      <rect x="39" y="56" width="12" height="12" rx="5" fill="#F5C542"/>
+      <ellipse cx="45" cy="50" rx="18" ry="20" fill="#F5C542"/>
+      <rect x="27" y="44" width="32" height="10" rx="3" fill="#111" opacity="0.92"/>
+      <rect x="28" y="45" width="13" height="8" rx="2" fill="#1a0a2e" opacity="0.95"/>
+      <rect x="49" y="45" width="9" height="8" rx="2" fill="#1a0a2e" opacity="0.95"/>
+      <rect x="41" y="47" width="8" height="3" fill="#222"/>
+      <path d="M30 46 L36 46 L33 50Z" fill="white" opacity="0.12"/>
+      <circle cx="27" cy="52" r="2" fill="#c0c0c0"/>
+      <circle cx="63" cy="52" r="2" fill="#c0c0c0"/>
+      <ellipse cx="45" cy="55" rx="3.5" ry="3" fill="#E8A830"/>
+      <path d="M38 61 Q45 65 52 61" stroke="#c07020" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <ellipse cx="27" cy="50" rx="3.5" ry="4" fill="#F5C542"/>
+      <ellipse cx="63" cy="50" rx="3.5" ry="4" fill="#F5C542"/>
+      <path d="M27 44 Q24 26 32 14 Q38 4 45 2 Q52 4 58 14 Q66 26 63 44" fill="#1E3A8A"/>
+      <path d="M30 42 Q28 24 34 12 Q40 4 45 2" fill="#2563EB" opacity="0.35"/>
+      <path d="M38 6 Q40 18 38 30" stroke="#1E3A8A" strokeWidth="1.2" fill="none" opacity="0.5"/>
+      <path d="M45 2 Q45 16 44 28" stroke="#3B82F6" strokeWidth="1" fill="none" opacity="0.4"/>
+      <circle cx="74" cy="16" r="5" fill={c} opacity="0.95"/>
+      <circle cx="74" cy="16" r="8" fill={c} opacity="0.2"/>
     </svg>
   );
 };

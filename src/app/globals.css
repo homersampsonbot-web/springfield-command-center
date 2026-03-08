@@ -14,19 +14,59 @@ body {
   min-height: 100vh;
 }
 
-/* subtle scanline */
-body::before {
-  content: '';
-  position: fixed;
+/* Shared Agent Animation System */
+@keyframes agent-breathing {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes agent-thinking-pulse {
+  0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 217, 15, 0.3)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 20px rgba(255, 217, 15, 0.7)); transform: scale(1.02); }
+}
+
+@keyframes agent-active-glow {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(126, 211, 33, 0.4)); }
+  50% { filter: drop-shadow(0 0 30px rgba(126, 211,  green, 0.8)); }
+}
+
+@keyframes agent-failed-pulse {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 80, 80, 0.6)); opacity: 1; }
+  50% { filter: drop-shadow(0 0 25px rgba(255, 80, 80, 1)); opacity: 0.8; }
+}
+
+@keyframes agent-complete-flash {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.8) drop-shadow(0 0 30px #fff); }
+  100% { filter: brightness(1); }
+}
+
+.agent-idle { animation: agent-breathing 4s ease-in-out infinite; }
+.agent-thinking { animation: agent-thinking-pulse 2s ease-in-out infinite; }
+.agent-active { animation: agent-active-glow 1.5s ease-in-out infinite; }
+.agent-failed { animation: agent-failed-pulse 1.5s ease-in-out infinite; }
+.agent-complete { animation: agent-complete-flash 1s ease-in-out; }
+
+/* Room Shell Elements */
+.control-room-shell {
+  position: absolute;
   inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.02),
-    rgba(255,255,255,0.02) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  opacity: 0.15;
-  z-index: 0;
+  background: radial-gradient(circle at 50% 30%, #1a1a2e 0%, #080810 100%);
+  z-index: -1;
+}
+
+.room-floor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: 
+    linear-gradient(to bottom, transparent, rgba(255,217,15,0.03)),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0, rgba(255,255,255,0.01) 1px, transparent 0, transparent 50%),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,0.01) 0, rgba(255,255,255,0.01) 1px, transparent 0, transparent 50%);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+  transform: perspective(500px) rotateX(20deg);
+  transform-origin: bottom;
+  border-top: 1px solid rgba(255,217,15,0.1);
 }

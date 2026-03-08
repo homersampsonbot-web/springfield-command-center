@@ -6,45 +6,35 @@ interface BartAvatarProps {
   size?: number;
 }
 
-export const BartAvatar: React.FC<BartAvatarProps> = ({ state, size = 100 }) => {
-  const glowColor = STATE_COLORS[state];
+export const BartAvatar: React.FC<BartAvatarProps> = ({ state, size = 90 }) => {
+  const c = STATE_COLORS[state];
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="bart-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={glowColor} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={glowColor} stopOpacity="0" />
+        <radialGradient id="b-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={c} stopOpacity="0.25"/>
+          <stop offset="100%" stopColor={c} stopOpacity="0"/>
         </radialGradient>
       </defs>
-      <circle cx="50" cy="50" r="48" fill="url(#bart-glow)" />
-      {/* Body - orange shirt */}
-      <ellipse cx="50" cy="82" rx="16" ry="12" fill="#F97316" />
-      {/* Neck */}
-      <rect x="45" y="69" width="10" height="7" rx="3" fill="#F5C542" />
-      {/* Head */}
-      <ellipse cx="50" cy="61" rx="18" ry="19" fill="#F5C542" />
-      {/* Eyes - mischievous */}
-      <circle cx="43" cy="58" r="3.5" fill="white" />
-      <circle cx="57" cy="58" r="3.5" fill="white" />
-      <circle cx="43.5" cy="58.5" r="2.2" fill="#2a1a0a" />
-      <circle cx="57.5" cy="58.5" r="2.2" fill="#2a1a0a" />
-      <circle cx="44" cy="57.5" r="0.9" fill="white" opacity="0.6" />
-      <circle cx="58" cy="57.5" r="0.9" fill="white" opacity="0.6" />
-      {/* Mischievous eyebrows - angled inward */}
-      <path d="M39.5 54 Q42 52.5 45 53.5" stroke="#2a1a0a" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-      <path d="M55 53.5 Q58 52.5 60.5 54" stroke="#2a1a0a" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-      {/* Nose */}
-      <ellipse cx="50" cy="63" rx="3" ry="2.5" fill="#E8A830" />
-      {/* Smirk */}
-      <path d="M44 68 Q49 72 56 69" stroke="#c07020" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-      {/* Ears */}
-      <ellipse cx="32" cy="60" rx="3.5" ry="4" fill="#F5C542" />
-      <ellipse cx="68" cy="60" rx="3.5" ry="4" fill="#F5C542" />
-      {/* Bart's spiky hair - 9 spikes */}
-      <path d="M32 54 L36 40 L40 52 L43 36 L46 50 L50 34 L54 50 L57 36 L60 52 L64 40 L68 54" 
-            fill="#F5C542" stroke="#E8A830" strokeWidth="1" strokeLinejoin="round" />
-      {/* State dot */}
-      <circle cx="82" cy="18" r="5" fill={glowColor} opacity="0.9" />
+      <circle cx="45" cy="45" r="43" fill="url(#b-glow)"/>
+      <path d="M16 90 Q22 70 45 67 Q68 70 74 90Z" fill="#cc2222"/>
+      <path d="M43 67 L47 67 L46 82 L45 84 L44 82Z" fill="#1a6aa8"/>
+      <rect x="39" y="59" width="12" height="11" rx="5" fill="#F5C542"/>
+      <ellipse cx="45" cy="53" rx="19" ry="20" fill="#F5C542"/>
+      <rect x="26" y="47" width="38" height="11" rx="3" fill="#111" opacity="0.92"/>
+      <rect x="27" y="48" width="16" height="9" rx="2" fill="#0a1e34" opacity="0.95"/>
+      <rect x="47" y="48" width="16" height="9" rx="2" fill="#0a1e34" opacity="0.95"/>
+      <rect x="43" y="51" width="4" height="4" fill="#222"/>
+      <path d="M29 49 L37 49 L34 54Z" fill="white" opacity="0.12"/>
+      <path d="M35 64 Q45 70 55 65" stroke="#c07020" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M38 64 Q45 68 52 65 L50 67 Q45 70 40 67Z" fill="white" opacity="0.8"/>
+      <ellipse cx="26" cy="53" rx="4" ry="4.5" fill="#F5C542"/>
+      <ellipse cx="64" cy="53" rx="4" ry="4.5" fill="#F5C542"/>
+      <path d="M26 48 L31 34 L36 46 L39 30 L43 44 L45 26 L47 44 L51 30 L55 46 L59 34 L64 48" fill="#F5C542" stroke="#E8A830" strokeWidth="1.2" strokeLinejoin="round"/>
+      <path d="M28 46 Q33 43 38 45" stroke="#1a0a00" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M52 45 Q57 43 62 46" stroke="#1a0a00" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <circle cx="74" cy="16" r="5" fill={c} opacity="0.95"/>
+      <circle cx="74" cy="16" r="8" fill={c} opacity="0.2"/>
     </svg>
   );
 };

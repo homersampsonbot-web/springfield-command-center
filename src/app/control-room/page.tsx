@@ -9,18 +9,18 @@ const ControlRoom = dynamic(
     loading: () => (
       <div style={{
         minHeight: '100vh',
-        background: '#0a0a0f',
+        background: '#0c0e0a',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontFamily: '"Courier New", monospace',
         color: '#f5c842',
-        fontSize: '14px',
-        letterSpacing: '0.15em'
+        fontSize: '13px',
+        letterSpacing: '0.2em',
       }}>
-        INITIALIZING CONTROL ROOM...
+        ◉ INITIALIZING CONTROL ROOM...
       </div>
-    )
+    ),
   }
 );
 

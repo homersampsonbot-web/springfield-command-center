@@ -135,7 +135,7 @@ export function useControlRoomData(): ControlRoomData {
       }
     } catch (err) {
       if (mounted.current) {
-        setData(prev => ({ ...prev, error: 'Data fetch failed' }));
+        setData(prev => ({ ...prev, error: 'Comms fault — retrying' }));
       }
     }
   }, []);
