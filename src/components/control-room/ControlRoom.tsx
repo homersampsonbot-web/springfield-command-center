@@ -19,6 +19,7 @@ const C = {
   floorLine: '#3c261a',
   console: '#8b7ba8',
   consoleDark: '#6f6388',
+  blue: '#42d9f5',
   amber: '#f5c518',
   orange: '#e85c00',
   green: '#00e87a',
