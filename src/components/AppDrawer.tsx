@@ -9,9 +9,10 @@ export default function AppDrawer({ isOpen, onOpen, onClose }: { isOpen: boolean
 
   const navItems = [
     { label: 'Mission Control', icon: <Zap size={18} />, href: '/' },
+    { label: 'Control Room', icon: <Layout size={18} />, href: '/control-room' },
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
     { label: 'Debates', icon: <Layout size={18} />, href: '/debate' },
-    { label: 'Team (soon)', icon: <Users size={18} />, href: '/team' },
+    { label: 'Team', icon: <Users size={18} />, href: '/team' },
     { label: 'Agents', icon: <ExternalLink size={18} />, href: '/agents' },
   ];
 
