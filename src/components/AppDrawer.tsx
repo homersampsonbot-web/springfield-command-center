@@ -1,26 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { Menu, X, Layout, Zap, Users, ExternalLink, ChevronRight, ChevronDown } from 'lucide-react';
+import { Menu, X, Layout, Zap, Users } from 'lucide-react';
 
 export default function AppDrawer({ isOpen, onOpen, onClose }: { isOpen: boolean; onOpen: () => void; onClose: () => void; authStamp?: string }) {
-  const [agentsExpanded, setAgentsExpanded] = useState(false);
-
   const navItems = [
     { label: 'Mission Control', icon: <Zap size={18} />, href: '/' },
     { label: 'Control Room', icon: <Layout size={18} />, href: '/control-room' },
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
     { label: 'Debates', icon: <Layout size={18} />, href: '/debate' },
     { label: 'Team', icon: <Users size={18} />, href: '/team' },
-    { label: 'Agents', icon: <ExternalLink size={18} />, href: '/agents' },
-  ];
-
-  const relayItems = [
-    { label: 'Homer (soon)', href: '/agents/homer' },
-    { label: 'Marge (soon)', href: '/agents/marge' },
-    { label: 'Lisa (soon)', href: '/agents/lisa' },
-    { label: 'Maggie (soon)', href: '/agents/maggie' },
   ];
 
   return (
@@ -111,48 +101,6 @@ export default function AppDrawer({ isOpen, onOpen, onClose }: { isOpen: boolean
             {item.label}
           </Link>
         ))}
-
-        <button 
-          onClick={() => setAgentsExpanded(!agentsExpanded)}
-          style={{ 
-            marginTop: 16, 
-            padding: '8px 12px', 
-            fontSize: 11, 
-            color: 'rgba(255,255,255,0.5)', 
-            textTransform: 'uppercase', 
-            letterSpacing: '0.08em',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            textAlign: 'left'
-          }}
-        >
-          Agents {agentsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </button>
-
-        {agentsExpanded && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, paddingLeft: 8 }}>
-            {relayItems.map((item, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  background: 'rgba(255,255,255,0.02)',
-                  color: 'rgba(255,255,255,0.6)',
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  fontSize: 13
-                }}
-              >
-                {item.label}
-              </div>
-            ))}
-          </div>
-        )}
-
       </div>
     </>
   );

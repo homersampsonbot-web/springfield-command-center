@@ -83,6 +83,7 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchMessages = async () => {
@@ -135,7 +136,39 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
   };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, gap: isMobile ? 4 : 8 }}>
+    <div style={{
+      display:'flex',
+      flexDirection:'column',
+      flex:1,
+      minHeight:0,
+      gap: isMobile ? 4 : 8,
+      height: isChatExpanded ? '100vh' : '100%',
+      position: isChatExpanded ? 'fixed' : 'relative',
+      inset: isChatExpanded ? 0 : 'auto',
+      zIndex: isChatExpanded ? 1000 : 'auto',
+      background: isChatExpanded ? '#0b0d12' : 'transparent',
+      padding: isChatExpanded ? '16px 16px 0' : 0,
+      transition: 'all 200ms ease',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding: isChatExpanded ? '4px 4px 8px' : '0 2px', }}>
+        <div style={{ fontFamily:'Permanent Marker', fontSize: 12, letterSpacing:'0.2em', color:'#FFD90F' }}>TEAM CHAT</div>
+        <button
+          onClick={() => setIsChatExpanded(!isChatExpanded)}
+          style={{
+            border:'1px solid rgba(255,217,15,0.3)',
+            background:'rgba(255,217,15,0.08)',
+            color:'#FFD90F',
+            padding:'4px 8px',
+            borderRadius:6,
+            fontSize:12,
+            cursor:'pointer'
+          }}
+          aria-label={isChatExpanded ? 'Collapse chat' : 'Expand chat'}
+        >
+          {isChatExpanded ? '⤡' : '⤢'}
+        </button>
+      </div>
+
       {/* Agent Badges */}
       <div style={{ display:'flex', gap:6, padding: isMobile ? '2px 0 4px' : '4px 0 10px', flexWrap:'wrap' }}>
         {['homer', 'marge', 'lisa', 'maggie'].map(agent => (
@@ -147,7 +180,7 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:12, padding:12, paddingBottom:120, display:'flex', flexDirection:'column', gap:8 }}>
+      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:12, padding:12, paddingBottom: isChatExpanded ? 80 : 120, display:'flex', flexDirection:'column', gap:8 }}>
         {messages.map((m) => {
           const p = m.payload?.participant || 'SYSTEM';
           const isUser = m.payload?.source === 'user';
