@@ -166,23 +166,32 @@ function Station({
   align?: 'center'|'left'|'right';
 }) {
   const stateColor = STATE_COLORS[state];
+  const isMaggie = id === 'maggie';
+  const consoleW = isMaggie ? 190 : 160;
+  const consoleH = isMaggie ? 82 : 64;
+  const avatarSize = isMaggie ? 120 : 88;
   return (
-    <div className={`station ${ANIMATION_CLASSES[state]}`} style={{ position:'relative', transform:`scale(${scale})`, transformOrigin:'center' }}>
+    <div
+      className={`station ${ANIMATION_CLASSES[state]}`}
+      style={{ position:'relative', width: isMaggie ? 220 : 200, height: isMaggie ? 220 : 200, transform:`scale(${scale})`, transformOrigin:'center' }}
+    >
       {lastMessage && (
-        <div className="bubble" style={{ position:'absolute', top:-50, left: align==='left' ? -20 : align==='right' ? 60 : 10 }}>
-          <div style={{ background:'#fff', border:`2px solid ${color}`, borderRadius:10, padding:'4px 8px', fontSize:9, color:'#111', maxWidth:120 }}>
+        <div className="bubble" style={{ position:'absolute', bottom: 150, left:'50%', transform:'translateX(-50%)' }}>
+          <div style={{ background:'#fff', border:`2px solid ${color}`, borderRadius:10, padding:'4px 8px', fontSize:9, color:'#111', maxWidth:150, textAlign:'center' }}>
             {lastMessage.slice(0, 40)}
           </div>
         </div>
       )}
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
-        <DeskConsole width={id==='maggie' ? 210 : 170} height={id==='maggie' ? 90 : 70} color={C.console} label={consoleLabel} right={id==='lisa'} />
-        <div style={{ position:'relative', marginTop:-10, zIndex:4 }}>
-          <Avatar state={state} size={id==='maggie' ? 120 : 92} />
-        </div>
-        <div style={{ marginTop:4, fontFamily: FONT, fontSize:8, letterSpacing:'0.2em', color:'#1f1b27' }}>{label}</div>
-        <div style={{ width:70, height:6, borderRadius:3, background: stateColor, opacity:0.7, marginTop:2, boxShadow:`0 0 6px ${stateColor}` }} />
+      <div style={{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)' }}>
+        <DeskConsole width={consoleW} height={consoleH} color={C.console} label={consoleLabel} right={id==='lisa'} />
       </div>
+      <div style={{ position:'absolute', bottom: 56, left:'50%', transform:'translateX(-50%)', zIndex:4 }}>
+        <Avatar state={state} size={avatarSize} />
+      </div>
+      <div style={{ position:'absolute', bottom: 30, left:'50%', transform:'translateX(-50%)', fontFamily: FONT, fontSize:8, letterSpacing:'0.2em', color:'#1f1b27' }}>
+        {label}
+      </div>
+      <div style={{ position:'absolute', bottom: 18, left:'50%', transform:'translateX(-50%)', width:70, height:6, borderRadius:3, background: stateColor, opacity:0.7, boxShadow:`0 0 6px ${stateColor}` }} />
     </div>
   );
 }
