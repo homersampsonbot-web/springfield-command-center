@@ -136,123 +136,129 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
   };
 
   return (
-    <div style={{
-      display:'flex',
-      flexDirection:'column',
-      flex:1,
-      minHeight:0,
-      gap: isMobile ? 4 : 8,
-      height: isChatExpanded ? '100vh' : '100%',
-      position: isChatExpanded ? 'fixed' : 'relative',
-      inset: isChatExpanded ? 0 : 'auto',
-      zIndex: isChatExpanded ? 1000 : 'auto',
-      background: isChatExpanded ? '#0b0d12' : 'transparent',
-      padding: isChatExpanded ? '16px 16px 0' : 0,
-      transition: 'all 200ms ease',
-    }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding: isChatExpanded ? '4px 4px 8px' : '0 2px', }}>
-        <div style={{ fontFamily:'Permanent Marker', fontSize: 12, letterSpacing:'0.2em', color:'#FFD90F' }}>TEAM CHAT</div>
-        <button
-          onClick={() => setIsChatExpanded(!isChatExpanded)}
-          style={{
-            border:'1px solid rgba(255,217,15,0.3)',
-            background:'rgba(255,217,15,0.08)',
-            color:'#FFD90F',
-            padding:'4px 8px',
-            borderRadius:6,
-            fontSize:12,
-            cursor:'pointer'
-          }}
-          aria-label={isChatExpanded ? 'Collapse chat' : 'Expand chat'}
-        >
-          {isChatExpanded ? '⤡' : '⤢'}
-        </button>
-      </div>
-
-      {/* Agent Badges */}
-      <div style={{ display:'flex', gap:6, padding: isMobile ? '2px 0 4px' : '4px 0 10px', flexWrap:'wrap' }}>
-        {['homer', 'marge', 'lisa', 'maggie'].map(agent => (
-          <div key={agent} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,0.05)', padding:'2px 6px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background: statusColor(getAgentStatus(agent)) }} />
-            <span style={{ fontSize:isMobile ? 9 : 10, color:'#fff', textTransform:'capitalize' }}>{agent}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Messages Area */}
-      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:12, padding:12, paddingBottom: isChatExpanded ? 80 : 120, display:'flex', flexDirection:'column', gap:8 }}>
-        {messages.map((m) => {
-          const p = m.payload?.participant || 'SYSTEM';
-          const isUser = m.payload?.source === 'user';
-          const isCheckpoint = m.type === 'THREAD_CHECKPOINT';
-
-          if (isCheckpoint) {
-            return (
-              <div key={m.id} style={{ alignSelf:'center', padding:'4px 12px', borderRadius:8, background:'rgba(255,217,15,0.05)', border:'1px solid rgba(255,217,15,0.2)', color:'#FFD90F', fontSize:10, margin:'10px 0' }}>
-                📍 {m.message}
-              </div>
-            );
-          }
-
-          return (
-            <div key={m.id} style={{ display:'flex', flexDirection:'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
-              <div style={{ fontSize:9, color:'rgba(255,255,255,0.5)', marginBottom:2, display:'flex', gap:4 }}>
-                <span style={{ color: p==='HOMER'?'#FFD90F':p==='MARGE'?'#4cc9f0':p==='LISA'?'#f72585':p==='MAGGIE'?'#7209b7':'#fff', fontWeight:600 }}>{p}</span>
-                <span>{new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-              </div>
-              <div style={{ 
-                maxWidth:'90%', 
-                height: 'auto',
-                padding:'8px 12px', 
-                borderRadius:12, 
-                background: isUser ? '#FFD90F' : 'rgba(255,255,255,0.05)', 
-                color: isUser ? '#000' : '#fff',
-                fontSize:13,
-                border: isUser ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                overflow: 'visible',
-                maxHeight: '60vh',
-                overflowY: 'auto'
-              }}>
-                {m.message}
-              </div>
-            </div>
-          );
-        })}
-        {loading && <div style={{ color:'#FFD90F', fontSize:12 }}>Routing...</div>}
-      </div>
-
-      {/* Sticky Composer */}
-      <div style={{ 
-        position:'sticky', bottom:-1, background:'#12121A', borderTop:'1px solid rgba(255,255,255,0.1)', padding: '6px 0',
-        paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 6px)' : 'env(safe-area-inset-bottom)',
-        display:'flex', flexDirection:'column', gap:4, zIndex: 10
+    <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, height:'100%' }}>
+      <div style={{
+        display:'flex',
+        flexDirection:'column',
+        flex:1,
+        minHeight:0,
+        height:'100%',
+        position: isChatExpanded ? 'fixed' : 'relative',
+        inset: isChatExpanded ? 0 : 'auto',
+        zIndex: isChatExpanded ? 1200 : 'auto',
+        background: isChatExpanded ? '#0b0d12' : 'transparent',
+        padding: isChatExpanded ? '16px 16px 12px' : 0,
+        transition: 'all 200ms ease',
       }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 4px' }}>
-          <button 
-            onClick={() => setShowHint(!showHint)} 
-            style={{ display:'flex', alignItems:'center', gap:4, background:'none', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer', padding:0 }}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding: '4px 4px 8px' }}>
+          <div style={{ fontFamily:'Permanent Marker', fontSize: 12, letterSpacing:'0.2em', color:'#FFD90F' }}>TEAM CHAT</div>
+          <button
+            onClick={() => setIsChatExpanded(!isChatExpanded)}
+            style={{
+              border:'1px solid rgba(255,217,15,0.3)',
+              background:'rgba(255,217,15,0.08)',
+              color:'#FFD90F',
+              padding:'4px 8px',
+              borderRadius:6,
+              fontSize:12,
+              cursor:'pointer'
+            }}
+            aria-label={isChatExpanded ? 'Collapse chat' : 'Expand chat'}
           >
-            <span style={{ width:14, height:14, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9 }}>ⓘ</span>
-            <span style={{ fontSize:10 }}>Routing</span>
+            {isChatExpanded ? '⤡' : '⤢'}
           </button>
-          {showHint && (
-            <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)', background:'rgba(0,0,0,0.2)', padding:'2px 8px', borderRadius:6 }}>
-              no tag = Homer | @marge | @lisa | @maggie | @team
-            </div>
-          )}
         </div>
-        
-        <div style={{ display:'flex', gap:8 }}>
-          <textarea 
-            value={input} 
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(); }}}
-            placeholder="Message team..." 
-            style={{ flex:1, height:44, padding:'10px', borderRadius:10, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.2)', color:'#fff', fontSize:14, resize:'none' }}
-          />
-          <button onClick={send} disabled={loading} style={{ width:60, borderRadius:10, border:'none', background:'#FFD90F', color:'#000', fontWeight:'bold' }}>SEND</button>
+
+        <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, gap: isMobile ? 4 : 8 }}>
+          {/* Agent Badges */}
+          <div style={{ display:'flex', gap:6, padding: isMobile ? '2px 0 4px' : '4px 0 10px', flexWrap:'wrap' }}>
+            {['homer', 'marge', 'lisa', 'maggie'].map(agent => (
+              <div key={agent} style={{ display:'flex', alignItems:'center', gap:4, background:'rgba(255,255,255,0.05)', padding:'2px 6px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ width:6, height:6, borderRadius:'50%', background: statusColor(getAgentStatus(agent)) }} />
+                <span style={{ fontSize:isMobile ? 9 : 10, color:'#fff', textTransform:'capitalize' }}>{agent}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0, background:'rgba(0,0,0,0.3)', borderRadius:12, overflow:'hidden' }}>
+            {/* Messages */}
+            <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:12, display:'flex', flexDirection:'column', gap:8 }}>
+              {messages.map((m) => {
+                const p = m.payload?.participant || 'SYSTEM';
+                const isUser = m.payload?.source === 'user';
+                const isCheckpoint = m.type === 'THREAD_CHECKPOINT';
+
+                if (isCheckpoint) {
+                  return (
+                    <div key={m.id} style={{ alignSelf:'center', padding:'4px 12px', borderRadius:8, background:'rgba(255,217,15,0.05)', border:'1px solid rgba(255,217,15,0.2)', color:'#FFD90F', fontSize:10, margin:'10px 0' }}>
+                      📍 {m.message}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={m.id} style={{ display:'flex', flexDirection:'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.5)', marginBottom:2, display:'flex', gap:4 }}>
+                      <span style={{ color: p==='HOMER'?'#FFD90F':p==='MARGE'?'#4cc9f0':p==='LISA'?'#f72585':p==='MAGGIE'?'#7209b7':'#fff', fontWeight:600 }}>{p}</span>
+                      <span>{new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div style={{
+                      maxWidth:'90%',
+                      padding:'8px 12px',
+                      borderRadius:12,
+                      background: isUser ? '#FFD90F' : 'rgba(255,255,255,0.05)',
+                      color: isUser ? '#000' : '#fff',
+                      fontSize:13,
+                      border: isUser ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}>
+                      {m.message}
+                    </div>
+                  </div>
+                );
+              })}
+              {loading && <div style={{ color:'#FFD90F', fontSize:12 }}>Routing...</div>}
+            </div>
+
+            {/* Input Row */}
+            <div style={{
+              flexShrink:0,
+              background:'#12121A',
+              borderTop:'1px solid rgba(255,255,255,0.1)',
+              padding: '8px',
+              paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 8px)' : 'env(safe-area-inset-bottom)',
+              display:'flex',
+              flexDirection:'column',
+              gap:6,
+            }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 4px' }}>
+                <button
+                  onClick={() => setShowHint(!showHint)}
+                  style={{ display:'flex', alignItems:'center', gap:4, background:'none', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer', padding:0 }}
+                >
+                  <span style={{ width:14, height:14, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9 }}>ⓘ</span>
+                  <span style={{ fontSize:10 }}>Routing</span>
+                </button>
+                {showHint && (
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)', background:'rgba(0,0,0,0.2)', padding:'2px 8px', borderRadius:6 }}>
+                    no tag = Homer | @marge | @lisa | @maggie | @team
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display:'flex', gap:8 }}>
+                <textarea
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(); }}}
+                  placeholder="Message team..."
+                  style={{ flex:1, height:44, padding:'10px', borderRadius:10, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(0,0,0,0.2)', color:'#fff', fontSize:14, resize:'none' }}
+                />
+                <button onClick={send} disabled={loading} style={{ width:60, borderRadius:10, border:'none', background:'#FFD90F', color:'#000', fontWeight:'bold' }}>SEND</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -555,7 +561,7 @@ export default function Home() {
                 ))}
               </div>
 
-              <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', paddingBottom: (isMobile && activeTab === 'team') ? 120 : 0, overflow:'hidden' }}>
+              <div style={{ flex:1, minHeight:0, height:'100%', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                 {activeTab === 'directives' && (
                   <div style={{ display:'flex', flexDirection:'column', gap:10, height:'100%' }}>
                      <div style={{ display:'flex', gap:6, flexShrink:0 }}>
