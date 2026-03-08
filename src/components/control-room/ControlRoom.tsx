@@ -194,6 +194,7 @@ function BackWall({ health, lastUpdated }: { health: any; lastUpdated: Date | nu
       padding:'0 20px',
       gap:12,
       overflow:'hidden',
+      zIndex: 1,
     }}>
       <div style={{ position:'absolute', left:0, top:0, bottom:0, width:70, background: C.wallDeep, borderRight:'3px solid #2b3f55', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div style={{ transform:'rotate(-90deg)' }}><HazardStripe width={120} height={10} colors={[C.orange, '#111']} /></div>
@@ -270,7 +271,7 @@ function BackWall({ health, lastUpdated }: { health: any; lastUpdated: Date | nu
 
 function Floor() {
   return (
-    <div style={{ position:'absolute', bottom:44, left:0, right:0, height:'50%', backgroundImage:`repeating-linear-gradient(90deg, ${C.floor} 0, ${C.floor} 79px, ${C.floorLine} 79px, ${C.floorLine} 80px), repeating-linear-gradient(0deg, ${C.floor} 0, ${C.floor} 39px, ${C.floorLine} 39px, ${C.floorLine} 40px)`, borderTop:`4px solid ${C.orange}`, }}/>
+    <div style={{ position:'absolute', top:0, bottom:44, left:0, right:0, background: C.floor, backgroundImage:`repeating-linear-gradient(90deg, ${C.floor} 0, ${C.floor} 79px, ${C.floorLine} 79px, ${C.floorLine} 80px), repeating-linear-gradient(0deg, ${C.floor} 0, ${C.floor} 39px, ${C.floorLine} 39px, ${C.floorLine} 40px)`, borderTop:`4px solid ${C.orange}`, zIndex: 0 }}/>
   );
 }
 
@@ -355,7 +356,7 @@ function PlantLog({ events }: { events: any[] }) {
   ];
   const items = [...display,...display,...display];
   return (
-    <div style={{ position:'absolute', bottom:0, left:0, right:0, height:44, background:'rgba(4,6,4,0.97)', borderTop:`1px solid ${C.orange}`, display:'flex', alignItems:'center', overflow:'hidden', zIndex:20, }}>
+    <div style={{ position:'absolute', bottom:0, left:0, right:0, height:44, background:'rgba(4,6,4,0.97)', borderTop:`1px solid ${C.orange}`, display:'flex', alignItems:'center', overflow:'hidden', zIndex:5, }}>
       <div style={{ flexShrink:0, width:90, height:'100%', background:'rgba(0,0,0,0.5)', borderRight:'1px solid rgba(120,140,90,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, }}>
         <div style={{ fontFamily:FONT, fontSize:6, letterSpacing:'0.2em', color:C.orange }}>PLANT LOG</div>
         <div style={{ width:8, height:8, borderRadius:'50%', background:C.green, boxShadow:`0 0 6px ${C.green}`, animation:'indicatorPulse 2s ease-in-out infinite' }}/>
@@ -400,7 +401,7 @@ export default function ControlRoom() {
           opacity: 0.25;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
         }
-        .agents-layer { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 16px; }
+        .agents-layer { position: absolute; bottom: 44px; left: 0; right: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 16px; z-index: 4; }
         .agent-center-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
         .agent-center-label { font-family: "Courier New", monospace; font-size: 7px; letter-spacing: 0.3em; color: rgba(236,72,153,0.8); margin-bottom: 4px; }
         @media (max-width: 768px) {
@@ -411,10 +412,10 @@ export default function ControlRoom() {
       `}</style>
       <div className="cr-scene-root">
         <BackWall health={systemHealth} lastUpdated={lastUpdated}/>
-        <Pipes style={{ left:0, top:110, opacity:0.5 }}/>
-        <Pipes style={{ right:0, top:90, opacity:0.5, transform:'scaleX(-1)' }}/>
+        <Pipes style={{ left:0, top:110, opacity:0.5, zIndex: 2 }}/>
+        <Pipes style={{ right:0, top:90, opacity:0.5, transform:'scaleX(-1)', zIndex: 2 }}/>
         <Floor/>
-        <div style={{ position:'absolute', top:150, left:'50%', transform:'translateX(-50%)', width:600, height:200, background:'radial-gradient(ellipse at center top, rgba(245,197,24,0.06) 0%, transparent 70%)', pointerEvents:'none', }}/>
+        <div style={{ position:'absolute', top:150, left:'50%', transform:'translateX(-50%)', width:600, height:200, background:'radial-gradient(ellipse at center top, rgba(245,197,24,0.06) 0%, transparent 70%)', pointerEvents:'none', zIndex: 3 }}/>
         <div className="agents-layer">
           <AgentStation agentId="homer" state={homer.state} lastMessage={homer.lastMessage} stateClass={ANIMATION_CLASSES[homer.state]} avatarSize={72}/>
           <AgentStation agentId="marge" state={marge.state} lastMessage={marge.lastMessage} stateClass={ANIMATION_CLASSES[marge.state]} avatarSize={78}/>
