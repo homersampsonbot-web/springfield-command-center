@@ -123,22 +123,22 @@ function RadiationWallSymbols() {
   );
 }
 
-function DeskConsole({ width = 180, height = 70, color = C.console, label, right = false }: { width?: number; height?: number; color?: string; label?: string; right?: boolean }) {
+function DeskConsole({ width = 160, height = 56, color = '#8f83a8', label, right = false }: { width?: number; height?: number; color?: string; label?: string; right?: boolean }) {
   return (
-    <div style={{ position:'relative', width, height, background: color, border:'2px solid #3b2c4e', borderRadius:10, boxShadow:'0 4px 0 #2b2038', zIndex:3 }}>
-      <div style={{ position:'absolute', top:8, left:10, right:10, height:22, background:'#161316', borderRadius:6, border:'1px solid #2a2330' }} />
-      <div style={{ position:'absolute', top:38, left:10, display:'flex', gap:6 }}>
+    <div style={{ position:'relative', width, height, background: color, border:'1px solid #4a3f5b', borderRadius:8, boxShadow:'0 2px 0 #3a3247', zIndex:3 }}>
+      <div style={{ position:'absolute', top:6, left:8, right:8, height:18, background:'#161316', borderRadius:5, border:'1px solid #2a2330' }} />
+      <div style={{ position:'absolute', top:30, left:8, display:'flex', gap:5 }}>
         {[C.green, C.orange, '#f472b6', '#8b5cf6'].map((col, i) => (
-          <div key={i} style={{ width:10, height:10, borderRadius:'50%', background: col, boxShadow:`0 0 6px ${col}99` }} />
+          <div key={i} style={{ width:8, height:8, borderRadius:'50%', background: col, boxShadow:`0 0 4px ${col}88` }} />
         ))}
       </div>
       {label && (
-        <div style={{ position:'absolute', bottom:6, right:10, fontFamily: FONT, fontSize:8, color:'#1f1b27', opacity:0.75 }}>
+        <div style={{ position:'absolute', bottom:5, right:8, fontFamily: FONT, fontSize:7, color:'#1f1b27', opacity:0.7 }}>
           {label}
         </div>
       )}
       {right && (
-        <div style={{ position:'absolute', right:-24, top:10, width:18, height:50, background:'#2b2038', borderRadius:4 }} />
+        <div style={{ position:'absolute', right:-18, top:8, width:14, height:40, background:'#2b2038', borderRadius:4 }} />
       )}
     </div>
   );
@@ -167,17 +167,17 @@ function Station({
 }) {
   const stateColor = STATE_COLORS[state];
   const isMaggie = id === 'maggie';
-  const consoleW = isMaggie ? 190 : 160;
-  const consoleH = isMaggie ? 82 : 64;
-  const avatarSize = isMaggie ? 120 : 88;
+  const consoleW = isMaggie ? 168 : 150;
+  const consoleH = isMaggie ? 60 : 52;
+  const avatarSize = isMaggie ? 96 : 72;
   return (
     <div
       className={`station ${ANIMATION_CLASSES[state]}`}
-      style={{ position:'relative', width: 180, height: 200, transform:`scale(${scale})`, transformOrigin:'center' }}
+      style={{ position:'relative', width: 150, height: 170, transform:`scale(${scale})`, transformOrigin:'center' }}
     >
       {lastMessage && (
-        <div className="bubble" style={{ position:'absolute', bottom: 150, left:'50%', transform:'translateX(-50%)' }}>
-          <div style={{ background:'#fff', border:`2px solid ${color}`, borderRadius:10, padding:'4px 8px', fontSize:9, color:'#111', maxWidth:150, textAlign:'center' }}>
+        <div className="bubble" style={{ position:'absolute', bottom: 130, left:'50%', transform:'translateX(-50%)' }}>
+          <div style={{ background:'#fff', border:`2px solid ${color}`, borderRadius:10, padding:'3px 6px', fontSize:8, color:'#111', maxWidth:140, textAlign:'center' }}>
             {lastMessage.slice(0, 40)}
           </div>
         </div>
@@ -185,13 +185,13 @@ function Station({
       <div style={{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)' }}>
         <DeskConsole width={consoleW} height={consoleH} color={C.console} label={consoleLabel} right={id==='lisa'} />
       </div>
-      <div style={{ position:'absolute', bottom: 56, left:'50%', transform:'translateX(-50%)', zIndex:4 }}>
+      <div style={{ position:'absolute', bottom: 46, left:'50%', transform:'translateX(-50%)', zIndex:4 }}>
         <Avatar state={state} size={avatarSize} />
       </div>
-      <div style={{ position:'absolute', bottom: 30, left:'50%', transform:'translateX(-50%)', fontFamily: FONT, fontSize:8, letterSpacing:'0.2em', color:'#1f1b27' }}>
+      <div style={{ position:'absolute', bottom: 26, left:'50%', transform:'translateX(-50%)', fontFamily: FONT, fontSize:7, letterSpacing:'0.2em', color:'#1f1b27' }}>
         {label}
       </div>
-      <div style={{ position:'absolute', bottom: 18, left:'50%', transform:'translateX(-50%)', width:70, height:6, borderRadius:3, background: stateColor, opacity:0.7, boxShadow:`0 0 6px ${stateColor}` }} />
+      <div style={{ position:'absolute', bottom: 16, left:'50%', transform:'translateX(-50%)', width:58, height:5, borderRadius:3, background: stateColor, opacity:0.6, boxShadow:`0 0 4px ${stateColor}` }} />
     </div>
   );
 }
@@ -207,10 +207,10 @@ function ConnectionLines() {
         </linearGradient>
       </defs>
       {[
-        { x1: 50, y1: 56, x2: 18, y2: 40 },
-        { x1: 50, y1: 56, x2: 82, y2: 40 },
-        { x1: 50, y1: 56, x2: 28, y2: 63 },
-        { x1: 50, y1: 56, x2: 72, y2: 63 },
+        { x1: 50, y1: 62, x2: 18, y2: 38 },
+        { x1: 50, y1: 62, x2: 82, y2: 38 },
+        { x1: 50, y1: 62, x2: 22, y2: 68 },
+        { x1: 50, y1: 62, x2: 78, y2: 68 },
       ].map((l, i) => (
         <g key={i}>
           <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#d27bff" strokeDasharray="2 3" strokeWidth="0.4" opacity="0.7" />
@@ -278,20 +278,22 @@ export default function ControlRoom() {
         <RearDoor />
 
         <div style={{ position:'absolute', inset:0, zIndex:3 }}>
-          <div style={{ position:'absolute', left:'50%', top:'55%', transform:'translate(-50%, -50%)' }}>
-            <Station id="maggie" label="MAGGIE" state={maggie.state} lastMessage={maggie.lastMessage} Avatar={MaggieAvatar} color="#ec4899" consoleLabel="ORCH" scale={1.18} />
+          <div style={{ position:'absolute', left:'50%', top:'62%', transform:'translate(-50%, -50%)', zIndex:3 }}>
+            <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', width:200, height:70, borderRadius:'50%', background:'radial-gradient(ellipse at center, rgba(236,72,153,0.35) 0%, rgba(139,92,246,0.15) 50%, rgba(17,16,22,0.2) 70%, transparent 75%)', border:'2px solid #4b2b55', boxShadow:'0 8px 18px rgba(0,0,0,0.35)', zIndex:1 }} />
+            <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', width:150, height:52, borderRadius:'50%', border:'2px solid rgba(255,217,15,0.45)', boxShadow:'0 0 16px rgba(255,217,15,0.25)', zIndex:2 }} />
+            <Station id="maggie" label="MAGGIE" state={maggie.state} lastMessage={maggie.lastMessage} Avatar={MaggieAvatar} color="#ec4899" consoleLabel="ORCH" scale={1.0} />
           </div>
-          <div style={{ position:'absolute', left:'25%', top:'32%', transform:'translate(-50%, -50%)' }}>
-            <Station id="homer" label="HOMER" state={homer.state} lastMessage={homer.lastMessage} Avatar={HomerAvatar} color="#f97316" consoleLabel="EXEC" scale={1.0} align="left" />
+          <div style={{ position:'absolute', left:'18%', top:'38%', transform:'translate(-50%, -50%)' }}>
+            <Station id="homer" label="HOMER" state={homer.state} lastMessage={homer.lastMessage} Avatar={HomerAvatar} color="#f97316" consoleLabel="EXEC" scale={0.85} align="left" />
           </div>
-          <div style={{ position:'absolute', left:'75%', top:'32%', transform:'translate(-50%, -50%)' }}>
-            <Station id="marge" label="MARGE" state={marge.state} lastMessage={marge.lastMessage} Avatar={MargeAvatar} color="#3b82f6" consoleLabel="ARCH" scale={1.05} align="right" />
+          <div style={{ position:'absolute', left:'82%', top:'38%', transform:'translate(-50%, -50%)' }}>
+            <Station id="marge" label="MARGE" state={marge.state} lastMessage={marge.lastMessage} Avatar={MargeAvatar} color="#3b82f6" consoleLabel="ARCH" scale={0.85} align="right" />
           </div>
-          <div style={{ position:'absolute', left:'30%', top:'78%', transform:'translate(-50%, -50%)' }}>
-            <Station id="bart" label="BART" state={bart.state} lastMessage={bart.lastMessage} Avatar={BartAvatar} color="#22c55e" consoleLabel="QA" scale={0.95} align="left" />
+          <div style={{ position:'absolute', left:'22%', top:'68%', transform:'translate(-50%, -50%)' }}>
+            <Station id="bart" label="BART" state={bart.state} lastMessage={bart.lastMessage} Avatar={BartAvatar} color="#22c55e" consoleLabel="QA" scale={0.85} align="left" />
           </div>
-          <div style={{ position:'absolute', left:'70%', top:'78%', transform:'translate(-50%, -50%)' }}>
-            <Station id="lisa" label="LISA" state={lisa.state} lastMessage={lisa.lastMessage} Avatar={LisaAvatar} color="#a855f7" consoleLabel="STRAT" scale={1.05} align="right" />
+          <div style={{ position:'absolute', left:'78%', top:'68%', transform:'translate(-50%, -50%)' }}>
+            <Station id="lisa" label="LISA" state={lisa.state} lastMessage={lisa.lastMessage} Avatar={LisaAvatar} color="#a855f7" consoleLabel="STRAT" scale={0.85} align="right" />
           </div>
         </div>
 
