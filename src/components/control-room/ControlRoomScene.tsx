@@ -516,7 +516,7 @@ function FloorPerspective() {
     <div
       style={{
         position: "absolute",
-        inset: "34% 0 44px 0",
+        inset: "30% 0 44px 0",
         zIndex: 0,
         background: `linear-gradient(${COLORS.floorTop}, ${COLORS.floorBottom})`,
       }}
@@ -645,10 +645,10 @@ function BackWall() {
           />
         </div>
       </div>
-      <Monitor left="10%" />
-      <Monitor left="76%" rightPanel />
-      <RadiationSymbol left="3%" />
-      <RadiationSymbol left="93%" />
+      <Monitor left="6%" />
+      <Monitor left="82%" rightPanel />
+      <RadiationSymbol left="2%" />
+      <RadiationSymbol left="96%" />
       <div
         style={{
           position: "absolute",
@@ -832,15 +832,15 @@ export default function ControlRoomScene({
   const agents = mergeAgents(agentOverrides);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: COLORS.wall, transform: "scale(0.65)", transformOrigin: "center top" }}>
+    <div style={{ position: "relative", width: "120%", left: "-10%", height: "100vh", overflow: "hidden", background: COLORS.wall, transform: "scale(0.62)", transformOrigin: "center top" }}>
       <FloorPerspective />
       <BackWall />
       <MaggiePlatform />
       <ConnectionLines />
-      <Station agent={agents.homer} left="18%" top="42%" />
-      <Station agent={agents.marge} left="82%" top="42%" />
-      <Station agent={agents.bart} left="28%" top="68%" scale={0.92} />
-      <Station agent={agents.lisa} left="72%" top="68%" scale={0.92} />
+      <Station agent={agents.homer} left="15%" top="46%" />
+      <Station agent={agents.marge} left="85%" top="46%" />
+      <Station agent={agents.bart} left="22%" top="74%" scale={0.92} />
+      <Station agent={agents.lisa} left="78%" top="74%" scale={0.92} />
       <Station agent={agents.maggie} left="50%" top="58%" width={200} scale={1.08} />
       <Ticker items={tickerItems} />
     </div>
