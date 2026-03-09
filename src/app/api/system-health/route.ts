@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { exec } from "child_process";
 import { promisify } from "util";
-import net from "net";
 
 export async function GET() {
   try {
@@ -41,58 +40,21 @@ export async function GET() {
       }
     };
 
-    const redisPing = async (host: string, port: number) => {
-      const start = Date.now();
-      return new Promise<'healthy' | 'degraded' | 'offline'>((resolve) => {
-        const socket = new net.Socket();
-        let resolved = false;
-        const finish = (status: 'healthy' | 'degraded' | 'offline') => {
-          if (resolved) return;
-          resolved = true;
-          socket.destroy();
-          resolve(status);
-        };
-        socket.setTimeout(1500);
-        socket.once('error', () => finish('offline'));
-        socket.once('timeout', () => finish('degraded'));
-        socket.connect(port, host, () => {
-          socket.write('*1\r\n$4\r\nPING\r\n');
-        });
-        socket.once('data', (data) => {
-          const elapsed = Date.now() - start;
-          const text = data.toString();
-          if (text.includes('PONG')) {
-            finish(elapsed > 600 ? 'degraded' : 'healthy');
-          } else {
-            finish('degraded');
-          }
-        });
-      });
-    };
-
-    const qdrantHealth = async (url: string) => {
-      const start = Date.now();
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-        clearTimeout(timeoutId);
-        if (!res.ok) return 'offline' as const;
-        const elapsed = Date.now() - start;
-        return elapsed > 600 ? 'degraded' : 'healthy';
-      } catch {
-        return 'offline' as const;
+    const persistenceHealth = async () => {
+      if (!gatewayUrl) {
+        return { redis: 'offline', qdrant: 'offline', tailscale: 'disconnected' } as const;
       }
-    };
-
-    const tailscaleStatus = async () => {
       try {
-        const { stdout } = await execAsync('tailscale status --json');
-        const data = JSON.parse(stdout);
-        return data?.BackendState === 'Running' ? 'connected' : 'disconnected';
-      } catch {
-        return 'disconnected' as const;
-      }
+        const res = await fetch(`${gatewayUrl}/persistence-health`, {
+          headers: { 'x-springfield-key': gatewayKey },
+          cache: 'no-store',
+          next: { revalidate: 0 },
+        });
+        if (!res.ok) throw new Error('gateway_unreachable');
+        const data = await res.json();
+        if (data?.persistence) return data.persistence as { redis: string; qdrant: string; tailscale: string };
+      } catch {}
+      return { redis: 'offline', qdrant: 'offline', tailscale: 'disconnected' } as const;
     };
 
     // 1) Fetch Marge health via Gateway proxy
@@ -158,11 +120,7 @@ export async function GET() {
     const lisaSession = await sessionCheck(lisaRelayUrl, 'lisa');
     const bartAgent = await bartProcessStatus();
 
-    const [redisHealth, qdrantHealthStatus, tailscale] = await Promise.all([
-      redisPing('100.90.102.58', 6379),
-      qdrantHealth('http://100.90.102.58:6333/readyz'),
-      tailscaleStatus(),
-    ]);
+    const persistence = await persistenceHealth();
 
     // 2) Maggie Logic & Contract Test
     const maggieProvider = process.env.MAGGIE_PROVIDER || "gemini";
@@ -197,11 +155,7 @@ export async function GET() {
       relays: { marge: margeRelay, lisa: lisaRelay },
       sessions: { marge: margeSession, lisa: lisaSession },
       bartAgent,
-      persistence: {
-        redis: redisHealth,
-        qdrant: qdrantHealthStatus,
-        tailscale,
-      },
+      persistence,
       maggieLocalStatus,
       maggieState,
       maggieReason,
