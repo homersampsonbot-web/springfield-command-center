@@ -832,7 +832,7 @@ export default function ControlRoomScene({
   const agents = mergeAgents(agentOverrides);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: COLORS.wall }}>
+    <div style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: COLORS.wall, transform: "scale(0.65)", transformOrigin: "center top" }}>
       <FloorPerspective />
       <BackWall />
       <MaggiePlatform />
