@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 
 type AgentState = "idle" | "thinking" | "active" | "failed" | "complete";
 
@@ -14,6 +16,12 @@ type Agent = {
 type Props = {
   agents?: Partial<Record<Agent["id"], Partial<Agent>>>;
   tickerItems?: string[];
+};
+
+type PersistenceStatus = {
+  redis: string;
+  qdrant: string;
+  tailscale: string;
 };
 
 const COLORS = {
@@ -553,7 +561,7 @@ function FloorPerspective() {
   );
 }
 
-function BackWall() {
+function BackWall({ persistence }: { persistence: PersistenceStatus }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: COLORS.wall, zIndex: 1 }}>
       <div
@@ -647,6 +655,29 @@ function BackWall() {
       </div>
       <Monitor left="6%" />
       <Monitor left="82%" rightPanel />
+      <div
+        style={{
+          position: "absolute",
+          right: "6%",
+          top: 210,
+          width: 220,
+          padding: "10px 12px",
+          background: "#0a1316",
+          border: "2px solid #1b2b36",
+          color: "#23e38a",
+          fontSize: 10,
+          fontFamily: "monospace",
+          letterSpacing: 1,
+        }}
+      >
+        <div style={{ color: "#f06b00", fontWeight: 700, marginBottom: 6 }}>BACK-WALL STATUS</div>
+        <div>NEON BRIDGE · ONLINE</div>
+        <div>RELAY WORKER · ONLINE</div>
+        <div style={{ marginTop: 6 }}>PERSISTENCE</div>
+        <div>REDIS · {persistence.redis.toUpperCase()}</div>
+        <div>QDRANT · {persistence.qdrant.toUpperCase()}</div>
+        <div>TAILSCALE · {persistence.tailscale.toUpperCase()}</div>
+      </div>
       <RadiationSymbol left="2%" />
       <RadiationSymbol left="96%" />
       <div
@@ -830,11 +861,40 @@ export default function ControlRoomScene({
   tickerItems = ["SYSTEM", "WORKER COMPLETE", "JOB COMPLETED", "RELAY ACTIVE"],
 }: Props) {
   const agents = mergeAgents(agentOverrides);
+  const [persistence, setPersistence] = useState<PersistenceStatus>({
+    redis: "offline",
+    qdrant: "offline",
+    tailscale: "disconnected",
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchHealth = async () => {
+      try {
+        const res = await fetch('/api/system-health');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted && data?.persistence) {
+          setPersistence({
+            redis: data.persistence.redis || 'offline',
+            qdrant: data.persistence.qdrant || 'offline',
+            tailscale: data.persistence.tailscale || 'disconnected',
+          });
+        }
+      } catch {}
+    };
+    fetchHealth();
+    const id = setInterval(fetchHealth, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, []);
 
   return (
     <div style={{ position: "relative", width: "120%", left: "-10%", height: "100vh", overflow: "hidden", background: COLORS.wall, transform: "scale(0.62)", transformOrigin: "center top" }}>
       <FloorPerspective />
-      <BackWall />
+      <BackWall persistence={persistence} />
       <MaggiePlatform />
       <ConnectionLines />
       <Station agent={agents.homer} left="15%" top="46%" />
