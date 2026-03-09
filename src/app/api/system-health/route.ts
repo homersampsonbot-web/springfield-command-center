@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 export async function GET() {
   try {
@@ -23,6 +25,20 @@ export async function GET() {
     const lisaRelayUrl = process.env.LISA_RELAY_URL || "disabled";
     const toHealthUrl = (relayUrl: string) => relayUrl.replace(/\/relay$/, '/health');
     const toSessionUrl = (relayUrl: string) => relayUrl.replace(/\/relay$/, '/session');
+
+    const execAsync = promisify(exec);
+    const bartProcessStatus = async () => {
+      try {
+        const { stdout } = await execAsync('pm2 describe bart-browser --no-color');
+        const isOnline = /status\s*:\s*online/i.test(stdout);
+        if (isOnline) {
+          return { agent: 'bart', status: 'online', runtime: 'homer', service: 'bart-browser' } as const;
+        }
+        return { agent: 'bart', status: 'offline' } as const;
+      } catch {
+        return { agent: 'bart', status: 'offline' } as const;
+      }
+    };
 
     // 1) Fetch Marge health via Gateway proxy
     let margeStatus = "offline";
@@ -85,6 +101,7 @@ export async function GET() {
 
     const margeSession = await sessionCheck(margeRelayUrl, 'marge');
     const lisaSession = await sessionCheck(lisaRelayUrl, 'lisa');
+    const bartAgent = await bartProcessStatus();
     // 2) Maggie Logic & Contract Test
     const maggieProvider = process.env.MAGGIE_PROVIDER || "gemini";
     let maggieLocalStatus = "offline";
@@ -117,12 +134,13 @@ export async function GET() {
       maggieProvider,
       relays: { marge: margeRelay, lisa: lisaRelay },
       sessions: { marge: margeSession, lisa: lisaSession },
+      bartAgent,
       maggieLocalStatus,
       maggieState,
       maggieReason,
       agents: {
         homer: "alive",
-        bart: "alive",
+        bart: bartAgent.status === 'online' ? 'online' : 'offline',
         marge: margeSession.status === 'ok' ? 'available' : (margeSession.status === 'offline' ? 'offline' : (margeSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
         lisa: lisaSession.status === 'ok' ? 'available' : (lisaSession.status === 'offline' ? 'offline' : (lisaSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
         maggie: maggieState === "online" ? "online" : "degraded"
