@@ -3,7 +3,11 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   try {
     const { directive } = await req.json();
-    const margeRes = await fetch('http://18.190.203.220:3003/relay', {
+    const margeUrl = process.env.MARGE_RELAY_URL || 'disabled';
+    if (margeUrl === 'disabled') {
+      return NextResponse.json({ error: 'Relay is in maintenance', relay: 'marge', status: 'maintenance' }, { status: 503 });
+    }
+    const margeRes = await fetch(margeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

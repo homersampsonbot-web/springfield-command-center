@@ -4,8 +4,8 @@ const fetch = require('node-fetch');
 
 const POLLING_INTERVAL = 15000;
 const AGENT_URLS = {
-  MARGE: "http://18.190.203.220:3003/relay",
-  LISA: "http://18.190.203.220:3004/relay"
+  MARGE: process.env.MARGE_RELAY_URL || "disabled",
+  LISA: process.env.LISA_RELAY_URL || "disabled"
 };
 
 async function processRelayRequest(job) {
@@ -35,6 +35,9 @@ async function processRelayRequest(job) {
 
     if (!url) {
       throw new Error(`Unsupported agent: ${targetAgent}`);
+    }
+    if (url === "disabled") {
+      throw new Error(`Relay disabled for ${targetAgent}`);
     }
 
     console.log(`[Worker] Calling ${targetAgent} relay for requestId ${requestId}...`);

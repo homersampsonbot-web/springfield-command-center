@@ -5,31 +5,25 @@ export async function POST(req: Request) {
     const { topic } = await req.json();
     console.log('[debate] topic:', topic);
 
-    // Call Marge
-    const margePromise = fetch('http://18.190.203.220:3003/relay', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: `You are Marge, Chief Architect. Debate this topic: ${topic}`
-      })
-    }).then(async r => {
-      const data = await r.json();
-      console.log('[debate] marge status:', r.status, data?.response?.slice?.(0, 80));
-      return data;
-    });
+    const margeUrl = process.env.MARGE_RELAY_URL || 'disabled';
+    const lisaUrl = process.env.LISA_RELAY_URL || 'disabled';
 
-    // Call Lisa
-    const lisaPromise = fetch('http://18.190.203.220:3004/relay', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: `You are Lisa, Strategist. Debate this topic: ${topic}`
-      })
-    }).then(async r => {
+    const callRelay = async (url: string, agent: 'marge' | 'lisa', message: string) => {
+      if (url === 'disabled') {
+        return { response: 'maintenance', status: 'maintenance' };
+      }
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
       const data = await r.json();
-      console.log('[debate] lisa status:', r.status, data?.response?.slice?.(0, 80));
+      console.log(`[debate] ${agent} status:`, r.status, data?.response?.slice?.(0, 80));
       return data;
-    });
+    };
+
+    const margePromise = callRelay(margeUrl, 'marge', `You are Marge, Chief Architect. Debate this topic: ${topic}`);
+    const lisaPromise = callRelay(lisaUrl, 'lisa', `You are Lisa, Strategist. Debate this topic: ${topic}`);
 
     const [margeData, lisaData] = await Promise.all([margePromise, lisaPromise]);
 

@@ -3,7 +3,11 @@ export default async function handler(req, res) {
   const { directive } = req.body;
   
   try {
-    const margeRes = await fetch('http://18.190.203.220:3003/relay', {
+    const margeUrl = process.env.MARGE_RELAY_URL || 'disabled';
+    if (margeUrl === 'disabled') {
+      return res.status(503).json({ error: 'Relay is in maintenance', relay: 'marge', status: 'maintenance' });
+    }
+    const margeRes = await fetch(margeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

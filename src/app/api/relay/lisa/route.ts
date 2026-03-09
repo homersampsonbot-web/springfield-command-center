@@ -5,7 +5,11 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const res = await fetch("http://18.190.203.220:3004/relay", {
+    const relayUrl = process.env.LISA_RELAY_URL || "disabled";
+    if (relayUrl === "disabled") {
+      return NextResponse.json({ error: "Relay is in maintenance", relay: "lisa", status: "maintenance" }, { status: 503 });
+    }
+    const res = await fetch(relayUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

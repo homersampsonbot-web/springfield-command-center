@@ -5,10 +5,14 @@ export async function POST(req: Request) {
     const { agent, message } = await req.json();
     
     let url = '';
-    if (agent === 'marge') url = 'http://18.190.203.220:3003/relay';
-    else if (agent === 'lisa') url = 'http://18.190.203.220:3004/relay';
+    if (agent === 'marge') url = process.env.MARGE_RELAY_URL || 'disabled';
+    else if (agent === 'lisa') url = process.env.LISA_RELAY_URL || 'disabled';
     else {
       return NextResponse.json({ reply: `Agent ${agent} not reachable via relay.` });
+    }
+
+    if (url === 'disabled') {
+      return NextResponse.json({ reply: `Agent ${agent} relay is in maintenance.` }, { status: 503 });
     }
 
     const res = await fetch(url, {

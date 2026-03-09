@@ -19,6 +19,11 @@ export async function GET() {
     const gatewayUrl = process.env.HOMER_GATEWAY_URL || "";
     const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
 
+    const margeRelayUrl = process.env.MARGE_RELAY_URL || "disabled";
+    const lisaRelayUrl = process.env.LISA_RELAY_URL || "disabled";
+    const toHealthUrl = (relayUrl: string) => relayUrl.replace(/\/relay$/, '/health');
+    const toSessionUrl = (relayUrl: string) => relayUrl.replace(/\/relay$/, '/session');
+
     // 1) Fetch Marge health via Gateway proxy
     let margeStatus = "offline";
     try {
@@ -34,11 +39,12 @@ export async function GET() {
     } catch (e) {}
 
 
-    const relayHealth = async (url: string) => {
+    const relayHealth = async (relayUrl: string) => {
+      if (relayUrl === 'disabled') return 'maintenance' as const;
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        const res = await fetch(toHealthUrl(relayUrl), { signal: controller.signal, cache: 'no-store' });
         clearTimeout(timeoutId);
         return res.ok ? 'alive' : 'down';
       } catch {
@@ -46,15 +52,19 @@ export async function GET() {
       }
     };
 
-    const margeRelay = await relayHealth('http://18.190.203.220:3003/health');
-    const lisaRelay = await relayHealth('http://18.190.203.220:3004/health');
+    const margeRelay = await relayHealth(margeRelayUrl);
+    const lisaRelay = await relayHealth(lisaRelayUrl);
 
-    const sessionCheck = async (url: string, key: 'marge' | 'lisa') => {
+    const sessionCheck = async (relayUrl: string, key: 'marge' | 'lisa') => {
+      if (relayUrl === 'disabled') {
+        return { status: 'maintenance', reason: 'relay_disabled', keepalive: { lastRunTs: null, lastResult: null } } as const;
+      }
+      const url = toSessionUrl(relayUrl);
       try {
         const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) return { status: 'offline', reason: 'relay_unreachable' } as const;
+        if (!res.ok) return { status: 'offline', reason: 'relay_unreachable', keepalive: { lastRunTs: null, lastResult: null } } as const;
         const data: any = await res.json();
-        if (!data?.browser?.cdpOk) return { status: 'offline', reason: 'cdp_failed' } as const;
+        if (!data?.browser?.cdpOk) return { status: 'offline', reason: 'cdp_failed', keepalive: { lastRunTs: null, lastResult: null } } as const;
         const s = data?.[key];
         
         // Fetch keepalive status if available
@@ -73,8 +83,8 @@ export async function GET() {
       }
     };
 
-    const margeSession = await sessionCheck('http://18.190.203.220:3003/session', 'marge');
-    const lisaSession = await sessionCheck('http://18.190.203.220:3004/session', 'lisa');
+    const margeSession = await sessionCheck(margeRelayUrl, 'marge');
+    const lisaSession = await sessionCheck(lisaRelayUrl, 'lisa');
     // 2) Maggie Logic & Contract Test
     const maggieProvider = process.env.MAGGIE_PROVIDER || "gemini";
     let maggieLocalStatus = "offline";
@@ -113,8 +123,8 @@ export async function GET() {
       agents: {
         homer: "alive",
         bart: "alive",
-        marge: margeSession.status === 'ok' ? 'available' : (margeSession.status === 'offline' ? 'offline' : 'degraded'),
-        lisa: lisaSession.status === 'ok' ? 'available' : (lisaSession.status === 'offline' ? 'offline' : 'degraded'),
+        marge: margeSession.status === 'ok' ? 'available' : (margeSession.status === 'offline' ? 'offline' : (margeSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
+        lisa: lisaSession.status === 'ok' ? 'available' : (lisaSession.status === 'offline' ? 'offline' : (lisaSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
         maggie: maggieState === "online" ? "online" : "degraded"
       },
       counts: {

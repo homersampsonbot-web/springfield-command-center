@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 const timeout = (ms: number) => new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
 
 async function pingRelay(url: string) {
+  if (url === 'disabled') return 'maintenance';
   try {
     const res = await Promise.race([
       fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'ping' }) }),
@@ -39,11 +40,15 @@ async function pingZilliz() {
 }
 
 export async function GET() {
+  const margeRelayUrl = process.env.MARGE_RELAY_URL || 'disabled';
+  const lisaRelayUrl = process.env.LISA_RELAY_URL || 'disabled';
+  const margeHealthUrl = margeRelayUrl === 'disabled' ? 'disabled' : margeRelayUrl.replace(/\/relay$/, '/health');
+
   const [homer, marge, lisa, bart, zilliz] = await Promise.all([
     pingJson('http://3.131.96.117:3001/health'),
-    pingRelay('http://18.190.203.220:3003/relay'),
-    pingRelay('http://18.190.203.220:3004/relay'),
-    pingJson('http://18.190.203.220:3003/health'),
+    pingRelay(margeRelayUrl),
+    pingRelay(lisaRelayUrl),
+    margeHealthUrl === 'disabled' ? Promise.resolve('maintenance') : pingJson(margeHealthUrl),
     pingZilliz()
   ]);
 
