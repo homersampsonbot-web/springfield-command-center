@@ -281,16 +281,16 @@ export default function ControlRoom() {
           <div style={{ position:'absolute', left:'50%', top:'55%', transform:'translate(-50%, -50%)' }}>
             <Station id="maggie" label="MAGGIE" state={maggie.state} lastMessage={maggie.lastMessage} Avatar={MaggieAvatar} color="#ec4899" consoleLabel="ORCH" scale={1.18} />
           </div>
-          <div style={{ position:'absolute', left:'25%', top:'40%', transform:'translate(-50%, -50%)' }}>
+          <div style={{ position:'absolute', left:'25%', top:'32%', transform:'translate(-50%, -50%)' }}>
             <Station id="homer" label="HOMER" state={homer.state} lastMessage={homer.lastMessage} Avatar={HomerAvatar} color="#f97316" consoleLabel="EXEC" scale={1.0} align="left" />
           </div>
-          <div style={{ position:'absolute', left:'75%', top:'40%', transform:'translate(-50%, -50%)' }}>
+          <div style={{ position:'absolute', left:'75%', top:'32%', transform:'translate(-50%, -50%)' }}>
             <Station id="marge" label="MARGE" state={marge.state} lastMessage={marge.lastMessage} Avatar={MargeAvatar} color="#3b82f6" consoleLabel="ARCH" scale={1.05} align="right" />
           </div>
-          <div style={{ position:'absolute', left:'30%', top:'72%', transform:'translate(-50%, -50%)' }}>
+          <div style={{ position:'absolute', left:'30%', top:'78%', transform:'translate(-50%, -50%)' }}>
             <Station id="bart" label="BART" state={bart.state} lastMessage={bart.lastMessage} Avatar={BartAvatar} color="#22c55e" consoleLabel="QA" scale={0.95} align="left" />
           </div>
-          <div style={{ position:'absolute', left:'70%', top:'72%', transform:'translate(-50%, -50%)' }}>
+          <div style={{ position:'absolute', left:'70%', top:'78%', transform:'translate(-50%, -50%)' }}>
             <Station id="lisa" label="LISA" state={lisa.state} lastMessage={lisa.lastMessage} Avatar={LisaAvatar} color="#a855f7" consoleLabel="STRAT" scale={1.05} align="right" />
           </div>
         </div>
