@@ -40,6 +40,16 @@ const COLORS = {
   tickerText: "#23e38a",
 };
 
+const CANVAS_WIDTH = 1800;
+const CANVAS_HEIGHT = 1100;
+const VANISHING_POINT = { x: 900, y: 160 };
+const HOMER_POS = { x: 310, y: 490 };
+const MARGE_POS = { x: 1490, y: 490 };
+const BART_POS = { x: 390, y: 710 };
+const LISA_POS = { x: 1410, y: 710 };
+const MAGGIE_POS = { x: 900, y: 780 };
+const SCENE_SCALE = 0.62;
+
 const defaultAgents: Record<Agent["id"], Agent> = {
   homer: {
     id: "homer",
@@ -892,16 +902,27 @@ export default function ControlRoomScene({
   }, []);
 
   return (
-    <div style={{ position: "relative", width: "120%", left: "-10%", height: "100vh", overflow: "hidden", background: COLORS.wall, transform: "scale(0.62)", transformOrigin: "center top" }}>
+    <div
+      style={{
+        position: "relative",
+        width: CANVAS_WIDTH,
+        height: CANVAS_HEIGHT,
+        margin: "0 auto",
+        overflow: "hidden",
+        background: COLORS.wall,
+        transform: `scale(${SCENE_SCALE})`,
+        transformOrigin: "center top",
+      }}
+    >
       <FloorPerspective />
       <BackWall persistence={persistence} />
       <MaggiePlatform />
       <ConnectionLines />
-      <Station agent={agents.homer} left="15%" top="46%" />
-      <Station agent={agents.marge} left="85%" top="46%" />
-      <Station agent={agents.bart} left="22%" top="74%" scale={0.92} />
-      <Station agent={agents.lisa} left="78%" top="74%" scale={0.92} />
-      <Station agent={agents.maggie} left="50%" top="58%" width={200} scale={1.08} />
+      <Station agent={agents.homer} left={`${HOMER_POS.x}px`} top={`${HOMER_POS.y}px`} />
+      <Station agent={agents.marge} left={`${MARGE_POS.x}px`} top={`${MARGE_POS.y}px`} />
+      <Station agent={agents.bart} left={`${BART_POS.x}px`} top={`${BART_POS.y}px`} scale={0.92} />
+      <Station agent={agents.lisa} left={`${LISA_POS.x}px`} top={`${LISA_POS.y}px`} scale={0.92} />
+      <Station agent={agents.maggie} left={`${MAGGIE_POS.x}px`} top={`${MAGGIE_POS.y}px`} width={200} scale={1.08} />
       <Ticker items={tickerItems} />
     </div>
   );
