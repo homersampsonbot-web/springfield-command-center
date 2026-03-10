@@ -18,37 +18,25 @@ export async function GET() {
 
     const timeout = (ms: number) => new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms));
 
-    const gatewayHealth = async () => {
+    const fetchWithRetry = async (url: string, attempt = 0): Promise<Response> => {
       try {
         const res = (await Promise.race([
-          fetch(`${gatewayUrl}/health`, { headers: { "x-springfield-key": gatewayKey }, cache: "no-store" }),
-          timeout(1500),
-        ])) as Response;
-        return res.ok ? "online" : "offline";
-      } catch (e: any) {
-        return e?.message === "timeout" ? "degraded" : "offline";
-      }
-    };
-
-    const persistenceHealth = async () => {
-      try {
-        const res = (await Promise.race([
-          fetch(`${gatewayUrl}/persistence-health`, {
-            headers: { "x-springfield-key": gatewayKey },
-            cache: "no-store",
-            next: { revalidate: 0 },
-          }),
+          fetch(url, { cache: "no-store", next: { revalidate: 5 } }),
           timeout(2000),
         ])) as Response;
-        if (!res.ok) throw new Error("gateway_unreachable");
-        const data = await res.json();
-        return data?.persistence || { redis: "offline", qdrant: "offline", tailscale: "disconnected" };
-      } catch {
-        return { redis: "offline", qdrant: "offline", tailscale: "disconnected" };
+        return res;
+      } catch (err) {
+        if (attempt < 1) return fetchWithRetry(url, attempt + 1);
+        throw err;
       }
     };
 
-    const [compute, persistence] = await Promise.all([gatewayHealth(), persistenceHealth()]);
+    const res = await fetchWithRetry(`${gatewayUrl}/persistence-health`);
+    if (!res.ok) throw new Error("gateway_unreachable");
+    const data = await res.json();
+
+    const persistence = data?.persistence || { redis: "offline", qdrant: "offline", tailscale: "disconnected" };
+    const compute = data?.compute || "offline";
 
     const queue = persistence.redis === "healthy" ? "normal" : persistence.redis;
     const memory = persistence.qdrant === "healthy" ? "stable" : persistence.qdrant;
@@ -69,7 +57,7 @@ export async function GET() {
         storage,
         network,
       },
-    });
+    }, { headers: { "Cache-Control": "s-maxage=5, stale-while-revalidate=30" } });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
