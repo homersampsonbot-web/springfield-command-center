@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseDirectiveToJobs } from "@/lib/maggieProvider";
 
+async function persistMaggieEvent(payload: { type: string; message?: string; directiveId?: string }) {
+  try {
+    const gatewayUrl = (process.env.HOMER_GATEWAY_PUBLIC_URL || process.env.HOMER_GATEWAY_URL || "").trim();
+    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+    if (!gatewayUrl) return;
+    await fetch(`${gatewayUrl.replace(/\/$/, "")}/persistence/maggie-event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-springfield-key": gatewayKey },
+      body: JSON.stringify({
+        agent: "maggie",
+        type: payload.type,
+        timestamp: new Date().toISOString(),
+        payload,
+      }),
+    });
+  } catch {}
+}
+
 export async function POST(req: Request) {
   const { directiveId } = await req.json().catch(() => ({}));
   if (!directiveId) return NextResponse.json({ error: "Missing directiveId" }, { status: 400 });
@@ -19,6 +37,7 @@ export async function POST(req: Request) {
   await prisma.event.create({
     data: { directiveId, scope: "DIRECTIVE", type: "PLANNING_STARTED", level: "INFO", message: "Maggie: Parsing directive" }
   });
+  await persistMaggieEvent({ type: "PLANNING_STARTED", message: "Maggie: Parsing directive", directiveId });
 
   try {
     const plan = await parseDirectiveToJobs(directive.text);
@@ -26,6 +45,7 @@ export async function POST(req: Request) {
     await prisma.event.create({
       data: { directiveId, scope: "DIRECTIVE", type: "DECOMPOSING_TASKS", level: "INFO", message: "Maggie: Decomposing tasks" }
     });
+    await persistMaggieEvent({ type: "DECOMPOSING_TASKS", message: "Maggie: Decomposing tasks", directiveId });
 
     const created = await prisma.$transaction(async (tx) => {
       const jobs = [] as { job: any; dependsOnTitles: string[] }[];
@@ -46,6 +66,7 @@ export async function POST(req: Request) {
         await tx.event.create({
           data: { jobId: job.id, scope: "JOB", type: "JOB_CREATED", level: "INFO", message: `Job created: ${job.title}` }
         });
+        await persistMaggieEvent({ type: "JOB_CREATED", message: `Job created: ${job.title}`, directiveId });
       }
 
       const byTitle = new Map(jobs.map(x => [x.job.title, x.job.id]));
@@ -66,6 +87,7 @@ export async function POST(req: Request) {
     await prisma.event.create({
       data: { directiveId, scope: "DIRECTIVE", type: "PLAN_COMPLETE", level: "SUCCESS", message: "Maggie: Plan complete" }
     });
+    await persistMaggieEvent({ type: "PLAN_COMPLETE", message: "Maggie: Plan complete", directiveId });
 
     return NextResponse.json({ ok: true, jobs: created.length });
 
@@ -78,6 +100,7 @@ export async function POST(req: Request) {
     await prisma.event.create({
       data: { directiveId, scope: "DIRECTIVE", type: "PLAN_ERROR", level: "ERROR", message: `Maggie: ${String(e?.message || e)}` }
     });
+    await persistMaggieEvent({ type: "PLAN_ERROR", message: String(e?.message || e), directiveId });
 
     return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }

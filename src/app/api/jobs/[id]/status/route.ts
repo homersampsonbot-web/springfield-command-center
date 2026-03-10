@@ -1,6 +1,27 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
+async function persistJobExecution(payload: {
+  jobId: string;
+  agent: string;
+  status: string;
+  title?: string;
+  startTime?: string;
+  endTime?: string;
+  duration?: string;
+}) {
+  try {
+    const gatewayUrl = (process.env.HOMER_GATEWAY_PUBLIC_URL || process.env.HOMER_GATEWAY_URL || "").trim();
+    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+    if (!gatewayUrl) return;
+    await fetch(`${gatewayUrl.replace(/\/$/, "")}/persistence/job`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-springfield-key": gatewayKey },
+      body: JSON.stringify(payload),
+    });
+  } catch {}
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,6 +82,19 @@ export async function POST(
           executorHost: metadata?.executorHost || 'homer'
         }
       }
+    });
+
+    const startTime = metadata?.startTime || updatedJob?.createdAt?.toISOString?.();
+    const endTime = metadata?.endTime || new Date().toISOString();
+    const durationMs = metadata?.durationMs || (startTime ? Date.parse(endTime) - Date.parse(startTime) : null);
+    await persistJobExecution({
+      jobId,
+      agent: (updatedJob.owner || metadata?.executorHost || 'homer').toString().toLowerCase(),
+      status: targetStatus,
+      title: updatedJob.title,
+      startTime,
+      endTime,
+      duration: durationMs ? `${(durationMs / 1000).toFixed(1)}s` : undefined,
     });
 
     return NextResponse.json({ success: true, jobId, status: targetStatus });

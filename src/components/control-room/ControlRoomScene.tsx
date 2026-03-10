@@ -1098,15 +1098,17 @@ export default function ControlRoomScene({
     let active = true;
     const fetchRuntime = async () => {
       try {
-        const [jobsRes, messagesRes, eventsRes] = await Promise.all([
+        const [jobsRes, messagesRes, eventsRes, tracesRes] = await Promise.all([
           fetch('/api/jobs?limit=20'),
           fetch('/api/thread/messages?thread=team&limit=30'),
           fetch('/api/maggie/events?limit=20'),
+          fetch('/api/persistence/traces?limit=6'),
         ]);
         if (!jobsRes.ok || !messagesRes.ok) return;
         const jobsData = await jobsRes.json();
         const messagesData = await messagesRes.json();
         const eventsData = eventsRes.ok ? await eventsRes.json() : [];
+        const tracesData = tracesRes.ok ? await tracesRes.json() : null;
         const jobs = jobsData?.jobs || jobsData || [];
         const messages = messagesData?.messages || messagesData || [];
         const events = eventsData?.events || eventsData || [];
@@ -1156,7 +1158,7 @@ export default function ControlRoomScene({
           };
         };
 
-        const traceBy: Record<Agent["id"], TraceItem[]> = {
+        const fallbackTraceBy: Record<Agent["id"], TraceItem[]> = {
           homer: jobs.filter((j: any) => (j.owner?.toLowerCase?.() === 'homer' || j.payload?.agent === 'homer')).slice(0, 6).map(toTrace),
           marge: jobs.filter((j: any) => (j.owner?.toLowerCase?.() === 'marge' || j.payload?.agent === 'marge')).slice(0, 6).map(toTrace),
           lisa: jobs.filter((j: any) => (j.owner?.toLowerCase?.() === 'lisa' || j.payload?.agent === 'lisa')).slice(0, 6).map(toTrace),
@@ -1169,6 +1171,15 @@ export default function ControlRoomScene({
             steps: e.message ? [e.message] : undefined,
           })),
         };
+
+        const redisTraceBy = tracesData?.tracesByAgent || null;
+        const traceBy: Record<Agent["id"], TraceItem[]> = redisTraceBy ? {
+          homer: redisTraceBy.homer || [],
+          marge: redisTraceBy.marge || [],
+          lisa: redisTraceBy.lisa || [],
+          bart: redisTraceBy.bart || [],
+          maggie: redisTraceBy.maggie || [],
+        } : fallbackTraceBy;
 
         if (active) {
           setAgentRuntimeOverrides(overrides);
