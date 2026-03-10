@@ -953,8 +953,9 @@ export default function ControlRoomScene({
   agents: agentOverrides,
   tickerItems = ["SYSTEM", "WORKER COMPLETE", "JOB COMPLETED", "RELAY ACTIVE"],
 }: Props) {
-  const agents = mergeAgents(agentOverrides);
-  const [persistence, setPersistence] = useState<PersistenceStatus>({
+  const [agentRuntimeOverrides, setAgentRuntimeOverrides] = useState<Partial<Record<Agent["id"], Partial<Agent>>>>({});
+  const agents = mergeAgents({ ...agentOverrides, ...agentRuntimeOverrides });
+  const [persistence] = useState<PersistenceStatus>({
     redis: "offline",
     qdrant: "offline",
     tailscale: "disconnected",
@@ -971,28 +972,16 @@ export default function ControlRoomScene({
     let mounted = true;
     const fetchHealth = async () => {
       try {
-        const res = await fetch('/api/system-health');
+        const res = await fetch('/api/persistence-health');
         if (!res.ok) return;
         const data = await res.json();
         if (mounted && data?.persistence) {
-          const redis = data.persistence.redis || 'offline';
-          const qdrant = data.persistence.qdrant || 'offline';
-          const tailscale = data.persistence.tailscale || 'disconnected';
-          setPersistence({
-            redis,
-            qdrant,
-            tailscale,
-          });
-
-          const compute = data.gateway || data.agents?.homer || 'offline';
-          const storage = redis === 'healthy' && qdrant === 'healthy' ? 'healthy' : (redis === 'offline' || qdrant === 'offline' ? 'offline' : 'degraded');
-          setPlant({
-            compute: compute === 'online' || compute === 'alive' ? 'online' : compute,
-            queue: redis === 'healthy' ? 'normal' : redis,
-            memory: qdrant === 'healthy' ? 'stable' : qdrant,
-            storage,
-            network: tailscale,
-          });
+          const compute = data.persistence.compute || 'offline';
+          const queue = data.persistence.queue || 'offline';
+          const memory = data.persistence.memory || 'offline';
+          const storage = data.persistence.storage || 'offline';
+          const network = data.persistence.network || 'disconnected';
+          setPlant({ compute, queue, memory, storage, network });
         }
       } catch {}
     };
@@ -1000,6 +989,63 @@ export default function ControlRoomScene({
     const id = setInterval(fetchHealth, 15000);
     return () => {
       mounted = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const fetchRuntime = async () => {
+      try {
+        const [jobsRes, messagesRes] = await Promise.all([
+          fetch('/api/jobs?limit=20'),
+          fetch('/api/thread/messages?thread=team&limit=30'),
+        ]);
+        if (!jobsRes.ok || !messagesRes.ok) return;
+        const jobsData = await jobsRes.json();
+        const messagesData = await messagesRes.json();
+        const jobs = jobsData?.jobs || jobsData || [];
+        const messages = messagesData?.messages || messagesData || [];
+        const now = Date.now();
+
+        const activeJobFor = (id: string) =>
+          jobs.find((j: any) =>
+            ["CLAIMED", "IN_PROGRESS", "QA", "PROCESSING"].includes(j.status) &&
+            (j.owner?.toLowerCase?.() === id || j.payload?.agent === id || j.payload?.targetAgent === id)
+          );
+
+        const latestMsgFor = (id: string) =>
+          messages.find((m: any) => {
+            const participant = m.payload?.participant || m.agentId || m.agent;
+            if (!participant) return false;
+            const match = participant.toLowerCase() === id;
+            const created = new Date(m.createdAt || m.timestamp || 0).getTime();
+            return match && now - created < 10 * 60 * 1000;
+          });
+
+        const queuedJobs = jobs.filter((j: any) => ["QUEUED"].includes(j.status));
+
+        const homerJob = activeJobFor('homer');
+        const lisaJob = activeJobFor('lisa');
+        const margeJob = activeJobFor('marge');
+        const bartJob = activeJobFor('bart');
+
+        const overrides: Partial<Record<Agent["id"], Partial<Agent>>> = {
+          homer: { bubble: homerJob ? `Executing: ${homerJob.title || 'task'}` : 'Idle' },
+          lisa: { bubble: lisaJob ? `Planning: ${lisaJob.title || 'task'}` : (latestMsgFor('lisa') ? 'Planning' : 'Standing by') },
+          marge: { bubble: margeJob ? `Reviewing: ${margeJob.title || 'task'}` : (latestMsgFor('marge') ? 'Reviewing' : 'Standing by') },
+          bart: { bubble: bartJob ? `QA: ${bartJob.title || 'task'}` : 'Connected' },
+          maggie: { bubble: queuedJobs.length ? `Monitoring: ${queuedJobs.length} queued` : 'Monitoring' },
+        };
+
+        if (active) setAgentRuntimeOverrides(overrides);
+      } catch {}
+    };
+
+    fetchRuntime();
+    const id = setInterval(fetchRuntime, 15000);
+    return () => {
+      active = false;
       clearInterval(id);
     };
   }, []);
