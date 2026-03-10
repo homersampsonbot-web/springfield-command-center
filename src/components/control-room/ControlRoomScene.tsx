@@ -18,6 +18,15 @@ type Props = {
   tickerItems?: string[];
 };
 
+type TraceItem = {
+  id: string;
+  title: string;
+  status: string;
+  timestamp: string;
+  duration?: string;
+  steps?: string[];
+};
+
 type PersistenceStatus = {
   redis: string;
   qdrant: string;
@@ -359,12 +368,14 @@ function Station({
   top,
   width = 180,
   scale = 1,
+  onSelect,
 }: {
   agent: Agent;
   left: string;
   top: string;
   width?: number;
   scale?: number;
+  onSelect?: (id: Agent["id"]) => void;
 }) {
   return (
     <div
@@ -377,7 +388,11 @@ function Station({
         transform: `translate(-50%, -50%) scale(${scale})`,
         transformOrigin: "center center",
         zIndex: agent.id === "maggie" ? 4 : 3,
+        cursor: onSelect ? "pointer" : "default",
       }}
+      onClick={() => onSelect?.(agent.id)}
+      role={onSelect ? "button" : undefined}
+      aria-label={onSelect ? `Open ${agent.name} traces` : undefined}
     >
       <Bubble text={agent.bubble} color={agent.color} />
       <AgentAvatar agent={agent} />
@@ -915,6 +930,84 @@ function RadiationSymbol({ left }: { left: string }) {
   );
 }
 
+function TraceDrawer({
+  agent,
+  traces,
+  onClose,
+}: {
+  agent: Agent | null;
+  traces: TraceItem[];
+  onClose: () => void;
+}) {
+  const open = Boolean(agent);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        right: 0,
+        top: 0,
+        height: "100%",
+        width: 360,
+        maxWidth: "85vw",
+        background: "#0b0f12",
+        borderLeft: "2px solid #1b2b36",
+        color: "#e7f4ff",
+        zIndex: 10,
+        transform: open ? "translateX(0)" : "translateX(110%)",
+        transition: "transform 0.25s ease",
+        display: "flex",
+        flexDirection: "column",
+        pointerEvents: open ? "auto" : "none",
+      }}
+    >
+      <div style={{ padding: "16px 18px", borderBottom: "1px solid #1b2b36", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: 1 }}>
+          TRACE INSPECTOR · {agent ? agent.name.toUpperCase() : "—"}
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            background: "transparent",
+            border: "1px solid #2b3b46",
+            color: "#e7f4ff",
+            padding: "4px 8px",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          Close
+        </button>
+      </div>
+      <div style={{ padding: "14px 18px", overflowY: "auto", flex: 1 }}>
+        {traces.length === 0 && (
+          <div style={{ color: "#8aa0b5", fontSize: 12 }}>No recent traces found.</div>
+        )}
+        {traces.map((trace) => (
+          <details key={trace.id} style={{ marginBottom: 12, border: "1px solid #1b2b36", borderRadius: 8, padding: "10px 12px" }}>
+            <summary style={{ cursor: "pointer", listStyle: "none" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{trace.title}</div>
+                <div style={{ fontSize: 11, color: "#8aa0b5" }}>
+                  <span style={{ textTransform: "uppercase", marginRight: 8 }}>{trace.status}</span>
+                  <span>{new Date(trace.timestamp).toLocaleString()}</span>
+                  {trace.duration && <span style={{ marginLeft: 8 }}>⏱ {trace.duration}</span>}
+                </div>
+              </div>
+            </summary>
+            {trace.steps && (
+              <ul style={{ marginTop: 8, paddingLeft: 16, fontSize: 12, color: "#cfe2f2" }}>
+                {trace.steps.map((s, i) => (
+                  <li key={`${trace.id}-step-${i}`}>{s}</li>
+                ))}
+              </ul>
+            )}
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Ticker({ items }: { items: string[] }) {
   return (
     <div
@@ -954,6 +1047,14 @@ export default function ControlRoomScene({
   tickerItems = ["SYSTEM", "WORKER COMPLETE", "JOB COMPLETED", "RELAY ACTIVE"],
 }: Props) {
   const [agentRuntimeOverrides, setAgentRuntimeOverrides] = useState<Partial<Record<Agent["id"], Partial<Agent>>>>({});
+  const [traceByAgent, setTraceByAgent] = useState<Record<Agent["id"], TraceItem[]>>({
+    homer: [],
+    marge: [],
+    lisa: [],
+    bart: [],
+    maggie: [],
+  });
+  const [selectedAgent, setSelectedAgent] = useState<Agent["id"] | null>(null);
   const agents = mergeAgents({ ...agentOverrides, ...agentRuntimeOverrides });
   const [persistence] = useState<PersistenceStatus>({
     redis: "offline",
@@ -997,15 +1098,18 @@ export default function ControlRoomScene({
     let active = true;
     const fetchRuntime = async () => {
       try {
-        const [jobsRes, messagesRes] = await Promise.all([
+        const [jobsRes, messagesRes, eventsRes] = await Promise.all([
           fetch('/api/jobs?limit=20'),
           fetch('/api/thread/messages?thread=team&limit=30'),
+          fetch('/api/maggie/events?limit=20'),
         ]);
         if (!jobsRes.ok || !messagesRes.ok) return;
         const jobsData = await jobsRes.json();
         const messagesData = await messagesRes.json();
+        const eventsData = eventsRes.ok ? await eventsRes.json() : [];
         const jobs = jobsData?.jobs || jobsData || [];
         const messages = messagesData?.messages || messagesData || [];
+        const events = eventsData?.events || eventsData || [];
         const now = Date.now();
 
         const activeJobFor = (id: string) =>
@@ -1038,7 +1142,38 @@ export default function ControlRoomScene({
           maggie: { bubble: queuedJobs.length ? `Monitoring: ${queuedJobs.length} queued` : 'Monitoring' },
         };
 
-        if (active) setAgentRuntimeOverrides(overrides);
+        const toTrace = (j: any): TraceItem => {
+          const created = new Date(j.updatedAt || j.createdAt || Date.now()).toISOString();
+          const duration = j.durationMs ? `${(j.durationMs / 1000).toFixed(1)}s` : undefined;
+          const steps = j.payload?.steps || j.payload?.plan?.steps || j.metadata?.steps || undefined;
+          return {
+            id: j.id || `${j.title}-${created}`,
+            title: j.title || j.payload?.directive || j.payload?.task || 'Task',
+            status: j.status || 'unknown',
+            timestamp: created,
+            duration,
+            steps: Array.isArray(steps) ? steps.map((s: any) => (typeof s === 'string' ? s : s?.title || JSON.stringify(s))) : undefined,
+          };
+        };
+
+        const traceBy: Record<Agent["id"], TraceItem[]> = {
+          homer: jobs.filter((j: any) => (j.owner?.toLowerCase?.() === 'homer' || j.payload?.agent === 'homer')).slice(0, 6).map(toTrace),
+          marge: jobs.filter((j: any) => (j.owner?.toLowerCase?.() === 'marge' || j.payload?.agent === 'marge')).slice(0, 6).map(toTrace),
+          lisa: jobs.filter((j: any) => (j.owner?.toLowerCase?.() === 'lisa' || j.payload?.agent === 'lisa')).slice(0, 6).map(toTrace),
+          bart: jobs.filter((j: any) => (j.owner?.toLowerCase?.() === 'bart' || j.payload?.agent === 'bart' || j.payload?.targetAgent === 'bart')).slice(0, 6).map(toTrace),
+          maggie: events.slice(0, 6).map((e: any) => ({
+            id: e.id || e.eventId || `${e.type}-${e.createdAt}`,
+            title: e.type || e.eventType || 'Event',
+            status: e.level || 'info',
+            timestamp: new Date(e.createdAt || e.timestamp || Date.now()).toISOString(),
+            steps: e.message ? [e.message] : undefined,
+          })),
+        };
+
+        if (active) {
+          setAgentRuntimeOverrides(overrides);
+          setTraceByAgent(traceBy);
+        }
       } catch {}
     };
 
@@ -1067,12 +1202,28 @@ export default function ControlRoomScene({
       <BackWall persistence={persistence} plant={plant} />
       <MaggiePlatform />
       <ConnectionLines />
-      <Station agent={agents.homer} left={`${HOMER_POS.x}px`} top={`${HOMER_POS.y}px`} />
-      <Station agent={agents.marge} left={`${MARGE_POS.x}px`} top={`${MARGE_POS.y}px`} />
-      <Station agent={agents.bart} left={`${BART_POS.x}px`} top={`${BART_POS.y}px`} scale={0.92} />
-      <Station agent={agents.lisa} left={`${LISA_POS.x}px`} top={`${LISA_POS.y}px`} scale={0.92} />
-      <Station agent={agents.maggie} left={`${MAGGIE_POS.x}px`} top={`${MAGGIE_POS.y}px`} width={200} scale={1.08} />
+      <Station agent={agents.homer} left={`${HOMER_POS.x}px`} top={`${HOMER_POS.y}px`} onSelect={setSelectedAgent} />
+      <Station agent={agents.marge} left={`${MARGE_POS.x}px`} top={`${MARGE_POS.y}px`} onSelect={setSelectedAgent} />
+      <Station agent={agents.bart} left={`${BART_POS.x}px`} top={`${BART_POS.y}px`} scale={0.92} onSelect={setSelectedAgent} />
+      <Station agent={agents.lisa} left={`${LISA_POS.x}px`} top={`${LISA_POS.y}px`} scale={0.92} onSelect={setSelectedAgent} />
+      <Station agent={agents.maggie} left={`${MAGGIE_POS.x}px`} top={`${MAGGIE_POS.y}px`} width={200} scale={1.08} onSelect={setSelectedAgent} />
       <Ticker items={tickerItems} />
+      {selectedAgent && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(6, 8, 7, 0.35)",
+            zIndex: 8,
+          }}
+          onClick={() => setSelectedAgent(null)}
+        />
+      )}
+      <TraceDrawer
+        agent={selectedAgent ? agents[selectedAgent] : null}
+        traces={selectedAgent ? traceByAgent[selectedAgent] : []}
+        onClose={() => setSelectedAgent(null)}
+      />
     </div>
   );
 }
