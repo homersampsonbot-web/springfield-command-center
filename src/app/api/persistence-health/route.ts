@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const gatewayUrl = process.env.HOMER_GATEWAY_URL || "";
-    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+    const gatewayUrl = process.env.HOMER_GATEWAY_PUBLIC_URL || process.env.HOMER_GATEWAY_URL || "";
     if (!gatewayUrl) {
       return NextResponse.json({
         persistence: {
@@ -13,7 +12,8 @@ export async function GET() {
           storage: "offline",
           network: "disconnected",
         },
-      });
+        debug: { error: "missing_gateway_url" },
+      }, { headers: { "Cache-Control": "no-store" } });
     }
 
     const timeout = (ms: number) => new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms));
@@ -31,9 +31,16 @@ export async function GET() {
       }
     };
 
-    const res = await fetchWithRetry(`${gatewayUrl}/persistence-health`);
-    if (!res.ok) throw new Error("gateway_unreachable");
-    const data = await res.json();
+    const targetUrl = `${gatewayUrl.replace(/\/$/, "")}/persistence-health`;
+    let data: any = null;
+    let error: string | null = null;
+    try {
+      const res = await fetchWithRetry(targetUrl);
+      if (!res.ok) throw new Error(`gateway_unreachable_${res.status}`);
+      data = await res.json();
+    } catch (e: any) {
+      error = e?.message || "gateway_unreachable";
+    }
 
     const persistence = data?.persistence || { redis: "offline", qdrant: "offline", tailscale: "disconnected" };
     const compute = data?.compute || "offline";
@@ -57,7 +64,12 @@ export async function GET() {
         storage,
         network,
       },
-    }, { headers: { "Cache-Control": "s-maxage=5, stale-while-revalidate=30" } });
+      debug: {
+        source: targetUrl,
+        error,
+        raw: data,
+      },
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
