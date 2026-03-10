@@ -24,6 +24,14 @@ type PersistenceStatus = {
   tailscale: string;
 };
 
+type PlantStatus = {
+  compute: string;
+  queue: string;
+  memory: string;
+  storage: string;
+  network: string;
+};
+
 const COLORS = {
   wall: "#7a9ab5",
   wallDark: "#5f7894",
@@ -571,7 +579,14 @@ function FloorPerspective() {
   );
 }
 
-function BackWall({ persistence }: { persistence: PersistenceStatus }) {
+function statusColor(status: string) {
+  const s = status.toLowerCase();
+  if (s === "healthy" || s === "online" || s === "connected" || s === "normal" || s === "stable") return "#23e38a";
+  if (s === "degraded" || s === "warning" || s === "unstable") return "#ffbe22";
+  return "#ff4a4a";
+}
+
+function BackWall({ persistence, plant }: { persistence: PersistenceStatus; plant: PlantStatus }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: COLORS.wall, zIndex: 1 }}>
       <div
@@ -668,9 +683,9 @@ function BackWall({ persistence }: { persistence: PersistenceStatus }) {
       <div
         style={{
           position: "absolute",
-          right: "6%",
-          top: 210,
-          width: 220,
+          right: 80,
+          top: 190,
+          width: 240,
           padding: "10px 12px",
           background: "#0a1316",
           border: "2px solid #1b2b36",
@@ -683,10 +698,78 @@ function BackWall({ persistence }: { persistence: PersistenceStatus }) {
         <div style={{ color: "#f06b00", fontWeight: 700, marginBottom: 6 }}>BACK-WALL STATUS</div>
         <div>NEON BRIDGE · ONLINE</div>
         <div>RELAY WORKER · ONLINE</div>
+        <div>TASK WORKER · ONLINE</div>
         <div style={{ marginTop: 6 }}>PERSISTENCE</div>
         <div>REDIS · {persistence.redis.toUpperCase()}</div>
         <div>QDRANT · {persistence.qdrant.toUpperCase()}</div>
         <div>TAILSCALE · {persistence.tailscale.toUpperCase()}</div>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: 120,
+          top: 190,
+          width: 320,
+          padding: "12px 14px",
+          background: "#0a1316",
+          border: "2px solid #1b2b36",
+          color: "#23e38a",
+          fontSize: 10,
+          fontFamily: "monospace",
+          letterSpacing: 1,
+        }}
+      >
+        <div style={{ color: "#f06b00", fontWeight: 700 }}>SPRINGFIELD POWER PLANT</div>
+        <div style={{ color: "#657f9b", margin: "4px 0 6px" }}>━━━━━━━━━━━━━━━━━━━━━━</div>
+        {([
+          ["COMPUTE", plant.compute],
+          ["QUEUE", plant.queue],
+          ["MEMORY", plant.memory],
+          ["STORAGE", plant.storage],
+          ["NETWORK", plant.network],
+        ] as [string, string][]).map(([label, value]) => (
+          <div key={label} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ color: "#d6e6ff" }}>{label}</span>
+            <span style={{ color: statusColor(value) }}>● {value.toUpperCase()}</span>
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: 60,
+          top: 230,
+          width: 44,
+          height: 60,
+          borderRadius: 8,
+          background: "#2e3a44",
+          border: "2px solid #1b2b36",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 8,
+            top: 6,
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: "#f1c24a",
+            border: "2px solid #3b2a16",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 12,
+            top: 36,
+            width: 20,
+            height: 18,
+            borderRadius: 6,
+            background: "#7a8ca0",
+            border: "2px solid #2b3642",
+          }}
+        />
       </div>
       <RadiationSymbol left="2%" />
       <RadiationSymbol left="96%" />
@@ -876,6 +959,13 @@ export default function ControlRoomScene({
     qdrant: "offline",
     tailscale: "disconnected",
   });
+  const [plant, setPlant] = useState<PlantStatus>({
+    compute: "offline",
+    queue: "offline",
+    memory: "offline",
+    storage: "offline",
+    network: "disconnected",
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -885,10 +975,23 @@ export default function ControlRoomScene({
         if (!res.ok) return;
         const data = await res.json();
         if (mounted && data?.persistence) {
+          const redis = data.persistence.redis || 'offline';
+          const qdrant = data.persistence.qdrant || 'offline';
+          const tailscale = data.persistence.tailscale || 'disconnected';
           setPersistence({
-            redis: data.persistence.redis || 'offline',
-            qdrant: data.persistence.qdrant || 'offline',
-            tailscale: data.persistence.tailscale || 'disconnected',
+            redis,
+            qdrant,
+            tailscale,
+          });
+
+          const compute = data.gateway || data.agents?.homer || 'offline';
+          const storage = redis === 'healthy' && qdrant === 'healthy' ? 'healthy' : (redis === 'offline' || qdrant === 'offline' ? 'offline' : 'degraded');
+          setPlant({
+            compute: compute === 'online' || compute === 'alive' ? 'online' : compute,
+            queue: redis === 'healthy' ? 'normal' : redis,
+            memory: qdrant === 'healthy' ? 'stable' : qdrant,
+            storage,
+            network: tailscale,
           });
         }
       } catch {}
@@ -915,7 +1018,7 @@ export default function ControlRoomScene({
       }}
     >
       <FloorPerspective />
-      <BackWall persistence={persistence} />
+      <BackWall persistence={persistence} plant={plant} />
       <MaggiePlatform />
       <ConnectionLines />
       <Station agent={agents.homer} left={`${HOMER_POS.x}px`} top={`${HOMER_POS.y}px`} />
