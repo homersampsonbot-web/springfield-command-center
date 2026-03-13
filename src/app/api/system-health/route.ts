@@ -29,14 +29,40 @@ export async function GET() {
     const execAsync = promisify(exec);
     const bartProcessStatus = async () => {
       try {
-        const { stdout } = await execAsync('pm2 describe bart-browser --no-color');
-        const isOnline = /status\s*:\s*online/i.test(stdout);
+        const { stdout } = await execAsync('bash -lc "pm2 pid bart-browser"');
+        const isOnline = stdout.trim() !== '0' && stdout.trim() !== '';
         if (isOnline) {
           return { agent: 'bart', status: 'online', runtime: 'homer', service: 'bart-browser' } as const;
         }
         return { agent: 'bart', status: 'offline' } as const;
       } catch {
         return { agent: 'bart', status: 'offline' } as const;
+      }
+    };
+
+    const margeProcessStatus = async () => {
+      try {
+        const { stdout } = await execAsync('bash -lc "pm2 pid marge-browser"');
+        const isOnline = stdout.trim() !== '0' && stdout.trim() !== '';
+        if (isOnline) {
+          return { agent: 'marge', status: 'online', runtime: 'homer', service: 'marge-browser' } as const;
+        }
+        return { agent: 'marge', status: 'offline' } as const;
+      } catch {
+        return { agent: 'marge', status: 'offline' } as const;
+      }
+    };
+
+    const lisaProcessStatus = async () => {
+      try {
+        const { stdout } = await execAsync('bash -lc "pm2 pid lisa-browser"');
+        const isOnline = stdout.trim() !== '0' && stdout.trim() !== '';
+        if (isOnline) {
+          return { agent: 'lisa', status: 'online', runtime: 'homer', service: 'lisa-browser' } as const;
+        }
+        return { agent: 'lisa', status: 'offline' } as const;
+      } catch {
+        return { agent: 'lisa', status: 'offline' } as const;
       }
     };
 
@@ -72,53 +98,22 @@ export async function GET() {
     } catch (e) {}
 
 
-    const relayHealth = async (relayUrl: string) => {
-      if (relayUrl === 'disabled') return 'maintenance' as const;
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(toHealthUrl(relayUrl), { signal: controller.signal, cache: 'no-store' });
-        clearTimeout(timeoutId);
-        return res.ok ? 'alive' : 'down';
-      } catch {
-        return 'down';
-      }
-    };
-
-    const margeRelay = await relayHealth(margeRelayUrl);
-    const lisaRelay = await relayHealth(lisaRelayUrl);
-
-    const sessionCheck = async (relayUrl: string, key: 'marge' | 'lisa') => {
-      if (relayUrl === 'disabled') {
-        return { status: 'maintenance', reason: 'relay_disabled', keepalive: { lastRunTs: null, lastResult: null } } as const;
-      }
-      const url = toSessionUrl(relayUrl);
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) return { status: 'offline', reason: 'relay_unreachable', keepalive: { lastRunTs: null, lastResult: null } } as const;
-        const data: any = await res.json();
-        if (!data?.browser?.cdpOk) return { status: 'offline', reason: 'cdp_failed', keepalive: { lastRunTs: null, lastResult: null } } as const;
-        const s = data?.[key];
-        
-        // Fetch keepalive status if available
-        let keepalive = { lastRunTs: null, lastResult: null };
-        try {
-          const kaRes = await fetch(url.replace('/session', '/keepalive-status'), { cache: 'no-store' });
-          if (kaRes.ok) {
-            keepalive = await kaRes.json();
-          }
-        } catch (e) {}
-
-        if (s?.loggedIn) return { status: 'ok', reason: null, keepalive } as const;
-        return { status: 'degraded', reason: s?.reason || 'logged_out', keepalive } as const;
-      } catch {
-        return { status: 'offline', reason: 'relay_unreachable', keepalive: { lastRunTs: null, lastResult: null } } as const;
-      }
-    };
-
-    const margeSession = await sessionCheck(margeRelayUrl, 'marge');
-    const lisaSession = await sessionCheck(lisaRelayUrl, 'lisa');
     const bartAgent = await bartProcessStatus();
+    const margeAgent = await margeProcessStatus();
+    const lisaAgent = await lisaProcessStatus();
+
+    const margeRelay = margeAgent.status === 'online' ? 'alive' : 'down';
+    const lisaRelay = lisaAgent.status === 'online' ? 'alive' : 'down';
+
+    const margeSession =
+      margeAgent.status === 'online'
+        ? { status: 'ok', reason: null, keepalive: { lastRunTs: null, lastResult: 'browser_worker_online' } }
+        : { status: 'offline', reason: 'browser_worker_offline', keepalive: { lastRunTs: null, lastResult: null } };
+
+    const lisaSession =
+      lisaAgent.status === 'online'
+        ? { status: 'ok', reason: null, keepalive: { lastRunTs: null, lastResult: 'browser_worker_online' } }
+        : { status: 'offline', reason: 'browser_worker_offline', keepalive: { lastRunTs: null, lastResult: null } };
 
     const persistence = await persistenceHealth();
 
@@ -155,6 +150,8 @@ export async function GET() {
       relays: { marge: margeRelay, lisa: lisaRelay },
       sessions: { marge: margeSession, lisa: lisaSession },
       bartAgent,
+      margeAgent,
+      lisaAgent,
       persistence,
       maggieLocalStatus,
       maggieState,
@@ -162,11 +159,13 @@ export async function GET() {
       agents: {
         homer: "alive",
         bart: bartAgent.status === 'online' ? 'online' : 'offline',
-        marge: margeSession.status === 'ok' ? 'available' : (margeSession.status === 'offline' ? 'offline' : (margeSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
-        lisa: lisaSession.status === 'ok' ? 'available' : (lisaSession.status === 'offline' ? 'offline' : (lisaSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
+        marge: margeAgent.status === 'online' ? 'online' : 'offline',
+        lisa: lisaAgent.status === 'online' ? 'online' : 'offline',
+        margeSession: margeSession.status === 'ok' ? 'available' : (margeSession.status === 'offline' ? 'offline' : (margeSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
+        lisaSession: lisaSession.status === 'ok' ? 'available' : (lisaSession.status === 'offline' ? 'offline' : (lisaSession.status === 'maintenance' ? 'maintenance' : 'degraded')),
         maggie: maggieState === "online" ? "online" : "degraded"
       },
-      counts: {
+      counts: process.env.DATABASE_URL ? {
         jobs: await prisma.job.groupBy({ by: ['status'], _count: true }),
         directives: await prisma.directive.groupBy({ by: ['status'], _count: true }),
         stuckLeases: await prisma.job.count({
@@ -175,6 +174,10 @@ export async function GET() {
             status: { in: ['CLAIMED', 'IN_PROGRESS', 'QA'] }
           }
         })
+      } : {
+        jobs: [],
+        directives: [],
+        stuckLeases: 0
       },
       build: process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_URL || process.env.NEXT_PUBLIC_BUILD_STAMP || "v1.6.4-HEAL-ESCALATE",
       timestamp: Date.now()

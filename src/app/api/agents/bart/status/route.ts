@@ -5,8 +5,8 @@ import { promisify } from 'util';
 export async function GET() {
   const execAsync = promisify(exec);
   try {
-    const { stdout } = await execAsync('pm2 describe bart-browser --no-color');
-    const isOnline = /status\s*:\s*online/i.test(stdout);
+    const { stdout } = await execAsync('bash -lc "pm2 pid bart-browser"');
+    const isOnline = stdout.trim() !== '0' && stdout.trim() !== '';
     if (isOnline) {
       return NextResponse.json({ agent: 'bart', status: 'online', runtime: 'homer', service: 'bart-browser' });
     }
