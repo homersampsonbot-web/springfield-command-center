@@ -13,3 +13,4 @@ node_modules/
 .vercel
 agents/
 src/app/api/agents/bart/status/route.ts.bak-pidcheck
+**/*.bak-*
