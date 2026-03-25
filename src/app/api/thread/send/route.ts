@@ -359,6 +359,21 @@ export async function POST(req: Request) {
             type: "THREAD_MESSAGE",
             level: "INFO",
             message: context.brief,
+
+          if (context.brief.includes("Approval state: APPROVED")) {
+            await fetch(`${process.env.SPRINGFIELD_BASE_URL || ""}/api/relay/homer`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-springfield-key": process.env.SPRINGFIELD_KEY || ""
+              },
+              body: JSON.stringify({
+                message: `[MAGGIE->HOMER] Approved brief ${requestId}. Execute next steps.`,
+                requestId,
+                source: "MAGGIE"
+              })
+            });
+          },
             payload: {
               thread: "team",
               participant: "MAGGIE",
