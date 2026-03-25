@@ -102,7 +102,12 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const el = scrollRef.current;
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const isNearBottom = distanceFromBottom < 80;
+      if (isNearBottom) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
   }, [messages]);
 
@@ -281,7 +286,7 @@ export default function Home() {
   const [activeJobs, setActiveJobs] = useState<any[]>([]);
   const [activeDebateCount, setActiveDebateCount] = useState(0);
 
-  const [activeTab, setActiveTab] = useState('directives');
+  const [activeTab, setActiveTab] = useState('team');
   const [mode, setMode] = useState<'DIRECTIVE'|'AUTO_PLAN'>('DIRECTIVE');
   const [bootDegraded, setBootDegraded] = useState(false);
 
@@ -498,9 +503,9 @@ export default function Home() {
       </div>
 
       {/* Main Grid */}
-      <div style={{ display:'flex', flex:1, gap:16, minHeight:0, flexDirection: isMobile ? 'column' : 'row' }}>
+      <div style={{ display:'flex', flex:1, gap:16, minHeight:0, flexDirection:'row' }}>
         {/* LEFT: Activity & Jobs */}
-        <div style={{ display:'flex', flexDirection:'column', gap:12, width: isMobile ? '100%' : '320px', minHeight:0, flexShrink:0 }}>
+        <div style={{ display: isMobile ? 'none' : 'flex', flexDirection:'column', gap:12, width:'320px', minHeight:0, flexShrink:0 }}>
           <JarvisPanel 
             title={isMobile && activityCollapsed ? `ACTIVITY (${maggieActivity.length})` : "ACTIVITY"}
             actions={
@@ -546,7 +551,7 @@ export default function Home() {
         </div>
 
         {/* CENTER: Command Podium */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight: 0 }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight: 0, width:'100%' }}>
           <JarvisPanel 
             title="COMMAND PODIUM" 
             actions={<button onClick={() => setMode('DIRECTIVE')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>RESET</button>}

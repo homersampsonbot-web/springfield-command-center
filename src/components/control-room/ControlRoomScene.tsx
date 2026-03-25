@@ -28,9 +28,10 @@ type TraceItem = {
 };
 
 type PersistenceStatus = {
-  redis: string;
-  qdrant: string;
-  tailscale: string;
+  queue: string;
+  memory: string;
+  storage: string;
+  network: string;
 };
 
 type PlantStatus = {
@@ -601,7 +602,7 @@ function statusColor(status: string) {
   return "#ff4a4a";
 }
 
-function BackWall({ persistence, plant }: { persistence: PersistenceStatus; plant: PlantStatus }) {
+function BackWall({ persistence, plant, ledgerEntries }: { persistence: PersistenceStatus; plant: PlantStatus; ledgerEntries: any[] }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: COLORS.wall, zIndex: 1 }}>
       <div
@@ -715,9 +716,45 @@ function BackWall({ persistence, plant }: { persistence: PersistenceStatus; plan
         <div>RELAY WORKER · ONLINE</div>
         <div>TASK WORKER · ONLINE</div>
         <div style={{ marginTop: 6 }}>PERSISTENCE</div>
-        <div>REDIS · {persistence.redis.toUpperCase()}</div>
-        <div>QDRANT · {persistence.qdrant.toUpperCase()}</div>
-        <div>TAILSCALE · {persistence.tailscale.toUpperCase()}</div>
+        <div>ZILLIZ PRIMARY · {persistence.memory.toUpperCase()}</div>
+        <div>SYNOLOGY BACKUP · {persistence.storage.toUpperCase()}</div>
+        <div>GATEWAY QUEUE HEALTH · {persistence.queue.toUpperCase()}</div>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          transform: "translateX(-50%)",
+          top: 190,
+          width: 280,
+          padding: "10px 12px",
+          background: "#0a1316",
+          border: "2px solid #1b2b36",
+          color: "#23e38a",
+          fontSize: 10,
+          fontFamily: "monospace",
+          letterSpacing: 1,
+        }}
+      >
+        <div style={{ color: "#f06b00", fontWeight: 700, marginBottom: 6 }}>
+          GOVERNANCE LEDGER
+        </div>
+        <div>DECISION LEDGER · ACTIVE</div>
+        <div>STORE · NEON (CANONICAL)</div>
+        <div>INDEX · ZILLIZ (SEMANTIC)</div>
+        <div style={{ marginTop: 6 }}>LATEST RULINGS</div>
+        {ledgerEntries.length > 0 ? (
+          ledgerEntries.slice(0, 3).map((entry, idx) => (
+            <div key={entry.id || idx} style={{ color: "#d6e6ff" }}>
+              {idx + 1}. {String(entry.proposalTitle || "UNTITLED").toUpperCase()} · {String(entry.ruling || "").replaceAll("_", " ")}
+            </div>
+          ))
+        ) : (
+          <div style={{ color: "#d6e6ff" }}>NO LEDGER ENTRIES</div>
+        )}
+        <div style={{ color: "#657f9b", marginTop: 6 }}>
+          STAGE 6B GOVERNANCE
+        </div>
       </div>
       <div
         style={{
@@ -991,6 +1028,7 @@ function TraceDrawer({
                   <span style={{ textTransform: "uppercase", marginRight: 8 }}>{trace.status}</span>
                   <span>{new Date(trace.timestamp).toLocaleString()}</span>
                   {trace.duration && <span style={{ marginLeft: 8 }}>⏱ {trace.duration}</span>}
+                  <span style={{ marginLeft: 8, opacity: 0.6 }}>ID: {trace.id.slice(0,8)}</span>
                 </div>
               </div>
             </summary>
@@ -1055,11 +1093,13 @@ export default function ControlRoomScene({
     maggie: [],
   });
   const [selectedAgent, setSelectedAgent] = useState<Agent["id"] | null>(null);
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const agents = mergeAgents({ ...agentOverrides, ...agentRuntimeOverrides });
   const [persistence] = useState<PersistenceStatus>({
-    redis: "offline",
-    qdrant: "offline",
-    tailscale: "disconnected",
+    queue: "offline",
+    memory: "offline",
+    storage: "offline",
+    network: "disconnected",
   });
   const [plant, setPlant] = useState<PlantStatus>({
     compute: "offline",
@@ -1068,6 +1108,15 @@ export default function ControlRoomScene({
     storage: "offline",
     network: "disconnected",
   });
+
+  useEffect(() => {
+    fetch("/api/governance/ledger?limit=3")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.entries) setLedgerEntries(d.entries);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -1148,9 +1197,14 @@ export default function ControlRoomScene({
           const created = new Date(j.updatedAt || j.createdAt || Date.now()).toISOString();
           const duration = j.durationMs ? `${(j.durationMs / 1000).toFixed(1)}s` : undefined;
           const steps = j.payload?.steps || j.payload?.plan?.steps || j.metadata?.steps || undefined;
+          const rawTitle = j.title || '';
+          const readableTitle =
+            typeof rawTitle === 'string' && rawTitle.startsWith('RELAY_REQUEST:')
+              ? (j.payload?.directive || j.payload?.task || 'Relay request')
+              : (rawTitle || j.payload?.directive || j.payload?.task || 'Task');
           return {
             id: j.id || `${j.title}-${created}`,
-            title: j.title || j.payload?.directive || j.payload?.task || 'Task',
+            title: readableTitle,
             status: j.status || 'unknown',
             timestamp: created,
             duration,
@@ -1210,7 +1264,7 @@ export default function ControlRoomScene({
       }}
     >
       <FloorPerspective />
-      <BackWall persistence={persistence} plant={plant} />
+      <BackWall persistence={persistence} plant={plant} ledgerEntries={ledgerEntries} />
       <MaggiePlatform />
       <ConnectionLines />
       <Station agent={agents.homer} left={`${HOMER_POS.x}px`} top={`${HOMER_POS.y}px`} onSelect={setSelectedAgent} />

@@ -2,12 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Menu, X, Layout, Zap, Users } from 'lucide-react';
+import { Menu, X, Layout, Zap, Users, ListTodo } from 'lucide-react';
 
 export default function AppDrawer({ isOpen, onOpen, onClose }: { isOpen: boolean; onOpen: () => void; onClose: () => void; authStamp?: string }) {
   const navItems = [
     { label: 'Mission Control', icon: <Zap size={18} />, href: '/' },
     { label: 'Control Room', icon: <Layout size={18} />, href: '/control-room' },
+    { label: 'Action Items', icon: <ListTodo size={18} />, href: '/action-items' },
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
     { label: 'Debates', icon: <Layout size={18} />, href: '/debate' },
     { label: 'Team', icon: <Users size={18} />, href: '/team' },

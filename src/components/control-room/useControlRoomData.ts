@@ -47,6 +47,10 @@ function deriveAgentState(agentId: string, jobs: any[], messages: any[], health:
   if (health?.agents?.[agentId] === false) return 'offline';
   const activeJob = jobs?.find((j: any) => j.status === 'PROCESSING' && (j.payload?.agent === agentId || j.payload?.targetAgent === agentId));
   if (activeJob) return 'active';
+
+  const claimedJob = jobs?.find((j: any) => j.status === 'CLAIMED' && (j.payload?.agent === agentId || j.payload?.targetAgent === agentId));
+  if (claimedJob) return 'thinking';
+
   const queuedJob = jobs?.find((j: any) => j.status === 'QUEUED' && (j.payload?.agent === agentId || j.payload?.targetAgent === agentId));
   if (queuedJob) return 'thinking';
   const recentMessage = messages?.find((m: any) => {
