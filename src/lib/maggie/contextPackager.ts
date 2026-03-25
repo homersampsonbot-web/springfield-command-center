@@ -11,28 +11,35 @@ export async function buildContextPack(requestId: string) {
       }
     },
     orderBy: { createdAt: "desc" },
-    take: 20
+    take: 100
   });
 
-  const filtered = events
-    .filter((e) => {
+  const pack = events
+    .map((e) => {
       const payload = (e.payload ?? {}) as any;
-      const participant = payload.participant;
-      return participant === "LISA" || participant === "MARGE" || participant === "SMS";
+      return {
+        participant: payload.participant ?? null,
+        source: payload.source ?? null,
+        message: e.message,
+        createdAt: e.createdAt
+      };
     })
-    .reverse();
+    .filter((e) => e.participant === "LISA" || e.participant === "MARGE");
 
-  const pack = filtered.map((e) => {
-    const payload = (e.payload ?? {}) as any;
-    return {
-      participant: payload.participant ?? null,
-      message: e.message,
-      createdAt: e.createdAt
-    };
-  });
+  const latestLisa =
+    pack.find((e) => e.participant === "LISA" && typeof e.message === "string" && e.message.trim())?.message ?? null;
 
-  const latestLisa = [...pack].reverse().find((e) => e.participant === "LISA")?.message ?? null;
-  const latestMarge = [...pack].reverse().find((e) => e.participant === "MARGE")?.message ?? null;
+  const latestMarge =
+    pack.find(
+      (e) =>
+        e.participant === "MARGE" &&
+        typeof e.message === "string" &&
+        (e.message.includes("Approval state: APPROVED") ||
+          e.message.includes("Ruling: Approved") ||
+          e.message.includes("RULING: APPROVED"))
+    )?.message ??
+    pack.find((e) => e.participant === "MARGE" && typeof e.message === "string" && e.message.trim())?.message ??
+    null;
 
   const brief = [
     "MAGGIE REVIEW BRIEF",
