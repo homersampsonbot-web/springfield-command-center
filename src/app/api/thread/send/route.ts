@@ -369,7 +369,7 @@ export async function POST(req: Request) {
           });
 
           if (context.brief.includes("Approval state: APPROVED")) {
-            await fetch(`${baseUrl}/api/relay/homer`, {
+            const homerRes = await fetch(`${baseUrl}/api/relay/homer`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -380,6 +380,39 @@ export async function POST(req: Request) {
                 requestId,
                 source: "MAGGIE"
               })
+            });
+
+            const homerRaw = await homerRes.text();
+            let homerData: any;
+            try {
+              homerData = JSON.parse(homerRaw);
+            } catch {
+              homerData = { error: "Non-JSON", raw: homerRaw };
+            }
+
+            const homerText =
+              homerData.reply ||
+              homerData.response ||
+              homerData.message ||
+              homerData.error ||
+              JSON.stringify(homerData);
+
+            await prisma.event.create({
+              data: {
+                scope: "SYSTEM",
+                type: "THREAD_MESSAGE",
+                level: homerData.error ? "ERROR" : "INFO",
+                message: homerText,
+                payload: {
+                  thread: "team",
+                  participant: "HOMER",
+                  source: "relay",
+                  target: "HOMER",
+                  requestId,
+                  routedBy: "MAGGIE",
+                  raw: homerData
+                }
+              }
             });
           }
 
