@@ -6,14 +6,23 @@ export async function buildContextPack(requestId: string) {
       scope: "SYSTEM",
       type: "THREAD_MESSAGE",
       payload: {
-        path: ["requestId"],
-        equals: requestId
+        path: ["thread"],
+        equals: "team"
       }
     },
-    orderBy: { createdAt: "asc" }
+    orderBy: { createdAt: "desc" },
+    take: 20
   });
 
-  const pack = events.map((e) => {
+  const filtered = events
+    .filter((e) => {
+      const payload = (e.payload ?? {}) as any;
+      const participant = payload.participant;
+      return participant === "LISA" || participant === "MARGE" || participant === "SMS";
+    })
+    .reverse();
+
+  const pack = filtered.map((e) => {
     const payload = (e.payload ?? {}) as any;
     return {
       participant: payload.participant ?? null,
