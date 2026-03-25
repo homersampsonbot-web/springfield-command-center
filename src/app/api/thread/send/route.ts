@@ -358,7 +358,7 @@ export async function POST(req: Request) {
             scope: "SYSTEM",
             type: "THREAD_MESSAGE",
             level: "INFO",
-            message: `[MAGGIE] Context packaged. ${context.context.length} events retrieved. Routing for orchestration.`,
+            message: context.brief,
             payload: {
               thread: "team",
               participant: "MAGGIE",
