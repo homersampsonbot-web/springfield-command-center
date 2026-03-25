@@ -1,8 +1,11 @@
+import { buildContextPack } from "@/lib/maggie/contextPackager";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { requireAppAuth } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
 import { classifyMaggie } from "@/lib/maggie";
+
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
@@ -13,6 +16,23 @@ export async function POST(req: Request) {
     const requestId = uuidv4();
     const msgLower = (message || "").toLowerCase();
     const senderNorm = (sender || "SMS").toUpperCase();
+
+    const failureSignals = {
+      anchorNotFound:
+        msgLower.includes("find string not found") ||
+        msgLower.includes("anchor not found"),
+      commandBlocked:
+        msgLower.includes("command not allowed"),
+      maxRetries:
+        msgLower.includes("max retries exceeded") ||
+        msgLower.includes("task failed after 3 attempts")
+    };
+
+    const detectedFailureType =
+      failureSignals.anchorNotFound ? "anchor_not_found" :
+      failureSignals.commandBlocked ? "command_blocked" :
+      failureSignals.maxRetries ? "max_retries" :
+      null;
 
     // 1. Routing & Async Detection (default)
     const asyncKeywords = ["architecture", "review", "plan", "migration", "explain", "design", "assess", "analyse"];
@@ -25,6 +45,20 @@ export async function POST(req: Request) {
     const isMargeTag = tag("@marge") || isTeamTag;
     const isLisaTag = tag("@lisa") || isTeamTag;
     const isHomerTag = tag("@homer") || isTeamTag;
+
+    const isMargeRuleCommand = msgLower.includes("@marge rule:");
+    const isMargeApproveCommand = msgLower.includes("@marge approve:");
+    const isMargeReviewCommand = msgLower.includes("@marge review:");
+    const isMargeGovernCommand = msgLower.includes("@marge govern:");
+    const isMargeCommand =
+      isMargeRuleCommand ||
+      isMargeApproveCommand ||
+      isMargeReviewCommand ||
+      isMargeGovernCommand;
+
+    if (isMargeCommand) {
+      isAsyncTrigger = true;
+    }
 
     // Maggie Auto-Classification + Routing (No @mention, SMS sender)
     const mentions = ["@marge", "@lisa", "@homer", "@bart", "@maggie", "@team"];
@@ -114,6 +148,37 @@ export async function POST(req: Request) {
         isAsyncTrigger = false;
       }
     } else {
+      // Maggie autonomous recovery routing for Homer failure reports
+      if (senderNorm === "HOMER" && detectedFailureType) {
+        if (detectedFailureType === "anchor_not_found") {
+          targets.push("lisa");
+          isAsyncTrigger = true;
+        } else if (detectedFailureType === "command_blocked") {
+          targets.push("lisa");
+          isAsyncTrigger = true;
+        } else if (detectedFailureType === "max_retries") {
+          targets.push("marge", "lisa");
+          isAsyncTrigger = true;
+        }
+
+        await prisma.event.create({
+          data: {
+            scope: "SYSTEM",
+            type: "THREAD_ROUTING",
+            level: "INFO",
+            message: `Maggie autonomous recovery routed ${detectedFailureType} to ${Array.from(new Set(targets)).join(", ").toUpperCase()}`,
+            payload: {
+              thread: "team",
+              sender: senderNorm,
+              failureType: detectedFailureType,
+              route: Array.from(new Set(targets)),
+              asyncRelay: true,
+              source: "maggie_recovery_rules"
+            }
+          }
+        });
+      }
+
       // Tagged flow (existing behavior)
       if (senderNorm === "SMS") {
         if (!isMargeTag && !isLisaTag && !isMaggieTag && !isTeamTag && !isHomerTag) targets.push("homer");
@@ -134,14 +199,18 @@ export async function POST(req: Request) {
       }
     }
 
+    const dedupedTargets = Array.from(new Set(targets));
+    targets.length = 0;
+    targets.push(...dedupedTargets);
+
     // DEBUG EVENT
     await prisma.event.create({
       data: {
         scope: "SYSTEM",
         type: "DEBUG",
         level: "INFO",
-        message: `ThreadSend Debug: isAsync=${isAsyncTrigger}, keyword=${matchedKeyword}, targets=${targets.join(",")}, baseUrl=${baseUrl}`,
-        payload: { body, msgLower, isAsyncTrigger, matchedKeyword, targets, requestId, baseUrl }
+        message: `ThreadSend Debug: isAsync=${isAsyncTrigger}, keyword=${matchedKeyword}, failureType=${detectedFailureType || "none"}, targets=${targets.join(",")}, baseUrl=${baseUrl}`,
+        payload: { body, msgLower, isAsyncTrigger, matchedKeyword, detectedFailureType, targets, requestId, baseUrl }
       }
     });
 
@@ -216,7 +285,13 @@ export async function POST(req: Request) {
     const callRelaySync = async (agent: string) => {
       try {
         let enhancedMessage = message;
-        if (agent === "marge" || agent === "lisa") {
+        if (agent === "marge") {
+          if (isMargeCommand) {
+            enhancedMessage = `[MARGE COMMAND CHANNEL] ${message}`;
+          } else {
+            enhancedMessage = `[TEAM THREAD - be concise, max 3 sentences] ${message}`;
+          }
+        } else if (agent === "lisa") {
           enhancedMessage = `[TEAM THREAD - be concise, max 3 sentences] ${message}`;
         }
         
@@ -279,15 +354,46 @@ export async function POST(req: Request) {
           scope: "SYSTEM",
           type: "THREAD_MESSAGE",
           level: "INFO",
-          message: "Maggie is analyzing the thread... [Summary: Team coordination in progress.]",
-          payload: { thread: "team", participant: "MAGGIE", source: "relay" },
-        },
-      });
-    }
-
-    return NextResponse.json({ success: true, requestId: isAsyncTrigger ? requestId : null });
   } catch (e: any) {
     console.error(`[ThreadSend] Error: ${e.message}`);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+
+    if (isMaggieTag && senderNorm === "SMS") {
+      try {
+        const context = await buildContextPack(requestId);
+
+        await prisma.event.create({
+          data: {
+            scope: "SYSTEM",
+            type: "THREAD_MESSAGE",
+            level: "INFO",
+            message: `[MAGGIE] Context packaged. ${context.context.length} events retrieved. Routing for orchestration.`,
+            payload: {
+              thread: "team",
+              participant: "MAGGIE",
+              source: "orchestrator",
+              requestId
+            },
+          },
+        });
+
+      } catch (err: any) {
+        await prisma.event.create({
+          data: {
+            scope: "SYSTEM",
+            type: "THREAD_MESSAGE",
+            level: "ERROR",
+            message: `[MAGGIE] Context packaging failed: ${err.message}`,
+            payload: {
+              thread: "team",
+              participant: "MAGGIE",
+              source: "orchestrator",
+              requestId
+            },
+          },
+        });
+      }
+    }
+
