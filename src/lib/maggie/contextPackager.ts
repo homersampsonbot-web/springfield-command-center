@@ -14,9 +14,9 @@ export async function buildContextPack(requestId: string) {
   });
 
   const pack = events.map((e) => {
-    const payload = (e.payload || {}) as any;
+    const payload = (e.payload ?? {}) as any;
     return {
-      participant: payload.participant || null,
+      participant: payload.participant ?? null,
       message: e.message,
       createdAt: e.createdAt
     };
