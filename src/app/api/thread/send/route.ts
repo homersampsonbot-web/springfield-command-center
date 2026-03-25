@@ -386,3 +386,10 @@ export async function POST(req: Request) {
       }
     }
 
+
+    return NextResponse.json({ success: true, requestId: isAsyncTrigger ? requestId : null });
+  } catch (e: any) {
+    console.error(`[ThreadSend] Error: ${e.message}`);
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
