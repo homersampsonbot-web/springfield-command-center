@@ -31,8 +31,20 @@ export async function buildContextPack(requestId: string) {
     };
   });
 
+  const latestLisa = [...pack].reverse().find((e) => e.participant === "LISA")?.message ?? null;
+  const latestMarge = [...pack].reverse().find((e) => e.participant === "MARGE")?.message ?? null;
+
+  const brief = [
+    "MAGGIE REVIEW BRIEF",
+    `requestId: ${requestId}`,
+    `eventsRetrieved: ${pack.length}`,
+    latestLisa ? `latestLisa: ${latestLisa}` : "latestLisa: none",
+    latestMarge ? `latestMarge: ${latestMarge}` : "latestMarge: none"
+  ].join("\n\n");
+
   return {
     requestId,
-    context: pack
+    context: pack,
+    brief
   };
 }
