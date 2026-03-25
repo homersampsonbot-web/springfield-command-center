@@ -5,7 +5,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const relayUrl = process.env.LISA_RELAY_URL || "disabled";
+    const relayUrl = process.env.LISA_RELAY_URL || "https://homer.margebot.com/lisa";
     if (relayUrl === "disabled") {
       return NextResponse.json({ error: "Relay is in maintenance", relay: "lisa", status: "maintenance" }, { status: 503 });
     }

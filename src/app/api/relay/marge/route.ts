@@ -5,16 +5,26 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const relayUrl = process.env.MARGE_RELAY_URL || "disabled";
+    const relayUrl = process.env.MARGE_RELAY_URL || "https://homer.margebot.com/marge";
     if (relayUrl === "disabled") {
       return NextResponse.json({ error: "Relay is in maintenance", relay: "marge", status: "maintenance" }, { status: 503 });
     }
-    const res = await fetch(relayUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(55000),
-    });
+    async function callRelay() {
+      return fetch(relayUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60000),
+      });
+    }
+
+    let res;
+    try {
+      res = await callRelay();
+    } catch {
+      // retry once if relay times out
+      res = await callRelay();
+    }
 
     const raw = await res.text();
     let data;
