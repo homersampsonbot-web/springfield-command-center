@@ -5,7 +5,15 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const res = await fetch("https://homer.margebot.com/ask", {
+
+    if (body?.message === "__relay_debug__") {
+      return NextResponse.json({
+        ok: true,
+        relay: "homer",
+        target: "https://homer.margebot.com/chat"
+      });
+    }
+    const res = await fetch("https://homer.margebot.com/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
