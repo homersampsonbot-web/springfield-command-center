@@ -414,6 +414,28 @@ export async function POST(req: Request) {
                 }
               }
             });
+
+            const homerStatus =
+              homerData?._springfield?.status ||
+              (homerData.error ? "BLOCKED" : "UNKNOWN");
+
+            await prisma.event.create({
+              data: {
+                scope: "SYSTEM",
+                type: "THREAD_MESSAGE",
+                level: homerStatus === "BLOCKED" ? "ERROR" : "INFO",
+                message: `[MAGGIE] Homer execution status: ${homerStatus}`,
+                payload: {
+                  thread: "team",
+                  participant: "MAGGIE",
+                  source: "completion_listener",
+                  requestId,
+                  routedBy: "MAGGIE",
+                  target: "HOMER",
+                  status: homerStatus
+                }
+              }
+            });
           }
 
       } catch (err: any) {
