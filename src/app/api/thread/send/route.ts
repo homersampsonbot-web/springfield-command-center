@@ -369,7 +369,7 @@ export async function POST(req: Request) {
           });
 
           if (context.brief.includes("Approval state: APPROVED")) {
-            await fetch(`${process.env.SPRINGFIELD_BASE_URL || ""}/api/relay/homer`, {
+            await fetch(`${baseUrl}/api/relay/homer`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
