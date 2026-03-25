@@ -182,7 +182,7 @@ export async function POST(req: Request) {
       // Tagged flow (existing behavior)
       if (senderNorm === "SMS") {
         if (!isMargeTag && !isLisaTag && !isMaggieTag && !isTeamTag && !isHomerTag) targets.push("homer");
-        if (isHomerTag) targets.push("homer");
+        if (isHomerTag && !isMaggieTag) targets.push("homer");
         if (isMargeTag) targets.push("marge");
         if (isLisaTag) targets.push("lisa");
       } else if (["HOMER","MARGE","LISA"].includes(senderNorm)) {
