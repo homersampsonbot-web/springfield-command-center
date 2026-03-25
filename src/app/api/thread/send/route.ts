@@ -353,12 +353,20 @@ export async function POST(req: Request) {
       try {
         const context = await buildContextPack(requestId);
 
-        await prisma.event.create({
-          data: {
-            scope: "SYSTEM",
-            type: "THREAD_MESSAGE",
-            level: "INFO",
-            message: context.brief,
+          await prisma.event.create({
+            data: {
+              scope: "SYSTEM",
+              type: "THREAD_MESSAGE",
+              level: "INFO",
+              message: context.brief,
+              payload: {
+                thread: "team",
+                participant: "MAGGIE",
+                source: "orchestrator",
+                requestId
+              },
+            },
+          });
 
           if (context.brief.includes("Approval state: APPROVED")) {
             await fetch(`${process.env.SPRINGFIELD_BASE_URL || ""}/api/relay/homer`, {
@@ -373,15 +381,7 @@ export async function POST(req: Request) {
                 source: "MAGGIE"
               })
             });
-          },
-            payload: {
-              thread: "team",
-              participant: "MAGGIE",
-              source: "orchestrator",
-              requestId
-            },
-          },
-        });
+          }
 
       } catch (err: any) {
         await prisma.event.create({
