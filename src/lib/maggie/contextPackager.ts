@@ -13,11 +13,14 @@ export async function buildContextPack(requestId: string) {
     orderBy: { createdAt: "asc" }
   });
 
-  const pack = events.map(e => ({
-    participant: e.payload?.participant,
-    message: e.message,
-    createdAt: e.createdAt
-  }));
+  const pack = events.map((e) => {
+    const payload = (e.payload || {}) as any;
+    return {
+      participant: payload.participant || null,
+      message: e.message,
+      createdAt: e.createdAt
+    };
+  });
 
   return {
     requestId,
