@@ -27,7 +27,22 @@ export async function POST(req: Request) {
     let data;
     try {
       data = JSON.parse(raw);
-      return NextResponse.json(data, { status: res.status });
+      
+      const status =
+        data.status ||
+        data.state ||
+        data.phase ||
+        (data.reply ? "ACKNOWLEDGED" : "UNKNOWN");
+
+      return NextResponse.json({
+        ...data,
+        _springfield: {
+          agent: "HOMER",
+          status,
+          timestamp: new Date().toISOString()
+        }
+      }, { status: res.status });
+
     } catch (e) {
       return NextResponse.json({ 
         error: "Relay returned non-JSON response", 
