@@ -348,17 +348,6 @@ export async function POST(req: Request) {
       }
     }
 
-    if (isMaggieTag && senderNorm === "SMS") {
-      await prisma.event.create({
-        data: {
-          scope: "SYSTEM",
-          type: "THREAD_MESSAGE",
-          level: "INFO",
-  } catch (e: any) {
-    console.error(`[ThreadSend] Error: ${e.message}`);
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
-}
 
     if (isMaggieTag && senderNorm === "SMS") {
       try {
