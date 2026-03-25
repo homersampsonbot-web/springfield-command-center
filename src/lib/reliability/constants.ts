@@ -1,0 +1,8 @@
+export const HEARTBEAT_STALE_THRESHOLD_S = 120;
+export const HEARTBEAT_OFFLINE_THRESHOLD_S = 600;
+
+export const DEFAULT_WINDOW_MINUTES = 60;
+export const MAX_WINDOW_MINUTES = 1440;
+
+export const MEMORY_SEARCH_LIMIT = 100;
+export const RECENT_EVENTS_LIMIT = 20;
