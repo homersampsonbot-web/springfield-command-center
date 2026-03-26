@@ -68,7 +68,13 @@ export async function GET() {
 
     const persistenceHealth = async () => {
       if (!gatewayUrl) {
-        return { redis: 'offline', qdrant: 'offline', tailscale: 'disconnected' } as const;
+        return {
+          compute: 'offline',
+          queue: 'offline',
+          memory: 'offline',
+          storage: 'offline',
+          network: 'disconnected'
+        } as const;
       }
       try {
         const res = await fetch(`${gatewayUrl}/persistence-health`, {
@@ -78,9 +84,23 @@ export async function GET() {
         });
         if (!res.ok) throw new Error('gateway_unreachable');
         const data = await res.json();
-        if (data?.persistence) return data.persistence as { redis: string; qdrant: string; tailscale: string };
+        if (data?.persistence) {
+          return data.persistence as {
+            compute: string;
+            queue: string;
+            memory: string;
+            storage: string;
+            network: string;
+          };
+        }
       } catch {}
-      return { redis: 'offline', qdrant: 'offline', tailscale: 'disconnected' } as const;
+      return {
+        compute: 'offline',
+        queue: 'offline',
+        memory: 'offline',
+        storage: 'offline',
+        network: 'disconnected'
+      } as const;
     };
 
     // 1) Fetch Marge health via Gateway proxy

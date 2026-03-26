@@ -84,6 +84,46 @@ async function processRelayRequest(job) {
       }
     });
 
+    if (
+      targetAgent === 'MARGE' &&
+      typeof replyText === 'string' &&
+      (
+      replyText.includes('MARGE RULING —') ||
+      /RULING:\s*(APPROVED|APPROVED WITH CONDITIONS|REJECTED|DIRECTIVE)/i.test(replyText)
+    )
+    ) {
+      try {
+        const rulingMatch = replyText.match(/RULING:\s*(APPROVED WITH CONDITIONS|APPROVED|REJECTED|DIRECTIVE)/i);
+        const rulingMap = {
+          'APPROVED': 'APPROVED',
+          'APPROVED WITH CONDITIONS': 'APPROVED_WITH_CONDITIONS',
+          'REJECTED': 'REJECTED',
+          'DIRECTIVE': 'DIRECTIVE'
+        };
+
+        const stageMatch = replyText.match(/Stage Reference:\s*([^\n]+)/i);
+        const proposalMatch = replyText.match(/Proposal:\s*([^\n]+)/i);
+
+        const ledgerPayload = {
+          proposalTitle: proposalMatch ? proposalMatch[1].trim() : `Marge ruling ${requestId}`,
+          proposingAgent: (metaEvent.payload.sender || 'SMS').toUpperCase(),
+          ruling: rulingMatch ? rulingMap[rulingMatch[1].toUpperCase()] : 'DIRECTIVE',
+          conditions: 'Auto-recorded from explicit CLI-Marge ruling via command channel.',
+          summary: replyText.slice(0, 4000),
+          stageReference: stageMatch ? stageMatch[1].trim() : '6B',
+          sourceThreadEventId: null
+        };
+
+        await fetch('https://commander.margebot.com/api/governance/ledger', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ledgerPayload)
+        });
+      } catch (ledgerErr) {
+        console.error('[Worker] Ledger auto-write failed:', ledgerErr.message);
+      }
+    }
+
     // 4. Update Placeholder Status
     if (placeholderEventId) {
       const placeholder = await prisma.event.findUnique({ where: { id: placeholderEventId } });
@@ -174,6 +214,25 @@ async function run() {
         },
         orderBy: { createdAt: 'asc' }
       });
+
+      const staleThreshold = new Date(Date.now() - 5 * 60 * 1000);
+      const stuckJobs = await prisma.job.findMany({
+        where: {
+          title: { startsWith: 'RELAY_REQUEST:' },
+          status: 'CLAIMED',
+          updatedAt: { lt: staleThreshold }
+        }
+      });
+
+      for (const job of stuckJobs) {
+        await prisma.job.update({
+          where: { id: job.id },
+          data: {
+            status: 'FAILED',
+            lastError: 'Worker timeout: stuck in CLAIMED'
+          }
+        });
+      }
 
       for (const job of pendingJobs) {
         await processRelayRequest(job);

@@ -108,6 +108,40 @@ model DebateEvent {
   @@index([debateId])
 }
 
+model DecisionLedgerEntry {
+  id                  String                @id @default(cuid())
+  timestamp           DateTime              @default(now())
+  proposalTitle       String
+  proposingAgent      DecisionProposingAgent
+  ruling              DecisionRuling
+  conditions          String?
+  summary             String
+  stageReference      String
+  sourceThreadEventId String?
+  createdAt           DateTime              @default(now())
+
+  @@index([timestamp])
+  @@index([ruling])
+  @@index([stageReference])
+}
+
+model ApprovalRequest {
+  id          String                @id @default(cuid())
+  title       String
+  description String
+  requestedBy ApprovalRequestedBy
+  status      ApprovalStatus        @default(PENDING)
+  feedback    String?
+  sourceType  String?
+  sourceId    String?
+  createdAt   DateTime              @default(now())
+  resolvedAt  DateTime?
+  resolvedBy  String?
+
+  @@index([status])
+  @@index([createdAt])
+}
+
 enum JobStatus {
   QUEUED
   CLAIMED
@@ -116,6 +150,32 @@ enum JobStatus {
   DONE
   FAILED
   BLOCKED
+}
+
+enum DecisionProposingAgent {
+  LISA
+  HOMER
+  BART
+  MAGGIE
+  SMS
+}
+
+enum DecisionRuling {
+  APPROVED
+  APPROVED_WITH_CONDITIONS
+  REJECTED
+  DIRECTIVE
+}
+
+enum ApprovalRequestedBy {
+  MAGGIE
+  SMS
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum Owner {

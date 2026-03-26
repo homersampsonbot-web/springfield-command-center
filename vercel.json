@@ -1,9 +1,5 @@
 {
   "version": 2,
-  "env": {
-    "MARGE_RELAY_URL": "disabled",
-    "LISA_RELAY_URL": "disabled"
-  },
   "rewrites": [
     { "source": "/api/directive", "destination": "/api/directive/route.js" },
     { "source": "/api/results", "destination": "/api/results/route.js" }

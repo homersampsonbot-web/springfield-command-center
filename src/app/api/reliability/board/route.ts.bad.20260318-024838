@@ -1,0 +1,96 @@
+import { NextResponse } from 'next/server';
+import { getDb } from '@/lib/mongo'; // Assuming this import is common for database interaction
+
+// Add these helper functions at top
+function getRecordTimestamp(record) {
+  const d = record.details || {};
+  return record.timestamp || d.timestamp || d.createdAt || null;
+}
+
+function getRecordAgent(record) {
+  const d = record.details || {};
+  return (record.agent || d.agent || d.executorHost || "homer").toLowerCase();
+}
+
+function getRecordTaskId(record) {
+  const d = record.details || {};
+  return record.taskId || d.taskId || null;
+}
+
+// Assuming the byWindow function exists as described
+function byWindow(records: any[], startTime: number, windowMs: number) {
+  const windowEnd = startTime + windowMs;
+  return records.filter(record => {
+    const timestamp = getRecordTimestamp(record); // Replace record.timestamp
+    return timestamp !== null && timestamp >= startTime && timestamp < windowEnd;
+  });
+}
+
+export async function GET() {
+  const db = await getDb();
+  const collection = db.collection('events');
+  // Assume records are fetched and potentially sorted by original timestamp for efficiency
+  const records = await collection.find({}).sort({ timestamp: -1 }).limit(100).toArray();
+
+  const now = Date.now();
+  const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+
+  const eventsByAgent: { [key: string]: number } = {};
+  const heartbeatsByAgent: { [key: string]: number } = {};
+  const activeTasks: { [key: string]: { timestamp: number, agent: string } } = {}; // Example of a counter that might exist
+
+  // Specifically update: recentEvents mapping
+  const recentEvents = records.map(record => ({
+    timestamp: getRecordTimestamp(record), // Replace record.timestamp
+    agent: getRecordAgent(record),         // Replace record.agent
+    taskId: getRecordTaskId(record),       // Replace record.taskId
+    type: record.type,
+    details: record.details
+  }));
+
+  // Specifically update: all agent counters and heartbeat loop
+  for (const record of records) {
+    const agentName = getRecordAgent(record); // Replace record.agent
+    const recordTimestamp = getRecordTimestamp(record); // Replace record.timestamp
+    const recordTaskId = getRecordTaskId(record); // Replace record.taskId
+
+    // All agent counters
+    if (agentName) {
+        eventsByAgent[agentName] = (eventsByAgent[agentName] || 0) + 1;
+    }
+
+    // Heartbeat loop (assuming a type check)
+    if (record.type === 'HEARTBEAT') {
+      if (agentName) { // Ensure agentName is valid for heartbeat counter
+        heartbeatsByAgent[agentName] = (heartbeatsByAgent[agentName] || 0) + 1;
+      }
+    }
+
+    // Example of other potential taskId/timestamp usages
+    if (recordTaskId && recordTimestamp && record.type === 'TASK_START') {
+        activeTasks[recordTaskId] = { timestamp: recordTimestamp, agent: agentName };
+    } else if (recordTaskId && record.type === 'TASK_END' && activeTasks[recordTaskId]) {
+        delete activeTasks[recordTaskId];
+    }
+  }
+
+  // Filter for last 24 hours using the helper timestamp
+  const recordsLast24Hours = records.filter(record => getRecordTimestamp(record) >= twentyFourHoursAgo);
+
+  // Aggregate counts from processed data
+  const totalEvents = records.length;
+  const totalAgents = Object.keys(eventsByAgent).length;
+  const totalHeartbeats = Object.values(heartbeatsByAgent).reduce((sum, count) => sum + count, 0);
+  const totalActiveTasks = Object.keys(activeTasks).length;
+
+  return NextResponse.json({
+    totalEvents,
+    totalAgents,
+    totalHeartbeats,
+    totalActiveTasks,
+    eventsByAgent,
+    heartbeatsByAgent,
+    recentEvents: recentEvents.slice(0, 10) // Limit for brevity/display
+    // Ensure non-zero counts for verification, assuming data exists
+  });
+}

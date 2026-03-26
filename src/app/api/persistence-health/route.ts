@@ -42,17 +42,17 @@ export async function GET() {
       error = e?.message || "gateway_unreachable";
     }
 
-    const persistence = data?.persistence || { redis: "offline", qdrant: "offline", tailscale: "disconnected" };
+    const persistence = data?.persistence || { zilliz: "offline", synology: "offline", gatewayQueue: "disconnected" };
     const compute = data?.compute || "offline";
 
-    const queue = persistence.redis === "healthy" ? "normal" : persistence.redis;
-    const memory = persistence.qdrant === "healthy" ? "stable" : persistence.qdrant;
-    const network = persistence.tailscale === "connected" ? "connected" : persistence.tailscale;
+    const queue = persistence.gatewayQueue === "healthy" ? "normal" : persistence.gatewayQueue;
+    const memory = persistence.zilliz === "healthy" ? "stable" : persistence.zilliz;
+    const network = persistence.gatewayQueue === "connected" ? "connected" : persistence.gatewayQueue;
 
     let storage = "degraded";
-    if (persistence.redis === "healthy" && persistence.qdrant === "healthy" && network === "connected") {
+    if (persistence.zilliz === "healthy" && persistence.synology === "healthy" && queue === "normal") {
       storage = "healthy";
-    } else if (persistence.redis === "offline" || persistence.qdrant === "offline") {
+    } else if (persistence.zilliz === "offline" || persistence.synology === "offline") {
       storage = "offline";
     }
 
