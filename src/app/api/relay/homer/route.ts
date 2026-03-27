@@ -28,11 +28,17 @@ export async function POST(req: Request) {
     try {
       data = JSON.parse(raw);
       
-      const status =
+      let status =
         data.status ||
         data.state ||
         data.phase ||
         (data.reply ? "ACKNOWLEDGED" : "UNKNOWN");
+
+      status = String(status).toUpperCase();
+
+      if (status.includes("PROGRESS")) status = "IN_PROGRESS";
+      if (status.includes("COMPLETE")) status = "COMPLETE";
+      if (status.includes("BLOCK") || data.error) status = "BLOCKED";
 
       return NextResponse.json({
         ...data,
