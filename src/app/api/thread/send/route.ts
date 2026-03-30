@@ -436,6 +436,25 @@ export async function POST(req: Request) {
                 }
               }
             });
+
+            if (homerStatus === "BLOCKED") {
+              await prisma.event.create({
+                data: {
+                  scope: "SYSTEM",
+                  type: "THREAD_MESSAGE",
+                  level: "ERROR",
+                  message: "[MAGGIE] Escalating BLOCKED execution to Lisa and Marge",
+                  payload: {
+                    thread: "team",
+                    participant: "MAGGIE",
+                    source: "completion_listener",
+                    requestId,
+                    routedBy: "MAGGIE",
+                    escalation: ["LISA","MARGE"]
+                  }
+                }
+              });
+            }
           }
 
       } catch (err: any) {
