@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       data = JSON.parse(raw);
       
       let status =
+        body?.__force_status ||
         data.status ||
         data.state ||
         data.phase ||
