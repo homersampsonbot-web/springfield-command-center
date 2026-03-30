@@ -454,6 +454,10 @@ export async function POST(req: Request) {
                   }
                 }
               });
+
+              // REAL escalation using existing relay system
+              await callRelaySync("lisa");
+              await callRelaySync("marge");
             }
           }
 
