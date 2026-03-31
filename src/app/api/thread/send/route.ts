@@ -376,7 +376,12 @@ export async function POST(req: Request) {
                 "x-springfield-key": process.env.SPRINGFIELD_KEY || ""
               },
               body: JSON.stringify({
+                type: "EXECUTION_PACKET",
                 message: `[MAGGIE->HOMER] Approved brief ${requestId}. Execute next steps.`,
+                task: "execute_next_steps",
+                owner: "HOMER",
+                priority: "LOW",
+                traceId: "completion_listener",
                 __force_status: message.toLowerCase().includes("blocked test") ? "BLOCKED" : undefined,
                 requestId,
                 source: "MAGGIE"
