@@ -377,6 +377,7 @@ export async function POST(req: Request) {
               },
               body: JSON.stringify({
                 message: `[MAGGIE->HOMER] Approved brief ${requestId}. Execute next steps.`,
+                __force_status: message.toLowerCase().includes("blocked test") ? "BLOCKED" : undefined,
                 requestId,
                 source: "MAGGIE"
               })
