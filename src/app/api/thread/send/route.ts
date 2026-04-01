@@ -369,6 +369,24 @@ export async function POST(req: Request) {
           });
 
           if (context.brief.includes("Approval state: APPROVED")) {
+            await prisma.event.create({
+              data: {
+                scope: "SYSTEM",
+                type: "THREAD_MESSAGE",
+                level: "INFO",
+                message: `[MAGGIE] Dispatching execution packet to HOMER`,
+                payload: {
+                  thread: "team",
+                  participant: "MAGGIE",
+                  source: "dispatch_logger",
+                  requestId,
+                  target: "HOMER",
+                  traceId: "completion_listener",
+                  packetType: "EXECUTION_PACKET"
+                }
+              }
+            });
+
             const homerRes = await fetch(`${baseUrl}/api/relay/homer`, {
               method: "POST",
               headers: {
