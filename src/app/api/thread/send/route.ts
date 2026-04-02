@@ -439,9 +439,11 @@ export async function POST(req: Request) {
               }
             });
 
-            const homerStatus =
+            let homerStatus =
               homerData?._springfield?.status ||
               (homerData.error ? "BLOCKED" : "UNKNOWN");
+
+            if (homerStatus === "COMPLETE") homerStatus = "SUCCESS";
 
             await prisma.event.create({
               data: {
