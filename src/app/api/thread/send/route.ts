@@ -400,7 +400,10 @@ export async function POST(req: Request) {
                 owner: "HOMER",
                 priority: "LOW",
                 traceId: "completion_listener",
-                __force_status: message.toLowerCase().includes("blocked test") ? "BLOCKED" : undefined,
+                __force_status: 
+                  message.toLowerCase().includes("blocked test") ? "BLOCKED" :
+                  message.toLowerCase().includes("success test") ? "COMPLETE" :
+                  undefined,
                 requestId,
                 source: "MAGGIE"
               })
