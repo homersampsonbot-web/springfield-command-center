@@ -143,21 +143,24 @@ export default function DispatchPage() {
 
   const runActions = async (actions: {type: string; message?: string; command?: string}[]) => {
     const outputs: Record<string, string> = {};
+    const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '').replace(/\[\d+m/g, '');
+    const trunc = (s: string) => s.length > 1500 ? s.slice(0, 1500) + '\n[TRUNCATED]' : s;
     for (const a of actions) {
       if (a.type === 'marge' && a.message) {
         addMsg('DISPATCH', `→ Calling Marge...`, 'routing');
         const r = await callRelay('MARGE', a.message);
-        outputs.marge = r;
+        outputs.marge = trunc(r);
         addMsg('MARGE', r);
       } else if (a.type === 'lisa' && a.message) {
         addMsg('DISPATCH', `→ Calling Lisa...`, 'routing');
         const r = await callRelay('LISA', a.message);
-        outputs.lisa = r;
+        outputs.lisa = trunc(r);
         addMsg('LISA', r);
       } else if (a.type === 'homer' && a.command) {
         addMsg('DISPATCH', `→ Exec: \`${a.command}\``, 'routing');
         const r = await execHomer(a.command);
-        outputs.homer = (outputs.homer ? outputs.homer + '\n---\n' : '') + `$ ${a.command}\n${r}`;
+        const cleanR = trunc(stripAnsi(r));
+        outputs.homer = (outputs.homer ? outputs.homer + '\n---\n' : '') + `$ ${a.command}\n${cleanR}`;
         addMsg('HOMER', `$ ${a.command}\n${r}`);
       }
     }
