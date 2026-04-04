@@ -1,0 +1,194 @@
+const express = require('express');
+
+async function callGemini(prompt) {
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+}
+
+
+const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
+function extractFirstJsonObject(text){
+    if(!text) throw new Error("Empty model response");
+    const cleaned = text.replace(/`json|`/g,"").trim();
+    try {
+        return JSON.parse(cleaned);
+    } catch(e){}
+    const start = cleaned.indexOf("{");
+    if(start < 0) throw new Error("No JSON start found");
+    let depth = 0;
+    for(let i=start;i<cleaned.length;i++){
+        const ch = cleaned[i];
+        if(ch==="{") depth++;
+        if(ch==="}") depth--;
+        if(depth===0){
+            const cand = cleaned.slice(start,i+1);
+            return JSON.parse(cand);
+        }
+    }
+    throw new Error("No complete JSON object found");
+}
+
+const app = express();
+const PORT = 3001;
+const AUTH_KEY = 'c4c75fe2065fb96842e3690a3a6397fb';
+const LOG_FILE = '/var/log/springfield/tasks.log';
+
+app.use(express.json());
+
+async function reportResult(taskId, result, status) {
+  try {
+    await fetch('https://springfield-command-center.vercel.app/api/results', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-springfield-key': AUTH_KEY
+      },
+      body: JSON.stringify({
+        taskId,
+        result,
+        status,
+        agent: 'homer',
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch(e) {
+    console.error('Result report failed:', e);
+  }
+}
+
+const authenticate = (req, res, next) => {
+    const key = req.headers['x-springfield-key'];
+    if (key === AUTH_KEY) {
+        next();
+    } else {
+        res.status(401).json({ status: 'unauthorized' });
+    }
+};
+
+
+// Session expiry detection
+function isSessionExpired(response, agent) {
+  if (!response) return true;
+  const r = response.toLowerCase();
+  const expiredSignals = ['sign in', 'log in', 'login', 'session expired', 
+    'just a moment', 'checking your browser', 'cloudflare', 
+    'unauthorized', 'access denied', 'please log in'];
+  return expiredSignals.some(s => r.includes(s));
+}
+
+async function notifySessionExpired(agent) {
+  const { default: fetch } = await import('node-fetch');
+  const msg = encodeURIComponent('⚠️ Springfield Alert: ' + agent + ' relay session expired! Please refresh the browser session on Bart.');
+  await fetch('https://api.telegram.org/bot' + process.env.TELEGRAM_BOT_TOKEN + '/sendMessage?chat_id=7029605637&text=' + msg).catch(()=>{});
+  console.log('[SESSION] ' + agent + ' session expired - Telegram alert sent');
+}
+
+app.post('/think', authenticate, async (req, res) => {
+  const { task } = req.body;
+  try {
+    const { default: fetch } = await import('node-fetch');
+    const repoPath = process.env.HOME + '/springfield-command-center';
+    const fullContent = fs.readFileSync(repoPath + '/src/app/page.tsx', 'utf8');
+    const keywords = task.toLowerCase().split(' ').filter(w => w.length > 3);
+    let bestIdx = 0;
+    for (const kw of keywords) {
+      const i = fullContent.toLowerCase().indexOf(kw);
+      if (i > 0) { bestIdx = Math.max(0, i - 200); break; }
+    }
+    const pageContent = fullContent.slice(bestIdx, bestIdx + 3000);
+    const prompt = 'RESPOND WITH ONLY RAW JSON. NO MARKDOWN. NO BACKTICKS. NO EXTRA TEXT.\nTask: ' + task + '\nFile section:\n' + pageContent + '\nReturn ONLY: {"file":"src/app/page.tsx","find":"exact string","replace":"new string","explanation":"x"}';
+    let response, source;
+    try {
+      const r = await fetch('http://127.0.0.1:3012/relay', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:prompt}), signal:AbortSignal.timeout(60000) });
+      const d = await r.json();
+      response = d.response; source = 'marge';
+      if (isSessionExpired(response, 'Marge')) {
+        await notifySessionExpired('Marge');
+        throw new Error('Marge session expired');
+      }
+    } catch(e) {
+      try {
+        const r = await fetch('http://127.0.0.1:3013/relay', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:prompt}), signal:AbortSignal.timeout(60000) });
+        const d = await r.json();
+        response = d.response; source = 'lisa';
+      if (isSessionExpired(response, 'Lisa')) {
+        await notifySessionExpired('Lisa');
+        throw new Error('Lisa session expired - falling back to Gemini');
+      }
+      } catch(e2) { throw new Error('Both relays failed'); }
+    }
+    const fMatch = response.match(/"find"s*:s*"((?:[^"\\]|\\.)*)"/);
+    const rMatch = response.match(/"replace"s*:s*"((?:[^"\\]|\\.)*)"/);
+    if (!fMatch || !rMatch) throw new Error('No JSON found in response: ' + response.slice(0,120));
+    const findStr = fMatch[1].trim();
+    const replStr = rMatch[1].trim();
+    if (fullContent.includes(findStr)) return res.json({file:'src/app/page.tsx', find:findStr, replace:replStr, explanation:'ok', source});
+    const lines = fullContent.split('\n');
+    const match = lines.find(l => l.trim() === findStr || l.includes(findStr));
+    if (match) return res.json({file:'src/app/page.tsx', find:match, replace:replStr, explanation:'ok', source});
+    return res.status(400).json({error:'Find string not in file', find:findStr.slice(0,50), source});
+  } catch(e) { res.status(500).json({error: e.message}); }
+});
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'alive', agent: 'homer' });
+});
+
+app.post('/task', authenticate, (req, res) => {
+    const taskId = uuidv4();
+    const taskData = {
+        taskId,
+        receivedAt: new Date().toISOString(),
+        payload: req.body
+    };
+    fs.appendFileSync(LOG_FILE, JSON.stringify(taskData) + '\n');
+    reportResult(taskId, "Task received and logged", "received");
+    res.json({ status: 'received', taskId });
+});
+
+app.post('/report', authenticate, (req, res) => {
+    res.json({ status: 'reported' });
+});
+
+app.post('/chat', authenticate, (req, res) => {
+    const { message } = req.body;
+    const name = process.env.AGENT_NAME || 'homer';
+    res.json({ reply: `${name} here. Got your message: "${message}". Standing by.`, agent: name });
+});
+
+const MARGE_BOT_TOKEN = process.env.MARGE_BOT_TOKEN;
+app.post('/telegram-marge', async (req, res) => {
+    const msg = req.body?.message;
+    if (!msg) return res.sendStatus(200);
+    const chatId = msg.chat.id;
+    const text = msg.text || '';
+    try {
+            const directive = text.trim();
+            if (!directive) return res.sendStatus(200);
+            const result = await fetch('http://localhost:3001/task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
+                body: JSON.stringify({ directive })
+            });
+            const data = await result.json();
+            const reply = `🎩 *Directive received*\nTask ID: ${data.taskId?.slice(0, 8)}\nStatus: ${data.status}`;
+            await fetch(`https://api.telegram.org/bot${MARGE_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text: reply, parse_mode: 'Markdown' })
+            });
+    } catch (e) {}
+    res.sendStatus(200);
+});
+
+app.listen(PORT, () => {
+    console.log(`Springfield Gateway listening on port ${PORT}`);
+});
