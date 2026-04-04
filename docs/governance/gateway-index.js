@@ -258,3 +258,35 @@ app.post('/exec', authenticate, async (req, res) => {
     });
   }
 });
+
+// Dispatch Claude brain — runs claude CLI for the Dispatch console
+app.post('/dispatch-claude', authenticate, async (req, res) => {
+  const { system, messages } = req.body;
+  if (!messages) return res.status(400).json({ error: 'messages required' });
+
+  try {
+    const { spawnSync } = require('child_process');
+    const lastMessage = messages[messages.length - 1]?.content || '';
+    const fullPrompt = system ? `${system}\n\n${lastMessage}` : lastMessage;
+
+    const result = spawnSync('claude', ['-p', '--output-format', 'json'], {
+      input: fullPrompt,
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 55000,
+      encoding: 'utf8',
+      env: { ...process.env }
+    });
+
+    if (result.error) throw result.error;
+    const raw = result.stdout.trim();
+    let response;
+    try {
+      const parsed = JSON.parse(raw);
+      response = parsed.result || parsed.content || raw;
+    } catch { response = raw; }
+
+    res.json({ response });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
