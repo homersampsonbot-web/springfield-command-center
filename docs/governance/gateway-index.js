@@ -192,3 +192,69 @@ app.post('/telegram-marge', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Springfield Gateway listening on port ${PORT}`);
 });
+
+// Relay proxy routes — forwards Vercel requests to local relay services
+app.post('/marge', async (req, res) => {
+  try {
+    const { default: fetch } = await import('node-fetch');
+    const r = await fetch('http://127.0.0.1:3012/relay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+      signal: AbortSignal.timeout(90000)
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message, relay: 'marge' });
+  }
+});
+
+app.post('/lisa', async (req, res) => {
+  try {
+    const { default: fetch } = await import('node-fetch');
+    const r = await fetch('http://127.0.0.1:3013/relay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+      signal: AbortSignal.timeout(90000)
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message, relay: 'lisa' });
+  }
+});
+
+// External exec route — authenticated shell execution for Dispatch Console
+app.post('/exec', authenticate, async (req, res) => {
+  const { command } = req.body;
+  if (!command) return res.status(400).json({ error: 'command required' });
+
+  // Command allowlist — same rules as executor
+  const BLOCKED = [
+    'rm -rf', 'dd if', '> ~/.openclaw', 'curl | bash',
+    'wget | bash', 'mkfs', 'shutdown', 'reboot', 'passwd'
+  ];
+  if (BLOCKED.some(b => command.includes(b))) {
+    return res.status(403).json({ error: 'Blocked command pattern' });
+  }
+
+  try {
+    const { execSync } = require('child_process');
+    const output = execSync(command, {
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 60000,
+      cwd: '/home/ubuntu',
+      env: { ...process.env }
+    }).toString().trim();
+    res.json({ output, command, status: 'ok' });
+  } catch (e) {
+    res.json({
+      output: e.stdout?.toString() || e.message,
+      stderr: e.stderr?.toString(),
+      command,
+      status: 'error'
+    });
+  }
+});
