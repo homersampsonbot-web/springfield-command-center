@@ -36,6 +36,13 @@ function extractFirstJsonObject(text){
 }
 
 const app = express();
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://commander.margebot.com');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, x-springfield-key');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 const PORT = 3001;
 const AUTH_KEY = 'c4c75fe2065fb96842e3690a3a6397fb';
 const LOG_FILE = '/var/log/springfield/tasks.log';
@@ -194,7 +201,7 @@ app.listen(PORT, () => {
 });
 
 // Relay proxy routes — forwards Vercel requests to local relay services
-app.post('/marge', async (req, res) => {
+app.post('/api/marge-relay', authenticate, async (req, res) => {
   try {
     const { default: fetch } = await import('node-fetch');
     const r = await fetch('http://127.0.0.1:3012/relay', {
@@ -210,7 +217,7 @@ app.post('/marge', async (req, res) => {
   }
 });
 
-app.post('/lisa', async (req, res) => {
+app.post('/api/lisa-relay', authenticate, async (req, res) => {
   try {
     const { default: fetch } = await import('node-fetch');
     const r = await fetch('http://127.0.0.1:3013/relay', {
@@ -227,7 +234,7 @@ app.post('/lisa', async (req, res) => {
 });
 
 // External exec route — authenticated shell execution for Dispatch Console
-app.post('/exec', authenticate, async (req, res) => {
+app.post('/api/exec', authenticate, async (req, res) => {
   const { command } = req.body;
   if (!command) return res.status(400).json({ error: 'command required' });
 
@@ -260,14 +267,32 @@ app.post('/exec', authenticate, async (req, res) => {
 });
 
 // Dispatch Claude brain — runs claude CLI for the Dispatch console
-app.post('/dispatch-claude', authenticate, async (req, res) => {
+app.post('/api/dispatch', authenticate, async (req, res) => {
   const { system, messages } = req.body;
   if (!messages) return res.status(400).json({ error: 'messages required' });
 
   try {
     const { spawnSync } = require('child_process');
-    const lastMessage = messages[messages.length - 1]?.content || '';
-    const fullPrompt = system ? `${system}\n\n${lastMessage}` : lastMessage;
+    // Only use last 2 messages to avoid context overflow from large log outputs
+    const recentMessages = messages.slice(-2);
+    const lastMessage = recentMessages[recentMessages.length - 1]?.content || '';
+    const fs2 = require('fs');
+    const springfieldContext = `--- SPRINGFIELD HOME LAB CONTEXT ---
+This is a personal home lab system owned by SMS. Key facts:
+- The main repo is at ~/.openclaw/workspace/springfield-command-center (Next.js/TypeScript)
+- Springfield gateway runs on port 3001 with auth header x-springfield-key
+- Phase 5 test: POST to http://localhost:3001/thread/send with body {"thread":"team","message":"@maggie success test route latest approved brief to @homer","sender":"SMS"} and verify SUCCESS status in response
+- PM2 manages: springfield-executor, springfield-gateway:3001, springfield-relay-worker, neon-bridge, marge-relay:3012, lisa-relay:3013, codex-proxy:10531, ssh-ttyd:3002
+- Marge relay at port 3012, Lisa relay at port 3013
+- Git branch is master only, never main
+- Neon PostgreSQL is primary DB via Prisma
+- Safe restore point: git tag phase4-governed-execution
+\n\n`;
+    // Truncate very long messages
+    const truncated = lastMessage.length > 6000
+      ? lastMessage.slice(0, 6000) + '\n\n[TRUNCATED]'
+      : lastMessage;
+    const fullPrompt = system ? `${springfieldContext}${system}\n\n${truncated}` : `${springfieldContext}${truncated}`;
 
     const result = spawnSync('claude', ['-p', '--output-format', 'json'], {
       input: fullPrompt,
