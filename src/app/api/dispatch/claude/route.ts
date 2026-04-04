@@ -6,28 +6,19 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     await requireAppAuth(req);
-    const { system, messages } = await req.json();
-
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const body = await req.json();
+    const res = await fetch("https://homer.margebot.com/dispatch-claude", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY || "",
-        "anthropic-version": "2023-06-01"
+        "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb"
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        system,
-        messages
-      }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(55000)
     });
-
     const data = await res.json();
-    const response = data.content?.[0]?.text || "No response";
-    return NextResponse.json({ response });
+    return NextResponse.json(data);
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e.message, response: "No response" }, { status: 502 });
   }
 }
