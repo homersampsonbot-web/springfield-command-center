@@ -77,7 +77,7 @@ export default function DispatchPage() {
     try {
       const res = await fetch(`${getHomerBase()}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: buildMessage(agent, message) }),
         signal: AbortSignal.timeout(55000)
       });
@@ -93,7 +93,7 @@ export default function DispatchPage() {
   const execHomer = async (command: string) => {
     setActiveAgent('HOMER');
     try {
-      const res = await fetch(`${getHomerBase()}/exec`, {
+      const res = await fetch(`/api/dispatch/exec`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ export default function DispatchPage() {
 
   const callClaude = async (prompt: string) => {
     conversationRef.current.push({ role: 'user', content: prompt });
-    const res = await fetch('https://homer.margebot.com/dispatch-claude', {
+    const res = await fetch('/api/dispatch/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
       body: JSON.stringify({
