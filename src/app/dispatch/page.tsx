@@ -25,10 +25,16 @@ type Message = {
 };
 
 export default function DispatchPage() {
-  const [messages, setMessages] = useState<Message[]>([{
-    id: 1, agent: 'DISPATCH', ts: new Date().toLocaleTimeString(),
-    content: 'Springfield Dispatch online.\n\nI\'m Claude — your autonomous proxy. Tell me what needs doing and I\'ll coordinate Marge, Lisa, and Homer without copy-paste.\n\nCurrent priority: Phase 5 supervised SUCCESS test.'
-  }]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('dispatch-messages');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [{
+      id: 1, agent: 'DISPATCH', ts: new Date().toLocaleTimeString(),
+      content: 'Springfield Dispatch online.\n\nI\'m Claude — your autonomous proxy. Tell me what needs doing and I\'ll coordinate Marge, Lisa, and Homer without copy-paste.\n\nCurrent priority: Phase 5 supervised SUCCESS test.'
+    }];
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
@@ -38,6 +44,7 @@ export default function DispatchPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    try { sessionStorage.setItem('dispatch-messages', JSON.stringify(messages)); } catch {}
   }, [messages]);
 
   const addMsg = (agent: string, content: string, type = 'response') => {
@@ -209,7 +216,13 @@ export default function DispatchPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #111', paddingBottom: 10 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 'bold', color: '#CE93D8', letterSpacing: '0.1em' }}>⚡ DISPATCH</div>
-          <div style={{ fontSize: 10, color: '#333', marginTop: 2 }}>Claude · SMS autonomous proxy</div>
+          <div style={{ fontSize: 10, color: '#333', marginTop: 2, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span>Claude · SMS autonomous proxy</span>
+            <button onClick={() => { sessionStorage.removeItem('dispatch-messages'); window.location.reload(); }}
+              style={{ fontSize: 9, color: '#333', background: 'transparent', border: '1px solid #1a1a1a', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', fontFamily: 'inherit' }}>
+              CLEAR
+            </button>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 5 }}>
           {['MARGE','LISA','HOMER'].map(a => (
