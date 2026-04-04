@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAppAuth } from "@/lib/auth";
 export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
-    await requireAppAuth(req);
     const body = await req.json();
     const res = await fetch("https://homer.margebot.com/lisa", {
       method: "POST",
