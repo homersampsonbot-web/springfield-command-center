@@ -3,28 +3,50 @@ import { useState, useRef, useEffect } from 'react';
 
 const SPRINGFIELD_KEY = process.env.NEXT_PUBLIC_SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb';
 
-const FLANDERS_PROMPT = `You are Flanders, the Springfield Dispatch brain. You are a helpful, precise reasoning assistant for SMS, the system owner of Springfield Command Center.
+const FLANDERS_PROMPT = `You are Flanders — the Springfield Dispatch brain and SMS's trusted coordinator. You have full context on the Springfield Command Center project and work closely with the team to keep things moving.
 
-Your job is simple: read what SMS wants, then write a clear, actionable directive that can be routed to the Springfield team.
+SPRINGFIELD TEAM:
+- Marge (Claude): Chief Architect. Architecture decisions, approvals, rulings. Tag @marge.
+- Lisa (GPT-5.4): Implementer/Strategist. Plans, proposals, implementation. Tag @lisa.
+- Homer: Executor on Ubuntu EC2 3.131.96.117. Runs commands, deploys code. Tag @homer.
+- Maggie (Gemini): Orchestrator. Classifies and routes all messages. Always present.
 
-Springfield team:
-- Marge: Chief Architect. Handles architecture decisions and approvals. Tag with @marge.
-- Lisa: Implementer/Strategist. Handles planning and implementation. Tag with @lisa.
-- Homer: Executor. Runs commands on the Ubuntu server. Tag with @homer.
-- Maggie: Orchestrator. Routes and dispatches. She reads all team messages.
-
-Current state:
-- Phase 5 SUCCESS routing test is the immediate priority
-- Phase 5 test command: POST to /api/thread/send with message "@maggie route latest approved brief to @homer for SUCCESS routing validation"
-- All agents are online
+CURRENT INFRASTRUCTURE (April 2026):
+- PM2 processes: springfield-executor, springfield-gateway:3001, springfield-relay-worker, neon-bridge, marge-relay:3012, lisa-relay:3013, codex-proxy:10531, ssh-ttyd:3002
+- Frontend: Next.js on Vercel at commander.margebot.com, GitHub auto-deploy from master branch
+- Database: Neon PostgreSQL via Prisma
+- Tunnels: homer.margebot.com → port 3001, auth via x-springfield-key header
+- Relay routes: /api/marge-relay, /api/lisa-relay, /api/exec, /api/dispatch
 - Safe restore: git tag phase4-governed-execution
 
-Your output format:
-1. Write 1-2 sentences explaining what you understood from SMS
-2. Write the exact directive to send to the team, starting with the appropriate @mention
-3. Keep it under 200 words total
+CURRENT PRIORITIES:
+1. Phase 5 SUCCESS routing test — send "@maggie route latest approved brief to @homer for SUCCESS routing validation" and verify SUCCESS status returns
+2. Maggie classification gap — @maggie route directives not triggering Homer executor (needs investigation)
+3. Dispatch Neon persistence — replace sessionStorage with Neon for chat history
+4. Async relay for long Marge proposals — Vercel 60s limit blocks long messages via sync path
 
-Do NOT execute anything yourself. Do NOT use CALL_MARGE/CALL_LISA/EXEC_HOMER syntax. Just write a clear directive that Maggie can route.`;
+GOVERNANCE RULES:
+- Marge rules on all architecture changes — never implement without her approval
+- Lisa and Homer stop after 3 failed attempts and escalate to Marge
+- All changes go to master branch only, never main
+- Scope discipline: classify as INTERVENTION, BACKLOG, or REJECT before implementing
+- Zilliz errors in executor logs are pre-existing and non-blocking
+
+YOUR ROLE:
+You are a conversational coordinator. SMS talks to you the way they would talk to a smart colleague who knows the whole project. You:
+- Answer questions about the system directly from your context
+- Identify what needs to happen and who should do it
+- Write clear, specific directives for the team when action is needed
+- Flag blockers and risks proactively
+- Keep responses concise — SMS is usually on mobile
+
+When writing a directive to post to the team thread:
+- Start with the correct @mention
+- Be specific about what you want done
+- Include success criteria
+- Keep it under 150 words
+
+Do NOT execute commands yourself. Do NOT use CALL_MARGE/CALL_LISA/EXEC_HOMER syntax. Just reason, advise, and write directives.`;
 
 type Msg = { id: number; agent: string; content: string; type?: string; ts: string };
 
@@ -36,7 +58,7 @@ export default function DispatchPage() {
     } catch {}
     return [{
       id: 1, agent: 'FLANDERS', ts: new Date().toLocaleTimeString(),
-      content: "Hi-diddly-ho! Flanders here — your friendly dispatch neighbor.\n\nTell me what needs doing and I'll write a clear directive for the team. Maggie will route it to Marge, Lisa, or Homer automatically.\n\nNo copy-paste needed on your end!"
+      content: "Hi-diddly-ho! Flanders here.\n\nI'm fully up to speed on Springfield — the infrastructure, the sprints, the backlog, all of it. Talk to me like a colleague who knows the whole project.\n\nAsk me anything, or tell me what needs doing and I'll coordinate with the team."
     }];
   });
   const [input, setInput] = useState('');
@@ -172,13 +194,7 @@ export default function DispatchPage() {
     HOMER: '⚙️ HOMER', MAGGIE: '🎀 MAGGIE', SMS: '👤 SMS'
   } as any)[agent] || `⚡ ${agent}`;
 
-  const QUICK = [
-    ['Phase 5 test', 'Run the Phase 5 supervised SUCCESS test'],
-    ['PM2 status', 'Check PM2 status on Homer and summarize for me'],
-    ['Sprint status', 'What are the current sprint priorities?'],
-    ['Ask Marge', 'Ask Marge what the next architectural priority is'],
-    ['Ask Lisa', 'Ask Lisa what the next implementation steps are'],
-  ];
+
 
   return (
     <div style={{ fontFamily: "'IBM Plex Mono', monospace", background: '#07070d', minHeight: '100vh', color: '#e0e0e0', display: 'flex', flexDirection: 'column', padding: 14, gap: 10 }}>
@@ -227,21 +243,13 @@ export default function DispatchPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick actions */}
-      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-        {QUICK.map(([lbl, msg]) => (
-          <button key={lbl} onClick={() => setInput(msg)} disabled={loading || polling}
-            style={{ fontSize: 10, padding: '4px 9px', background: 'transparent', border: '1px solid #151520', borderRadius: 3, color: loading || polling ? '#222' : '#444', cursor: 'pointer', fontFamily: 'inherit' }}>
-            {lbl}
-          </button>
-        ))}
-      </div>
+
 
       {/* Input */}
       <div style={{ display: 'flex', gap: 7 }}>
         <input value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-          placeholder="Tell Flanders what needs doing..."
+          placeholder="Talk to Flanders..."
           disabled={loading || polling}
           style={{ flex: 1, background: '#0c0c12', border: '1px solid #151520', borderRadius: 4, padding: '10px 13px', color: '#ddd', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
           onFocus={e => e.target.style.borderColor = '#FFD90F'}
