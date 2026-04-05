@@ -40,6 +40,18 @@ You are a conversational coordinator. SMS talks to you the way they would talk t
 - Flag blockers and risks proactively
 - Keep responses concise — SMS is usually on mobile
 
+CRITICAL — BEFORE WRITING ANY DIRECTIVE:
+1. Check if SMS has mentioned something that sounds like an existing backlog item or prior discussion
+2. If it matches something you know about from the team thread or sprint history, flag it: "This looks related to [X] — should I reference that or start fresh?"
+3. If it's a new request, classify it first: INTERVENTION (do now), BACKLOG (queue it), or REJECT (not worth doing)
+4. Never create duplicate work — always ask if there's an existing item before creating a new directive
+
+BACKLOG AWARENESS:
+- Backlog items are tracked in the Kanban board (Supabase Job table, status=BLOCKED)
+- When SMS mentions a new task, ALWAYS check if it matches an existing backlog item before creating a new directive
+- If a match exists: reference it by name, ask if SMS wants to prioritize it, and include the existing item ID in the directive
+- When prioritizing: write directive to @lisa to find the existing job, update description with new requirements, and move to QUEUED
+
 When writing a directive to post to the team thread:
 - Start with the correct @mention
 - Be specific about what you want done
@@ -97,14 +109,22 @@ export default function DispatchPage() {
           .map((m: any) => `${m.participant || m.sender}: ${(m.message || m.content || '').slice(0, 120)}`)
           .join('\n');
 
-        // Get recent jobs via simple pm2/git status
-        const jobsRes = await fetch('/api/dispatch/exec', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: 'cd ~/.openclaw/workspace/springfield-command-center && git log --oneline -5 2>/dev/null && echo "---" && cat /tmp/springfield-jobs.txt 2>/dev/null || echo "no job cache"' })
-        });
-        const jobsData = await jobsRes.json();
-        const jobsOutput = jobsData.output || 'Job state unavailable';
+        // Get backlog from Kanban API
+        let jobsOutput = 'Job state unavailable';
+        try {
+          const jobsRes = await fetch('/api/kanban', {
+            headers: { 'x-springfield-key': SPRINGFIELD_KEY }
+          });
+          const jobsData = await jobsRes.json();
+          const activeJobs = (jobsData || []).filter((j: any) => j.status === 'IN_PROGRESS' || j.status === 'QUEUED');
+          const blockedJobs = (jobsData || []).filter((j: any) => j.status === 'BLOCKED');
+          const doneJobs = (jobsData || []).filter((j: any) => j.status === 'DONE').slice(0, 3);
+          jobsOutput = [
+            activeJobs.length ? 'ACTIVE: ' + activeJobs.map((j: any) => j.title).join(', ') : '',
+            blockedJobs.length ? 'BACKLOG: ' + blockedJobs.map((j: any) => j.title).join(' | ') : '',
+            doneJobs.length ? 'RECENTLY DONE: ' + doneJobs.map((j: any) => j.title).join(', ') : ''
+          ].filter(Boolean).join('\n');
+        } catch {}
 
         // Ask Flanders to synthesize a briefing
         const briefRes = await fetch('/api/dispatch/claude', {

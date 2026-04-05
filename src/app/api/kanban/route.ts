@@ -41,3 +41,25 @@ export async function PATCH(req: Request) {
     return Response.json({ error: e.message }, { status: 500 });
   }
 }
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { title, description, labels, status, owner } = body;
+    if (!title) return Response.json({ error: "title required" }, { status: 400 });
+    const job = await prisma.job.create({
+      data: {
+        title,
+        description: description || null,
+        labels: labels || [],
+        status: status || "QUEUED",
+        owner: owner || "HOMER",
+        risk: "LOW",
+        requiresApproval: false
+      }
+    });
+    return Response.json(job);
+  } catch (e: any) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
+}
