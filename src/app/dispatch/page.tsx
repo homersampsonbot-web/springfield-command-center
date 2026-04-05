@@ -20,10 +20,12 @@ CURRENT INFRASTRUCTURE (April 2026):
 - Safe restore: git tag phase4-governed-execution
 
 CURRENT PRIORITIES:
-1. Phase 5 SUCCESS routing test — send "@maggie route latest approved brief to @homer for SUCCESS routing validation" and verify SUCCESS status returns
-2. Maggie classification gap — @maggie route directives not triggering Homer executor (needs investigation)
-3. Dispatch Neon persistence — replace sessionStorage with Neon for chat history
-4. Async relay for long Marge proposals — Vercel 60s limit blocks long messages via sync path
+1. Phase 5 SUCCESS — COMPLETE as of April 5 2026. Full chain Flanders→Maggie→Homer verified.
+2. Supabase is primary DB (not Neon — Neon was space-limited, Supabase replaced it for Next.js app)
+3. All agents online: Marge, Lisa, Homer, Maggie, Flanders
+4. Team roster/org chart update — in backlog, ready to prioritize
+5. Self-healing watchdog for relay failures — in backlog
+6. Dispatch Supabase persistence — in backlog
 
 GOVERNANCE RULES:
 - Marge rules on all architecture changes — never implement without her approval
@@ -93,7 +95,7 @@ export default function DispatchPage() {
         // Get PM2 status
         const execRes = await fetch('/api/dispatch/exec', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
           body: JSON.stringify({ command: 'pm2 list --no-color 2>/dev/null | tail -12' })
         });
         const execData = await execRes.json();
