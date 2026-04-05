@@ -11,7 +11,7 @@ export async function buildContextPack(requestId: string) {
       }
     },
     orderBy: { createdAt: "desc" },
-    take: 100
+    take: 300
   });
 
   const pack = events
