@@ -152,10 +152,12 @@ export async function POST(req: Request) {
       }
 
       // Async routing for Marge/Lisa if requested
-      if (envelope.asyncRelay === "yes" && (targets.includes("marge") || targets.includes("lisa"))) {
+      // Always async for Marge (Vercel 60s limit makes sync unreliable)
+      if (targets.includes("marge")) {
+        isAsyncTrigger = true;
+      } else if (envelope.asyncRelay === "yes" && targets.includes("lisa")) {
         isAsyncTrigger = true;
       } else {
-        // Homer always sync
         isAsyncTrigger = false;
       }
     } else {
@@ -188,6 +190,12 @@ export async function POST(req: Request) {
             }
           }
         });
+      }
+
+      // Auto-escalate [NEEDS MARGE REVIEW] from Lisa
+      if (senderNorm === "LISA" && message.includes("[NEEDS MARGE REVIEW]")) {
+        targets.push("marge");
+        isAsyncTrigger = true;
       }
 
       // Tagged flow (existing behavior)
