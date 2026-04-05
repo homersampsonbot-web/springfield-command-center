@@ -69,8 +69,9 @@ type Msg = { id: number; agent: string; content: string; type?: string; ts: stri
 export default function DispatchPage() {
   const [messages, setMessages] = useState<Msg[]>([{
     id: 1, agent: 'FLANDERS', ts: new Date().toLocaleTimeString(),
-    content: "Flanders here — pulling current state..."
+    content: "Flanders here — loading history..."
   }]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [briefingDone, setBriefingDone] = useState(false);
   const [attachments, setAttachments] = useState<{name: string; content: string; type: string}[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +88,19 @@ export default function DispatchPage() {
   }, [messages]);
 
   useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
+  // Load message history from Supabase on mount
+  useEffect(() => {
+    if (historyLoaded) return;
+    setHistoryLoaded(true);
+    fetch('/api/dispatch/messages')
+      .then(r => r.json())
+      .then(data => {
+        if (data.messages && data.messages.length > 1) {
+          setMessages(data.messages);
+        }
+      }).catch(() => {});
+  }, []);
 
   // On mount — pull live state and brief Flanders
   useEffect(() => {
@@ -158,6 +172,14 @@ RECENT TEAM THREAD:
   const addMsg = (agent: string, content: string, type = 'response') => {
     const msg: Msg = { id: Date.now() + Math.random(), agent, content, type, ts: new Date().toLocaleTimeString() };
     setMessages(prev => [...prev, msg]);
+    // Persist to Supabase (fire and forget, skip routing messages)
+    if (type !== 'routing') {
+      fetch('/api/dispatch/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent, content: content.slice(0, 2000), type })
+      }).catch(() => {});
+    }
     return msg;
   };
 
