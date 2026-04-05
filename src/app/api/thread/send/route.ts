@@ -17,6 +17,17 @@ export async function POST(req: Request) {
     const msgLower = (message || "").toLowerCase();
     const senderNorm = (sender || "SMS").toUpperCase();
 
+    // Debug: log entry point
+    await prisma.event.create({
+      data: {
+        scope: "SYSTEM",
+        type: "DEBUG_ENTRY",
+        level: "INFO",
+        message: `thread/send called: sender=${senderNorm} message=${message?.slice(0,50)}`,
+        payload: { thread, sender: senderNorm, requestId }
+      }
+    });
+
     const failureSignals = {
       anchorNotFound:
         msgLower.includes("find string not found") ||
