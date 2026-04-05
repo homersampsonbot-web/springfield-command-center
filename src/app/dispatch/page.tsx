@@ -94,41 +94,24 @@ export default function DispatchPage() {
     setBriefingDone(true);
     const runBriefing = async () => {
       try {
-        // Get PM2 status
-        const execRes = await fetch('/api/dispatch/exec', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
-          body: JSON.stringify({ command: 'pm2 list --no-color 2>/dev/null | tail -12' })
-        });
-        const execData = await execRes.json();
-        const pm2Output = execData.output || 'PM2 status unavailable';
+        // Fetch all data in parallel with 8s timeout
+        const t = (p: Promise<any>) => Promise.race([p.catch(() => null), new Promise(r => setTimeout(() => r(null), 8000))]);
+        const [execData, threadData, jobsData] = await Promise.all([
+          t(fetch('/api/dispatch/exec', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY }, body: JSON.stringify({ command: 'pm2 list --no-color 2>/dev/null | tail -12' }) }).then(r => r.json())),
+          t(fetch('/api/thread/messages?thread=team&limit=10', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json())),
+          t(fetch('/api/kanban', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json()))
+        ]);
+        const pm2Output = execData?.output || 'PM2 status unavailable';
+        const recentMessages = (threadData?.messages || []).slice(0, 5)
+          .map((m: any) => `${m.participant || m.sender}: ${(m.message || m.content || '').slice(0, 80)}`).join('\n');
+        const activeJobs = (Array.isArray(jobsData) ? jobsData : []).filter((j: any) => ['IN_PROGRESS','QUEUED'].includes(j.status));
+        const blockedJobs = (Array.isArray(jobsData) ? jobsData : []).filter((j: any) => j.status === 'BLOCKED');
+        const jobsOutput = [
+          activeJobs.length ? 'ACTIVE: ' + activeJobs.map((j: any) => j.title).join(', ') : '',
+          blockedJobs.length ? 'BACKLOG: ' + blockedJobs.map((j: any) => j.title).join(' | ') : ''
+        ].filter(Boolean).join('\n') || 'No active jobs';
+        const _unused = 0; // padding
 
-        // Get recent thread messages
-        const threadRes = await fetch('/api/thread/messages?thread=team&limit=10', {
-          headers: { 'x-springfield-key': SPRINGFIELD_KEY }
-        });
-        const threadData = await threadRes.json();
-        const recentMessages = (threadData.messages || [])
-          .slice(0, 8)
-          .map((m: any) => `${m.participant || m.sender}: ${(m.message || m.content || '').slice(0, 120)}`)
-          .join('\n');
-
-        // Get backlog from Kanban API
-        let jobsOutput = 'Job state unavailable';
-        try {
-          const jobsRes = await fetch('/api/kanban', {
-            headers: { 'x-springfield-key': SPRINGFIELD_KEY }
-          });
-          const jobsData = await jobsRes.json();
-          const activeJobs = (jobsData || []).filter((j: any) => j.status === 'IN_PROGRESS' || j.status === 'QUEUED');
-          const blockedJobs = (jobsData || []).filter((j: any) => j.status === 'BLOCKED');
-          const doneJobs = (jobsData || []).filter((j: any) => j.status === 'DONE').slice(0, 3);
-          jobsOutput = [
-            activeJobs.length ? 'ACTIVE: ' + activeJobs.map((j: any) => j.title).join(', ') : '',
-            blockedJobs.length ? 'BACKLOG: ' + blockedJobs.map((j: any) => j.title).join(' | ') : '',
-            doneJobs.length ? 'RECENTLY DONE: ' + doneJobs.map((j: any) => j.title).join(', ') : ''
-          ].filter(Boolean).join('\n');
-        } catch {}
 
         // Ask Flanders to synthesize a briefing
         const briefRes = await fetch('/api/dispatch/claude', {
