@@ -306,3 +306,18 @@ lisa-relay.js injects lisa-soul.md as system prompt.
 Lisa's model: gpt-5.4 via codex-proxy.
 Stateless — Neon threads are source of truth.
 
+
+## Agent Roster Update — April 5 2026
+
+### Flanders — Springfield Dispatch (APPROVED)
+- **Role**: Springfield Dispatch brain — SMS autonomous proxy
+- **Model**: Claude Sonnet 4.6 (Anthropic)
+- **Function**: Receives natural language input from SMS, reasons about priorities and state, writes plain-language directives for Maggie to operationalize
+- **Type**: External actor / reasoning layer, not an executor
+- **Reports to**: SMS (as SMS proxy)
+- **Constraints**: No execution authority. All directives route through Maggie for classification before any agent acts. Escalations from Flanders route to Marge first. Does not appear on control room floor.
+
+### Smithers — UI Monitor Component (CONFIRMED)
+- **Role**: UI monitor component, back wall display
+- **Type**: UI component only — no AI, no routing capability
+- **Note**: Not an agent. Never speaks, never routes, never appears on the command floor.
