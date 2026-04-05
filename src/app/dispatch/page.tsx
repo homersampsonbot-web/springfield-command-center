@@ -215,20 +215,28 @@ RECENT TEAM THREAD:
   };
 
   const getFlandersDirective = async (userMessage: string): Promise<string> => {
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 55000);
-    const res = await fetch('https://homer.margebot.com/api/dispatch', {
+    // Submit to Supabase via Vercel — no mobile timeout risk
+    const submitRes = await fetch('/api/dispatch/flanders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
       body: JSON.stringify({
         system: FLANDERS_PROMPT,
-        messages: [{ role: 'user', content: userMessage }]
-      }),
-      signal: controller.signal
+        messages: conversationRef.current.concat([{ role: 'user', content: userMessage }])
+      })
     });
-    clearTimeout(tid);
-    const data = await res.json();
-    return data.response || 'Unable to generate directive.';
+    const { jobId } = await submitRes.json();
+    if (!jobId) throw new Error('Failed to queue Flanders job');
+    // Poll every 3s up to 60s
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const poll = await fetch(`/api/dispatch/flanders?jobId=${jobId}`, {
+        headers: { 'x-springfield-key': SPRINGFIELD_KEY }
+      });
+      const pollData = await poll.json();
+      if (pollData.status === 'done') return pollData.response || 'No response.';
+      if (pollData.status === 'failed') throw new Error('Flanders job failed');
+    }
+    throw new Error('Timed out waiting for Flanders');
   };
 
   const postToTeamThread = async (directive: string): Promise<void> => {

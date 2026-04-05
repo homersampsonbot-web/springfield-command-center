@@ -205,6 +205,44 @@ async function processRelayRequest(job) {
   }
 }
 
+// Flanders dispatch polling — every 5 seconds
+async function pollFlandersJobs() {
+  try {
+    const jobs = await prisma.job.findMany({
+      where: { status: 'QUEUED', labels: { has: 'flanders' } },
+      orderBy: { createdAt: 'asc' },
+      take: 1
+    });
+    for (const job of jobs) {
+      try {
+        await prisma.job.update({ where: { id: job.id }, data: { status: 'CLAIMED' } });
+        const payload = JSON.parse(job.description || '{}');
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 55000);
+        const res = await fetch('https://homer.margebot.com/api/dispatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb' },
+          body: JSON.stringify({ messages: payload.messages, system: payload.system }),
+          signal: controller.signal
+        });
+        clearTimeout(tid);
+        const data = await res.json();
+        await prisma.job.update({
+          where: { id: job.id },
+          data: { status: 'DONE', description: JSON.stringify({ ...payload, response: data.response || '' }) }
+        });
+        console.log('[Flanders Worker] Job', job.id.slice(0,8), 'completed');
+      } catch (e) {
+        console.error('[Flanders Worker] Job failed:', e.message);
+        await prisma.job.update({ where: { id: job.id }, data: { status: 'FAILED' } }).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.error('[Flanders Worker] Poll error:', e.message);
+  }
+}
+setInterval(pollFlandersJobs, 5000);
+
 async function run() {
   console.log(`[Worker] Starting Springfield Relay Worker... Polling every ${POLLING_INTERVAL/1000}s`);
   
