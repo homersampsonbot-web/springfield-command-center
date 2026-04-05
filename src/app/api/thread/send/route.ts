@@ -71,7 +71,7 @@ export async function POST(req: Request) {
 
     const targets: string[] = [];
 
-    if (senderNorm === "SMS" && !hasMention && thread === "team") {
+    if ((senderNorm === "SMS" || senderNorm === "FLANDERS") && !hasMention && thread === "team") {
       const { envelope, isFallback } = await classifyMaggie(message);
 
       // Routing decision based on envelope
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
       }
 
       // Tagged flow (existing behavior)
-      if (senderNorm === "SMS") {
+      if (senderNorm === "SMS" || senderNorm === "FLANDERS") {
         if (!isMargeTag && !isLisaTag && !isMaggieTag && !isTeamTag && !isHomerTag) targets.push("homer");
         if (isHomerTag && !isMaggieTag) targets.push("homer");
         if (isMargeTag) targets.push("marge");
@@ -349,7 +349,7 @@ export async function POST(req: Request) {
     }
 
 
-    if (isMaggieTag && senderNorm === "SMS") {
+    if (isMaggieTag && (senderNorm === "SMS" || senderNorm === "FLANDERS")) {
       try {
         const context = await buildContextPack(requestId);
 
