@@ -72,6 +72,7 @@ export default function DispatchPage() {
     content: "Flanders here — loading history..."
   }]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const conversationHistory = useRef<{role: string; content: string}[]>([]);
   const [briefingDone, setBriefingDone] = useState(false);
   const [attachments, setAttachments] = useState<{name: string; content: string; type: string}[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,6 +204,13 @@ RECENT TEAM THREAD:
   const addMsg = (agent: string, content: string, type = 'response') => {
     const msg: Msg = { id: Date.now() + Math.random(), agent, content, type, ts: new Date().toLocaleTimeString() };
     setMessages(prev => [...prev, msg]);
+    // Track conversation history for Flanders context
+    if (type !== 'routing' && (agent === 'SMS' || agent === 'FLANDERS')) {
+      conversationHistory.current = [
+        ...conversationHistory.current.slice(-18), // keep last 18 (9 exchanges)
+        { role: agent === 'SMS' ? 'user' : 'assistant', content: content.slice(0, 500) }
+      ];
+    }
     // Persist to Supabase (fire and forget, skip routing messages)
     if (type !== 'routing') {
       fetch('/api/dispatch/messages', {
@@ -215,13 +223,29 @@ RECENT TEAM THREAD:
   };
 
   const getFlandersDirective = async (userMessage: string): Promise<string> => {
+    // Get recent thread for context
+    let threadContext = '';
+    try {
+      const tr = await fetch('/api/thread/messages?thread=team&limit=5', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
+      const td = await tr.json();
+      threadContext = (td.messages || []).slice(0,5)
+        .map((m: any) => `${m.participant||m.sender}: ${(m.message||m.content||'').slice(0,100)}`)
+        .join('\n');
+    } catch {}
+
+    // Build system with live thread context
+    const systemWithContext = FLANDERS_PROMPT + (threadContext ? `\n\nRECENT TEAM THREAD:\n${threadContext}` : '');
+
     // Submit to Supabase via Vercel — no mobile timeout risk
     const submitRes = await fetch('/api/dispatch/flanders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
       body: JSON.stringify({
-        system: FLANDERS_PROMPT,
-        messages: [{ role: 'user', content: userMessage }]
+        system: systemWithContext,
+        messages: [
+          ...conversationHistory.current.slice(-10),
+          { role: 'user', content: userMessage }
+        ]
       })
     });
     const { jobId } = await submitRes.json();
