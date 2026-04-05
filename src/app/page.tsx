@@ -558,8 +558,8 @@ export default function Home() {
           >
             <div style={{ display:'flex', flexDirection:'column', gap:8, height:'100%', minHeight:0 }}>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap', flexShrink:0 }}>
-                {['debate','relay','team','terminal','kanban','dispatch'].map(tab => (
-                  <button key={tab} onClick={() => { if (tab === 'debate') window.location.href = '/debate'; else if (tab === 'kanban') window.location.href = '/kanban'; else if (tab === 'dispatch') window.location.href = '/dispatch'; else setActiveTab(tab); }}
+                {['debate','relay','team','terminal','kanban'].map(tab => (
+                  <button key={tab} onClick={() => { if (tab === 'debate') window.location.href = '/debate'; else if (tab === 'kanban') window.location.href = '/kanban'; else setActiveTab(tab); }}
                     style={{ flex:1, minHeight:32, padding:6, borderRadius:8, border:'1px solid rgba(255,217,15,0.1)', background: activeTab===tab ? 'rgba(255,217,15,0.1)' : 'rgba(0,0,0,0.2)', color: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.6)', fontFamily:'Permanent Marker', fontSize: 11 }}>
                     {tab.toUpperCase()}
                   </button>

@@ -12,6 +12,7 @@ export default function AppDrawer({ isOpen, onOpen, onClose }: { isOpen: boolean
     { label: 'Kanban Ops', icon: <Layout size={18} />, href: '/kanban' },
     { label: 'Debates', icon: <Layout size={18} />, href: '/debate' },
     { label: 'Team', icon: <Users size={18} />, href: '/team' },
+    { label: 'Dispatch', icon: <Zap size={18} />, href: '/dispatch' },
   ];
 
   return (
