@@ -114,9 +114,9 @@ export default function DispatchPage() {
 
 
         // Ask Flanders to synthesize a briefing
-        const briefRes = await fetch('/api/dispatch/claude', {
+        const briefRes = await fetch('https://homer.margebot.com/api/dispatch', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
           body: JSON.stringify({
             system: FLANDERS_PROMPT,
             messages: [{
@@ -162,9 +162,9 @@ RECENT TEAM THREAD:
   };
 
   const getFlandersDirective = async (userMessage: string): Promise<string> => {
-    const res = await fetch('/api/dispatch/claude', {
+    const res = await fetch('https://homer.margebot.com/api/dispatch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
       body: JSON.stringify({
         system: FLANDERS_PROMPT,
         messages: [{ role: 'user', content: userMessage }]
