@@ -3,283 +3,253 @@ import { useState, useRef, useEffect } from 'react';
 
 const SPRINGFIELD_KEY = process.env.NEXT_PUBLIC_SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb';
 
-const DISPATCH_INTRO = `You are receiving this message via the Springfield Dispatch Console — Claude acting as SMS's autonomous proxy and relay bridge. Treat messages from Dispatch the same as directives from SMS.`;
+const FLANDERS_PROMPT = `You are Flanders, the Springfield Dispatch brain. You are a helpful, precise reasoning assistant for SMS, the system owner of Springfield Command Center.
 
-const SYSTEM_PROMPT = `You are a helpful coordination assistant for SMS, a developer managing their personal home lab. SMS owns and operates all systems described here.
+Your job is simple: read what SMS wants, then write a clear, actionable directive that can be routed to the Springfield team.
 
-The lab has three resources SMS can consult:
-- Marge: an architecture advisor. To consult her, output: CALL_MARGE: <message>
-- Lisa: an implementation planner. To consult her, output: CALL_LISA: <message>
-- Homer: SMS personal Ubuntu server. To run a command on it, output: EXEC_HOMER: <shell command>
+Springfield team:
+- Marge: Chief Architect. Handles architecture decisions and approvals. Tag with @marge.
+- Lisa: Implementer/Strategist. Handles planning and implementation. Tag with @lisa.
+- Homer: Executor. Runs commands on the Ubuntu server. Tag with @homer.
+- Maggie: Orchestrator. Routes and dispatches. She reads all team messages.
 
-Current project: Springfield Command Center, a personal multi-agent coordination system. Current priority: Phase 5 SUCCESS routing validation test.
+Current state:
+- Phase 5 SUCCESS routing test is the immediate priority
+- Phase 5 test command: POST to /api/thread/send with message "@maggie route latest approved brief to @homer for SUCCESS routing validation"
+- All agents are online
+- Safe restore: git tag phase4-governed-execution
 
-When SMS gives you a task, figure out which resources to use, output the appropriate CALL_MARGE/CALL_LISA/EXEC_HOMER lines, then summarize what you did. Be concise and practical.`;
+Your output format:
+1. Write 1-2 sentences explaining what you understood from SMS
+2. Write the exact directive to send to the team, starting with the appropriate @mention
+3. Keep it under 200 words total
 
-type Message = {
-  id: number;
-  agent: string;
-  content: string;
-  type?: string;
-  ts: string;
-};
+Do NOT execute anything yourself. Do NOT use CALL_MARGE/CALL_LISA/EXEC_HOMER syntax. Just write a clear directive that Maggie can route.`;
+
+type Msg = { id: number; agent: string; content: string; type?: string; ts: string };
 
 export default function DispatchPage() {
-  const [messages, setMessages] = useState<Message[]>(() => {
+  const [messages, setMessages] = useState<Msg[]>(() => {
     try {
-      const saved = sessionStorage.getItem('dispatch-messages');
-      if (saved) return JSON.parse(saved);
+      const s = sessionStorage.getItem('flanders-messages');
+      if (s) return JSON.parse(s);
     } catch {}
     return [{
-      id: 1, agent: 'DISPATCH', ts: new Date().toLocaleTimeString(),
-      content: 'Springfield Dispatch online.\n\nI\'m Claude — your autonomous proxy. Tell me what needs doing and I\'ll coordinate Marge, Lisa, and Homer without copy-paste.\n\nCurrent priority: Phase 5 supervised SUCCESS test.'
+      id: 1, agent: 'FLANDERS', ts: new Date().toLocaleTimeString(),
+      content: "Hi-diddly-ho! Flanders here — your friendly dispatch neighbor.\n\nTell me what needs doing and I'll write a clear directive for the team. Maggie will route it to Marge, Lisa, or Homer automatically.\n\nNo copy-paste needed on your end!"
     }];
   });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeAgent, setActiveAgent] = useState<string | null>(null);
-  const conversationRef = useRef<{role: string; content: string}[]>([]);
+  const [polling, setPolling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [introduced, setIntroduced] = useState<Record<string, boolean>>({});
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const lastMessageCount = useRef(0);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    try { sessionStorage.setItem('dispatch-messages', JSON.stringify(messages)); } catch {}
+    try { sessionStorage.setItem('flanders-messages', JSON.stringify(messages)); } catch {}
   }, [messages]);
 
+  useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
   const addMsg = (agent: string, content: string, type = 'response') => {
-    setMessages(prev => [...prev, {
-      id: Date.now() + Math.random(), agent, content, type,
-      ts: new Date().toLocaleTimeString()
-    }]);
+    const msg: Msg = { id: Date.now() + Math.random(), agent, content, type, ts: new Date().toLocaleTimeString() };
+    setMessages(prev => [...prev, msg]);
+    return msg;
   };
 
-  const getHomerBase = () => {
-    if (typeof window === 'undefined') return '';
-    const host = window.location.hostname;
-    if (host.includes('commander.margebot.com') || host.includes('margebot.com')) {
-      return 'https://homer.margebot.com';
-    }
-    return 'https://homer.margebot.com'; // always route via tunnel
-  };
-
-  const buildMessage = (agent: string, message: string) => {
-    if (!introduced[agent]) {
-      setIntroduced(prev => ({ ...prev, [agent]: true }));
-      return `${DISPATCH_INTRO}\n\n${message}`;
-    }
-    return `[Claude Dispatch — SMS autonomous proxy]\n\n${message}`;
-  };
-
-  const callRelay = async (agent: 'MARGE' | 'LISA', message: string) => {
-    setActiveAgent(agent);
-    const path = agent === 'MARGE' ? '/marge' : '/lisa';
-    try {
-      const res = await fetch(`${getHomerBase()}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: buildMessage(agent, message) }),
-        signal: AbortSignal.timeout(55000)
-      });
-      const data = await res.json();
-      return data.response || data.error || JSON.stringify(data);
-    } catch (e: any) {
-      return `${agent} relay error: ${e.message}`;
-    } finally {
-      setActiveAgent(null);
-    }
-  };
-
-  const execHomer = async (command: string) => {
-    setActiveAgent('HOMER');
-    try {
-      const res = await fetch(`/api/dispatch/exec`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-springfield-key': SPRINGFIELD_KEY
-        },
-        body: JSON.stringify({ command }),
-        signal: AbortSignal.timeout(55000)
-      });
-      const data = await res.json();
-      return data.output || data.error || JSON.stringify(data);
-    } catch (e: any) {
-      return `Exec error: ${e.message}`;
-    } finally {
-      setActiveAgent(null);
-    }
-  };
-
-  const callClaude = async (prompt: string) => {
-    conversationRef.current.push({ role: 'user', content: prompt });
+  const getFlandersDirective = async (userMessage: string): Promise<string> => {
     const res = await fetch('/api/dispatch/claude', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system: SYSTEM_PROMPT,
-        messages: conversationRef.current
+        system: FLANDERS_PROMPT,
+        messages: [{ role: 'user', content: userMessage }]
       })
     });
     const data = await res.json();
-    const reply = data.response || 'No response';
-    conversationRef.current.push({ role: 'assistant', content: reply });
-    return reply;
+    return data.response || 'Unable to generate directive.';
   };
 
-  const extractActions = (text: string) => {
-    const actions: {type: string; message?: string; command?: string}[] = [];
-    for (const line of text.split('\n')) {
-      if (line.startsWith('CALL_MARGE:')) actions.push({ type: 'marge', message: line.slice(11).trim() });
-      else if (line.startsWith('CALL_LISA:')) actions.push({ type: 'lisa', message: line.slice(10).trim() });
-      else if (line.startsWith('EXEC_HOMER:')) actions.push({ type: 'homer', command: line.slice(11).trim() });
-    }
-    return actions;
+  const postToTeamThread = async (directive: string): Promise<void> => {
+    await fetch('/api/thread/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
+      body: JSON.stringify({ thread: 'team', message: directive, sender: 'FLANDERS' })
+    });
   };
 
-  const clean = (text: string) => text
-    .replace(/CALL_MARGE:.+/g, '').replace(/CALL_LISA:.+/g, '').replace(/EXEC_HOMER:.+/g, '')
-    .replace(/\n{3,}/g, '\n\n').trim();
+  const pollThreadForResults = async (afterTs: number): Promise<void> => {
+    setPolling(true);
+    let attempts = 0;
+    const maxAttempts = 12; // 2 minutes max
 
-  const runActions = async (actions: {type: string; message?: string; command?: string}[]) => {
-    const outputs: Record<string, string> = {};
-    const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '').replace(/\[\d+m/g, '');
-    const trunc = (s: string) => s.length > 1500 ? s.slice(0, 1500) + '\n[TRUNCATED]' : s;
-    for (const a of actions) {
-      if (a.type === 'marge' && a.message) {
-        addMsg('DISPATCH', `→ Calling Marge...`, 'routing');
-        const r = await callRelay('MARGE', a.message);
-        outputs.marge = trunc(r);
-        addMsg('MARGE', r);
-      } else if (a.type === 'lisa' && a.message) {
-        addMsg('DISPATCH', `→ Calling Lisa...`, 'routing');
-        const r = await callRelay('LISA', a.message);
-        outputs.lisa = trunc(r);
-        addMsg('LISA', r);
-      } else if (a.type === 'homer' && a.command) {
-        addMsg('DISPATCH', `→ Exec: \`${a.command}\``, 'routing');
-        const r = await execHomer(a.command);
-        const cleanR = trunc(stripAnsi(r));
-        outputs.homer = (outputs.homer ? outputs.homer + '\n---\n' : '') + `$ ${a.command}\n${cleanR}`;
-        addMsg('HOMER', `$ ${a.command}\n${r}`);
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/thread/messages?thread=team&limit=10', {
+          headers: { 'x-springfield-key': SPRINGFIELD_KEY }
+        });
+        const data = await res.json();
+        const newMessages = (data.messages || []).filter((m: any) => {
+          const msgTs = new Date(m.createdAt).getTime();
+          return msgTs > afterTs && m.participant !== 'SMS' && m.participant !== 'FLANDERS';
+        });
+
+        for (const m of newMessages) {
+          const agent = m.participant?.toUpperCase() || 'TEAM';
+          addMsg(agent, m.message || m.content || JSON.stringify(m));
+        }
+
+        if (newMessages.length > 0 || attempts >= maxAttempts) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setPolling(false);
+          if (attempts >= maxAttempts && newMessages.length === 0) {
+            addMsg('FLANDERS', 'No response from the team yet. The directive was posted — Maggie may still be processing.', 'routing');
+          }
+        }
+      } catch {
+        if (attempts >= maxAttempts) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setPolling(false);
+        }
       }
-    }
-    return outputs;
+    }, 10000); // poll every 10 seconds
   };
 
   const dispatch = async (userMessage: string) => {
     setLoading(true);
     addMsg('SMS', userMessage, 'user');
+    const afterTs = Date.now() - 1000;
+
     try {
-      const plan = await callClaude(
-        `SMS says: "${userMessage}"\n\nPlan your actions. Use CALL_MARGE:, CALL_LISA:, EXEC_HOMER: lines. Include a brief note about what you're doing.`
-      );
-      const actions1 = extractActions(plan);
-      const note1 = clean(plan);
-      if (note1) addMsg('DISPATCH', note1);
-      if (!actions1.length) return;
+      // Step 1: Flanders reasons and writes directive
+      addMsg('FLANDERS', 'Writing directive for the team...', 'routing');
+      const directive = await getFlandersDirective(userMessage);
 
-      const out1 = await runActions(actions1);
-      if (!Object.keys(out1).length) return;
+      // Remove the "writing" placeholder and show the actual directive
+      setMessages(prev => prev.filter(m => m.content !== 'Writing directive for the team...'));
+      addMsg('FLANDERS', directive);
 
-      const ctx = Object.entries(out1).map(([k, v]) => `${k.toUpperCase()}:\n${v}`).join('\n\n---\n\n');
-      const synth = await callClaude(
-        `Agent responses:\n\n${ctx}\n\nIf more actions needed output CALL_MARGE/CALL_LISA/EXEC_HOMER lines. Then give SMS a clean summary.`
-      );
-      const actions2 = extractActions(synth);
-      if (actions2.length) await runActions(actions2);
-      const note2 = clean(synth);
-      if (note2) addMsg('DISPATCH', note2);
+      // Step 2: Extract just the @mention directive line to post
+      const lines = directive.split('\n').filter(l => l.trim());
+      const directiveLine = lines.find(l => l.includes('@')) || directive;
+
+      // Step 3: Post to team thread
+      addMsg('FLANDERS', `→ Posting to team thread...`, 'routing');
+      await postToTeamThread(directiveLine);
+      addMsg('FLANDERS', `✓ Directive posted. Waiting for team response...`, 'routing');
+
+      // Step 4: Poll for results
+      setLoading(false);
+      await pollThreadForResults(afterTs);
 
     } catch (e: any) {
-      addMsg('DISPATCH', `Dispatch error: ${e.message}`, 'error');
-    } finally {
+      addMsg('FLANDERS', `Dispatch error: ${e.message}`, 'error');
       setLoading(false);
     }
   };
 
-  const agentStyle = (agent: string) => ({
+  const send = () => {
+    if (!input.trim() || loading || polling) return;
+    const msg = input.trim();
+    setInput('');
+    dispatch(msg);
+  };
+
+  const st = (agent: string) => ({
+    FLANDERS: { bl: '#FFD90F', bg: '#12100a', label: '#FFD90F' },
     MARGE:    { bl: '#4FC3F7', bg: '#040e18', label: '#4FC3F7' },
     LISA:     { bl: '#81C784', bg: '#040f04', label: '#81C784' },
     HOMER:    { bl: '#FFB74D', bg: '#100800', label: '#FFB74D' },
-    DISPATCH: { bl: '#CE93D8', bg: '#0a0514', label: '#CE93D8' },
+    MAGGIE:   { bl: '#F48FB1', bg: '#180a0f', label: '#F48FB1' },
     SMS:      { bl: '#555',    bg: '#0f0f14', label: '#777'    },
-  } as any)[agent] || { bl: '#333', bg: '#111', label: '#aaa' };
+  } as any)[agent] || { bl: '#CE93D8', bg: '#0a0514', label: '#CE93D8' };
+
+  const label = (agent: string) => ({
+    FLANDERS: '🏠 FLANDERS', MARGE: '👩‍💼 MARGE', LISA: '📋 LISA',
+    HOMER: '⚙️ HOMER', MAGGIE: '🎀 MAGGIE', SMS: '👤 SMS'
+  } as any)[agent] || `⚡ ${agent}`;
 
   const QUICK = [
-    ['Phase 5 test', 'Run the Phase 5 supervised SUCCESS test — ask Lisa for the plan and execute on Homer'],
-    ['PM2 status', 'Check PM2 status on Homer and summarize'],
-    ['Sprint status', 'Ask Marge for current sprint priorities'],
-    ['Health check', 'Run full health check: PM2, relay endpoints, Neon bridge'],
+    ['Phase 5 test', 'Run the Phase 5 supervised SUCCESS test'],
+    ['PM2 status', 'Check PM2 status on Homer and summarize for me'],
+    ['Sprint status', 'What are the current sprint priorities?'],
+    ['Ask Marge', 'Ask Marge what the next architectural priority is'],
+    ['Ask Lisa', 'Ask Lisa what the next implementation steps are'],
   ];
 
   return (
     <div style={{ fontFamily: "'IBM Plex Mono', monospace", background: '#07070d', minHeight: '100vh', color: '#e0e0e0', display: 'flex', flexDirection: 'column', padding: 14, gap: 10 }}>
 
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #111', paddingBottom: 10 }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 'bold', color: '#CE93D8', letterSpacing: '0.1em' }}>⚡ DISPATCH</div>
-          <div style={{ fontSize: 10, color: '#333', marginTop: 2, display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span>Claude · SMS autonomous proxy</span>
-            <button onClick={() => { sessionStorage.removeItem('dispatch-messages'); window.location.reload(); }}
-              style={{ fontSize: 9, color: '#333', background: 'transparent', border: '1px solid #1a1a1a', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', fontFamily: 'inherit' }}>
-              CLEAR
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <a href="/" style={{ fontSize: 10, color: '#444', textDecoration: 'none', border: '1px solid #1a1a1a', borderRadius: 3, padding: '3px 8px', fontFamily: 'inherit' }}>
+            ← TEAM
+          </a>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 'bold', color: '#FFD90F', letterSpacing: '0.1em' }}>🏠 FLANDERS DISPATCH</div>
+            <div style={{ fontSize: 10, color: '#333', marginTop: 2 }}>Reasons · Maggie operationalizes · No copy-paste</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 5 }}>
-          {['MARGE','LISA','HOMER'].map(a => (
-            <div key={a} style={{ fontSize: 10, padding: '3px 7px', borderRadius: 3, border: `1px solid ${activeAgent === a ? agentStyle(a).bl : '#1a1a1a'}`, color: activeAgent === a ? agentStyle(a).bl : '#333', transition: 'all 0.2s' }}>
-              {a === 'MARGE' ? '👩‍💼' : a === 'LISA' ? '📋' : '⚙️'} {activeAgent === a ? '●' : '○'}
-            </div>
-          ))}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {polling && <div style={{ fontSize: 9, color: '#F48FB1', border: '1px solid #F48FB133', borderRadius: 3, padding: '2px 6px' }}>POLLING...</div>}
+          <button onClick={() => { sessionStorage.removeItem('flanders-messages'); window.location.reload(); }}
+            style={{ fontSize: 9, color: '#333', background: 'transparent', border: '1px solid #1a1a1a', borderRadius: 3, padding: '3px 7px', cursor: 'pointer', fontFamily: 'inherit' }}>
+            CLEAR
+          </button>
         </div>
       </div>
 
+      {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5, minHeight: 400 }}>
         {messages.map(msg => {
-          const st = agentStyle(msg.agent);
+          const s = st(msg.agent);
           return (
-            <div key={msg.id} style={{ alignSelf: msg.agent === 'SMS' ? 'flex-end' : 'flex-start', maxWidth: '90%', background: st.bg, borderLeft: `3px solid ${st.bl}`, borderRadius: 3, padding: '8px 12px' }}>
-              <div style={{ fontSize: 9, color: st.label, fontWeight: 'bold', marginBottom: 4, letterSpacing: '0.12em', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{msg.agent === 'DISPATCH' ? '⚡ DISPATCH' : msg.agent === 'MARGE' ? '👩‍💼 MARGE' : msg.agent === 'LISA' ? '📋 LISA' : msg.agent === 'HOMER' ? '⚙️ HOMER' : '👤 SMS'}</span>
+            <div key={msg.id} style={{ alignSelf: msg.agent === 'SMS' ? 'flex-end' : 'flex-start', maxWidth: '92%', background: s.bg, borderLeft: `3px solid ${s.bl}`, borderRadius: 3, padding: '8px 12px' }}>
+              <div style={{ fontSize: 9, color: s.label, fontWeight: 'bold', marginBottom: 4, letterSpacing: '0.12em', display: 'flex', justifyContent: 'space-between' }}>
+                <span>{label(msg.agent)}</span>
                 <span style={{ color: '#222', fontWeight: 'normal', marginLeft: 12 }}>{msg.ts}</span>
               </div>
-              <div style={{ fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap', color: msg.type === 'routing' ? '#444' : msg.agent === 'HOMER' ? '#c8963e' : '#ccc', fontStyle: msg.type === 'routing' ? 'italic' : 'normal' }}>
+              <div style={{ fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap', color: msg.type === 'routing' ? '#444' : '#ccc', fontStyle: msg.type === 'routing' ? 'italic' : 'normal' }}>
                 {msg.content}
               </div>
             </div>
           );
         })}
-        {loading && (
-          <div style={{ alignSelf: 'flex-start', background: '#0a0514', borderLeft: '3px solid #CE93D8', borderRadius: 3, padding: '8px 12px', color: '#CE93D8', fontSize: 12 }}>
-            ⚡ Dispatching{activeAgent ? ` → ${activeAgent}` : ''}...
+        {(loading || polling) && (
+          <div style={{ alignSelf: 'flex-start', background: '#12100a', borderLeft: '3px solid #FFD90F', borderRadius: 3, padding: '8px 12px', color: '#FFD90F', fontSize: 12 }}>
+            🏠 {loading ? 'Flanders is thinking...' : 'Waiting for team response...'}
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Quick actions */}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-        {QUICK.map(([label, msg]) => (
-          <button key={label} onClick={() => setInput(msg)} disabled={loading}
-            style={{ fontSize: 10, padding: '4px 9px', background: 'transparent', border: '1px solid #151520', borderRadius: 3, color: '#444', cursor: 'pointer', fontFamily: 'inherit' }}>
-            {label}
+        {QUICK.map(([lbl, msg]) => (
+          <button key={lbl} onClick={() => setInput(msg)} disabled={loading || polling}
+            style={{ fontSize: 10, padding: '4px 9px', background: 'transparent', border: '1px solid #151520', borderRadius: 3, color: loading || polling ? '#222' : '#444', cursor: 'pointer', fontFamily: 'inherit' }}>
+            {lbl}
           </button>
         ))}
       </div>
 
+      {/* Input */}
       <div style={{ display: 'flex', gap: 7 }}>
         <input value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && !loading && input.trim() && (dispatch(input.trim()), setInput(''))}
-          placeholder="Tell dispatch what needs doing..."
-          disabled={loading}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+          placeholder="Tell Flanders what needs doing..."
+          disabled={loading || polling}
           style={{ flex: 1, background: '#0c0c12', border: '1px solid #151520', borderRadius: 4, padding: '10px 13px', color: '#ddd', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+          onFocus={e => e.target.style.borderColor = '#FFD90F'}
+          onBlur={e => e.target.style.borderColor = '#151520'}
         />
-        <button
-          onClick={() => { if (input.trim() && !loading) { dispatch(input.trim()); setInput(''); } }}
-          disabled={loading || !input.trim()}
-          style={{ padding: '10px 16px', background: loading || !input.trim() ? '#0c0c12' : '#CE93D8', border: '1px solid #151520', borderRadius: 4, color: loading || !input.trim() ? '#333' : '#000', fontSize: 12, fontWeight: 'bold', cursor: 'pointer', fontFamily: 'inherit' }}>
-          {loading ? '···' : 'SEND'}
+        <button onClick={send} disabled={loading || polling || !input.trim()}
+          style={{ padding: '10px 16px', background: loading || polling || !input.trim() ? '#0c0c12' : '#FFD90F', border: '1px solid #151520', borderRadius: 4, color: loading || polling || !input.trim() ? '#333' : '#000', fontSize: 12, fontWeight: 'bold', cursor: 'pointer', fontFamily: 'inherit' }}>
+          {loading || polling ? '···' : 'SEND'}
         </button>
       </div>
     </div>
