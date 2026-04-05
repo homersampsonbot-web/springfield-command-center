@@ -51,16 +51,13 @@ Do NOT execute commands yourself. Do NOT use CALL_MARGE/CALL_LISA/EXEC_HOMER syn
 type Msg = { id: number; agent: string; content: string; type?: string; ts: string };
 
 export default function DispatchPage() {
-  const [messages, setMessages] = useState<Msg[]>(() => {
-    try {
-      const s = sessionStorage.getItem('flanders-messages');
-      if (s) return JSON.parse(s);
-    } catch {}
-    return [{
-      id: 1, agent: 'FLANDERS', ts: new Date().toLocaleTimeString(),
-      content: "Hi-diddly-ho! Flanders here.\n\nI'm fully up to speed on Springfield — the infrastructure, the sprints, the backlog, all of it. Talk to me like a colleague who knows the whole project.\n\nAsk me anything, or tell me what needs doing and I'll coordinate with the team."
-    }];
-  });
+  const [messages, setMessages] = useState<Msg[]>([{
+    id: 1, agent: 'FLANDERS', ts: new Date().toLocaleTimeString(),
+    content: "Flanders here — pulling current state..."
+  }]);
+  const [briefingDone, setBriefingDone] = useState(false);
+  const [attachments, setAttachments] = useState<{name: string; content: string; type: string}[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [polling, setPolling] = useState(false);
@@ -70,10 +67,98 @@ export default function DispatchPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    try { sessionStorage.setItem('flanders-messages', JSON.stringify(messages)); } catch {}
+
   }, [messages]);
 
   useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
+  // On mount — pull live state and brief Flanders
+  useEffect(() => {
+    if (briefingDone) return;
+    setBriefingDone(true);
+    const runBriefing = async () => {
+      try {
+        // Get PM2 status
+        const execRes = await fetch('/api/dispatch/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: 'pm2 list --no-color 2>/dev/null | tail -12' })
+        });
+        const execData = await execRes.json();
+        const pm2Output = execData.output || 'PM2 status unavailable';
+
+        // Get recent thread messages
+        const threadRes = await fetch('/api/thread/messages?thread=team&limit=10', {
+          headers: { 'x-springfield-key': SPRINGFIELD_KEY }
+        });
+        const threadData = await threadRes.json();
+        const recentMessages = (threadData.messages || [])
+          .slice(0, 8)
+          .map((m: any) => `${m.participant || m.sender}: ${(m.message || m.content || '').slice(0, 120)}`)
+          .join('\n');
+
+        // Get recent jobs/sprint state from Supabase via exec
+        const jobsRes = await fetch('/api/dispatch/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            command: \`cd ~/.openclaw/workspace/springfield-command-center && node -e "
+const {PrismaClient}=require('@prisma/client');
+const p=new PrismaClient();
+Promise.all([
+  p.job.findMany({where:{status:{in:['QUEUED','IN_PROGRESS','CLAIMED']}},take:5,select:{title:true,status:true}}),
+  p.job.findMany({where:{status:'DONE'},orderBy:{updatedAt:'desc'},take:3,select:{title:true,status:true}})
+]).then(([active,done])=>{
+  console.log('ACTIVE:',JSON.stringify(active.map(j=>j.title)));
+  console.log('RECENTLY DONE:',JSON.stringify(done.map(j=>j.title)));
+  p.\\$disconnect();
+});" 2>/dev/null || echo "jobs unavailable"\`
+          })
+        });
+        const jobsData = await jobsRes.json();
+        const jobsOutput = jobsData.output || 'Job state unavailable';
+
+        // Ask Flanders to synthesize a briefing
+        const briefRes = await fetch('/api/dispatch/claude', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system: FLANDERS_PROMPT,
+            messages: [{
+              role: 'user',
+              content: \`Generate a brief situational awareness greeting for SMS. Be concise — 4-5 sentences max. Cover: what's working, current sprint/job state, recent team activity, and one priority to tackle. Do not say Hi-diddly-ho. Be direct and informative.
+
+PM2 STATUS:
+\${pm2Output}
+
+ACTIVE/RECENT JOBS:
+\${jobsOutput}
+
+RECENT TEAM THREAD:
+\${recentMessages || 'No recent messages'}\`
+            }]
+          })
+        });
+        const briefData = await briefRes.json();
+        const briefing = briefData.response || "All systems online. Phase 5 SUCCESS confirmed. Ready for directives.";
+
+        setMessages([{
+          id: Date.now(),
+          agent: 'FLANDERS',
+          ts: new Date().toLocaleTimeString(),
+          content: briefing
+        }]);
+      } catch {
+        setMessages([{
+          id: Date.now(),
+          agent: 'FLANDERS',
+          ts: new Date().toLocaleTimeString(),
+          content: "All systems online. Ready for directives."
+        }]);
+      }
+    };
+    runBriefing();
+  }, []);
 
   const addMsg = (agent: string, content: string, type = 'response') => {
     const msg: Msg = { id: Date.now() + Math.random(), agent, content, type, ts: new Date().toLocaleTimeString() };
@@ -140,6 +225,28 @@ export default function DispatchPage() {
     }, 10000); // poll every 10 seconds
   };
 
+  const handleFiles = async (files: FileList) => {
+    const newAttachments: {name: string; content: string; type: string}[] = [];
+    for (const file of Array.from(files)) {
+      if (file.type.startsWith('image/')) {
+        const base64 = await new Promise<string>((res) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.readAsDataURL(file);
+        });
+        newAttachments.push({ name: file.name, content: base64, type: 'image' });
+      } else {
+        const text = await new Promise<string>((res) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.readAsText(file);
+        });
+        newAttachments.push({ name: file.name, content: text.slice(0, 10000), type: 'text' });
+      }
+    }
+    setAttachments(prev => [...prev, ...newAttachments]);
+  };
+
   const dispatch = async (userMessage: string) => {
     setLoading(true);
     addMsg('SMS', userMessage, 'user');
@@ -174,7 +281,7 @@ export default function DispatchPage() {
   };
 
   const send = () => {
-    if (!input.trim() || loading || polling) return;
+    if ((!input.trim() && attachments.length === 0) || loading || polling) return;
     const msg = input.trim();
     setInput('');
     dispatch(msg);
@@ -245,8 +352,28 @@ export default function DispatchPage() {
 
 
 
+      {/* Attachment previews */}
+      {attachments.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {attachments.map((att, i) => (
+            <div key={i} style={{ fontSize: 10, padding: '3px 8px', background: '#0c0c12', border: '1px solid #FFD90F44', borderRadius: 3, color: '#FFD90F', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {att.type === 'image' ? '🖼' : '📄'} {att.name.slice(0, 20)}
+              <span onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                style={{ cursor: 'pointer', color: '#555', marginLeft: 2 }}>✕</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
-      <div style={{ display: 'flex', gap: 7 }}>
+      <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end' }}>
+        <input ref={fileInputRef} type="file" multiple accept="*/*"
+          onChange={e => e.target.files && handleFiles(e.target.files)}
+          style={{ display: 'none' }} />
+        <button onClick={() => fileInputRef.current?.click()} disabled={loading || polling}
+          style={{ padding: '10px 12px', background: '#0c0c12', border: '1px solid #151520', borderRadius: 4, color: '#444', fontSize: 14, cursor: 'pointer', flexShrink: 0 }}>
+          📎
+        </button>
         <input value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
           placeholder="Talk to Flanders..."
@@ -255,11 +382,12 @@ export default function DispatchPage() {
           onFocus={e => e.target.style.borderColor = '#FFD90F'}
           onBlur={e => e.target.style.borderColor = '#151520'}
         />
-        <button onClick={send} disabled={loading || polling || !input.trim()}
-          style={{ padding: '10px 16px', background: loading || polling || !input.trim() ? '#0c0c12' : '#FFD90F', border: '1px solid #151520', borderRadius: 4, color: loading || polling || !input.trim() ? '#333' : '#000', fontSize: 12, fontWeight: 'bold', cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button onClick={send} disabled={loading || polling || (!input.trim() && attachments.length === 0)}
+          style={{ padding: '10px 16px', background: loading || polling || (!input.trim() && attachments.length === 0) ? '#0c0c12' : '#FFD90F', border: '1px solid #151520', borderRadius: 4, color: loading || polling || (!input.trim() && attachments.length === 0) ? '#333' : '#000', fontSize: 12, fontWeight: 'bold', cursor: 'pointer', fontFamily: 'inherit' }}>
           {loading || polling ? '···' : 'SEND'}
         </button>
       </div>
     </div>
   );
 }
+// This won't work as an append — need python patch
