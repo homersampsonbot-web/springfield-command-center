@@ -43,12 +43,15 @@ async function processRelayRequest(job) {
     console.log(`[Worker] Calling ${targetAgent} relay for requestId ${requestId}...`);
 
     // 2. Call Actual Relay
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
       body: JSON.stringify({ message }),
-      timeout: 120000 // 2 minute timeout for long responses
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     const raw = await res.text();
     let data;

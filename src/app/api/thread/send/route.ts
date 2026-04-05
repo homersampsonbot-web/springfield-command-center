@@ -202,7 +202,7 @@ export async function POST(req: Request) {
       if (senderNorm === "SMS" || senderNorm === "FLANDERS") {
         if (!isMargeTag && !isLisaTag && !isMaggieTag && !isTeamTag && !isHomerTag) targets.push("homer");
         if (isHomerTag && !isMaggieTag) targets.push("homer");
-        if (isMargeTag) targets.push("marge");
+        if (isMargeTag) { targets.push("marge"); isAsyncTrigger = true; }
         if (isLisaTag) targets.push("lisa");
       } else if (["HOMER","MARGE","LISA"].includes(senderNorm)) {
         if (isTeamTag) {
