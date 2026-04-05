@@ -97,23 +97,11 @@ export default function DispatchPage() {
           .map((m: any) => `${m.participant || m.sender}: ${(m.message || m.content || '').slice(0, 120)}`)
           .join('\n');
 
-        // Get recent jobs/sprint state from Supabase via exec
+        // Get recent jobs via simple pm2/git status
         const jobsRes = await fetch('/api/dispatch/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            command: \`cd ~/.openclaw/workspace/springfield-command-center && node -e "
-const {PrismaClient}=require('@prisma/client');
-const p=new PrismaClient();
-Promise.all([
-  p.job.findMany({where:{status:{in:['QUEUED','IN_PROGRESS','CLAIMED']}},take:5,select:{title:true,status:true}}),
-  p.job.findMany({where:{status:'DONE'},orderBy:{updatedAt:'desc'},take:3,select:{title:true,status:true}})
-]).then(([active,done])=>{
-  console.log('ACTIVE:',JSON.stringify(active.map(j=>j.title)));
-  console.log('RECENTLY DONE:',JSON.stringify(done.map(j=>j.title)));
-  p.\\$disconnect();
-});" 2>/dev/null || echo "jobs unavailable"\`
-          })
+          body: JSON.stringify({ command: 'cd ~/.openclaw/workspace/springfield-command-center && git log --oneline -5 2>/dev/null && echo "---" && cat /tmp/springfield-jobs.txt 2>/dev/null || echo "no job cache"' })
         });
         const jobsData = await jobsRes.json();
         const jobsOutput = jobsData.output || 'Job state unavailable';
@@ -126,7 +114,7 @@ Promise.all([
             system: FLANDERS_PROMPT,
             messages: [{
               role: 'user',
-              content: \`Generate a brief situational awareness greeting for SMS. Be concise — 4-5 sentences max. Cover: what's working, current sprint/job state, recent team activity, and one priority to tackle. Do not say Hi-diddly-ho. Be direct and informative.
+              content: `Generate a brief situational awareness greeting for SMS. Be concise — 4-5 sentences max. Cover: what's working, current sprint/job state, recent team activity, and one priority to tackle. Do not say Hi-diddly-ho. Be direct and informative.
 
 PM2 STATUS:
 \${pm2Output}
@@ -135,7 +123,7 @@ ACTIVE/RECENT JOBS:
 \${jobsOutput}
 
 RECENT TEAM THREAD:
-\${recentMessages || 'No recent messages'}\`
+\${recentMessages || 'No recent messages'}`
             }]
           })
         });
