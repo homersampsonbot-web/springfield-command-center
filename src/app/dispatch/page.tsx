@@ -156,6 +156,8 @@ export default function DispatchPage() {
 
 
         // Ask Flanders to synthesize a briefing
+        const briefController = new AbortController();
+        const briefTid = setTimeout(() => briefController.abort(), 55000);
         const briefRes = await fetch('https://homer.margebot.com/api/dispatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
@@ -176,6 +178,7 @@ RECENT TEAM THREAD:
             }]
           })
         });
+        clearTimeout(briefTid);
         const briefData = await briefRes.json();
         const briefing = briefData.response || "All systems online. Phase 5 SUCCESS confirmed. Ready for directives.";
 
@@ -212,14 +215,18 @@ RECENT TEAM THREAD:
   };
 
   const getFlandersDirective = async (userMessage: string): Promise<string> => {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 55000);
     const res = await fetch('https://homer.margebot.com/api/dispatch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
       body: JSON.stringify({
         system: FLANDERS_PROMPT,
         messages: [{ role: 'user', content: userMessage }]
-      })
+      }),
+      signal: controller.signal
     });
+    clearTimeout(tid);
     const data = await res.json();
     return data.response || 'Unable to generate directive.';
   };
