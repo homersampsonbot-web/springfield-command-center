@@ -41,12 +41,24 @@ export async function buildContextPack(requestId: string) {
     pack.find((e) => e.participant === "MARGE" && typeof e.message === "string" && e.message.trim())?.message ??
     null;
 
+  // Check if Marge has approved anything recently
+  const margeApproved = latestMarge && (
+    latestMarge.includes("Approval state: APPROVED") ||
+    latestMarge.includes("Ruling: Approved") ||
+    latestMarge.includes("RULING: APPROVED") ||
+    latestMarge.includes("APPROVED") ||
+    latestMarge.includes("CONFIRMED") ||
+    latestMarge.includes("authorized") ||
+    latestMarge.includes("proceed")
+  );
+
   const brief = [
     "MAGGIE REVIEW BRIEF",
     `requestId: ${requestId}`,
     `eventsRetrieved: ${pack.length}`,
     latestLisa ? `latestLisa: ${latestLisa}` : "latestLisa: none",
-    latestMarge ? `latestMarge: ${latestMarge}` : "latestMarge: none"
+    latestMarge ? `latestMarge: ${latestMarge}` : "latestMarge: none",
+    margeApproved ? "Approval state: APPROVED" : "Approval state: PENDING"
   ].join("\n\n");
 
   return {
