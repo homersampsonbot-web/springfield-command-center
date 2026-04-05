@@ -221,7 +221,7 @@ RECENT TEAM THREAD:
       headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
       body: JSON.stringify({
         system: FLANDERS_PROMPT,
-        messages: conversationRef.current.concat([{ role: 'user', content: userMessage }])
+        messages: [{ role: 'user', content: userMessage }]
       })
     });
     const { jobId } = await submitRes.json();

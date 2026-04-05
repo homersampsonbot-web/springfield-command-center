@@ -15,7 +15,7 @@ export async function POST(req: Request) {
         title: `FLANDERS_REQUEST:${Date.now()}`,
         description: JSON.stringify({ messages, system }),
         status: "QUEUED",
-        owner: "FLANDERS",
+        owner: "HOMER",
         risk: "LOW",
         requiresApproval: false,
         labels: ["flanders", "dispatch"]
