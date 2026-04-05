@@ -89,6 +89,34 @@ export default function DispatchPage() {
 
   useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
 
+  // Continuous team thread polling — surfaces agent responses in Dispatch
+  const lastPollTs = useRef(Date.now() - 60000);
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/thread/messages?thread=team&limit=20', {
+          headers: { 'x-springfield-key': SPRINGFIELD_KEY }
+        });
+        const data = await res.json();
+        const newMsgs = (data.messages || []).filter((m: any) => {
+          const ts = new Date(m.createdAt).getTime();
+          const agent = (m.participant || m.sender || '').toUpperCase();
+          return ts > lastPollTs.current && 
+                 ['MARGE','LISA','HOMER','MAGGIE'].includes(agent);
+        });
+        if (newMsgs.length > 0) {
+          lastPollTs.current = Date.now();
+          newMsgs.forEach((m: any) => {
+            const agent = (m.participant || m.sender || 'TEAM').toUpperCase();
+            const content = m.message || m.content || '';
+            if (content.trim()) addMsg(agent, content);
+          });
+        }
+      } catch {}
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Load message history from Supabase on mount
   useEffect(() => {
     if (historyLoaded) return;
