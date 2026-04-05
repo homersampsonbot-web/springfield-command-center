@@ -66,7 +66,7 @@ SHAPE:
 `;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,6 +84,35 @@ SHAPE:
     if (text) envelope = JSON.parse(text) as MaggieEnvelope;
   } catch (e: any) {
     console.error(`[Maggie] Classification attempt failed: ${e.message}`);
+  }
+
+  if (!envelope) {
+    // Fallback: Claude CLI via Homer dispatch
+    try {
+      const claudeRes = await fetch(
+        'https://homer.margebot.com/api/dispatch',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb'
+          },
+          body: JSON.stringify({
+            messages: [{
+              role: 'user',
+              content: `Return ONLY valid JSON, no other text. Classify this message:\n{"type":"directive","needsDebate":"no","needsArchitecture":"no","needsExecution":"yes","suggestedAgents":["HOMER"],"confidence":"high","asyncRelay":"no"}\n\nActually classify this: "${message.replace(/"/g, "'")}"`
+            }]
+          }),
+          signal: AbortSignal.timeout(8000)
+        }
+      );
+      const claudeData = await claudeRes.json();
+      const raw = claudeData.response || '';
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) envelope = JSON.parse(jsonMatch[0]) as MaggieEnvelope;
+    } catch (e: any) {
+      console.error(`[Maggie] Claude fallback failed: ${e.message}`);
+    }
   }
 
   if (!envelope) {
