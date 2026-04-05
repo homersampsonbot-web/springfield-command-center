@@ -55,10 +55,12 @@ BACKLOG AWARENESS:
 - When prioritizing: write directive to @lisa to find the existing job, update description with new requirements, and move to QUEUED
 
 When writing a directive to post to the team thread:
-- Start with the correct @mention
-- Be specific about what you want done
-- Include success criteria
-- Keep it under 150 words
+- Start the line with DIRECTIVE: followed by the @mention
+- Example: DIRECTIVE: @lisa please find the org chart backlog job and move it to QUEUED
+- Be specific about what you want done, include success criteria
+- Keep the directive under 150 words
+- Only include a DIRECTIVE: line when action is needed — for questions or status updates, just respond conversationally without a DIRECTIVE: line
+- NEVER include DIRECTIVE: in a situational briefing or status update
 
 Do NOT execute commands yourself. Do NOT use CALL_MARGE/CALL_LISA/EXEC_HOMER syntax. Just reason, advise, and write directives.`;
 
@@ -271,18 +273,23 @@ RECENT TEAM THREAD:
       setMessages(prev => prev.filter(m => m.content !== 'Writing directive for the team...'));
       addMsg('FLANDERS', directive);
 
-      // Step 2: Extract just the @mention directive line to post
+      // Step 2: Only post if Flanders includes a DIRECTIVE: or @-mention on its own line
       const lines = directive.split('\n').filter(l => l.trim());
-      const directiveLine = lines.find(l => l.includes('@')) || directive;
+      const directiveLine = lines.find(l => l.match(/^DIRECTIVE:/i) || l.match(/^@(maggie|marge|lisa|homer|team)\b/i));
 
-      // Step 3: Post to team thread
-      addMsg('FLANDERS', `→ Posting to team thread...`, 'routing');
-      await postToTeamThread(directiveLine);
-      addMsg('FLANDERS', `✓ Directive posted. Waiting for team response...`, 'routing');
-
-      // Step 4: Poll for results
-      setLoading(false);
-      await pollThreadForResults(afterTs);
+      if (directiveLine) {
+        const cleanDirective = directiveLine.replace(/^DIRECTIVE:/i, '').trim();
+        // Step 3: Post to team thread
+        addMsg('FLANDERS', `→ Posting to team thread: "${cleanDirective.slice(0, 60)}..."`, 'routing');
+        await postToTeamThread(cleanDirective);
+        addMsg('FLANDERS', `✓ Directive posted. Waiting for team response...`, 'routing');
+        // Step 4: Poll for results
+        setLoading(false);
+        await pollThreadForResults(afterTs);
+      } else {
+        // No directive — just a conversational response, no need to post to thread
+        setLoading(false);
+      }
 
     } catch (e: any) {
       addMsg('FLANDERS', `Dispatch error: ${e.message}`, 'error');
