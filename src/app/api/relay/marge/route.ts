@@ -5,7 +5,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const relayUrl = (!process.env.MARGE_RELAY_URL || process.env.MARGE_RELAY_URL === "disabled") ? "https://homer.margebot.com/marge" : process.env.MARGE_RELAY_URL;
+    const relayUrl = (!process.env.MARGE_RELAY_URL || process.env.MARGE_RELAY_URL === "disabled") ? "https://homer.margebot.com/api/marge-relay" : process.env.MARGE_RELAY_URL;
     if (relayUrl === "disabled") {
       return NextResponse.json({ error: "Relay is in maintenance", relay: "marge", status: "maintenance" }, { status: 503 });
     }
