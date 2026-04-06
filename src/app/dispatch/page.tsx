@@ -250,8 +250,8 @@ RECENT TEAM THREAD:
         .join('\n');
     } catch {}
 
-    // Build system with live thread context
-    const systemWithContext = FLANDERS_PROMPT + (threadContext ? `\n\nRECENT TEAM THREAD:\n${threadContext}` : '');
+    // Build system with live thread context — thread goes FIRST so relay trim doesn't cut it off
+    const systemWithContext = (threadContext ? `RECENT TEAM THREAD:\n${threadContext}\n\n` : '') + FLANDERS_PROMPT;
 
     // Submit to Supabase via Vercel — no mobile timeout risk
     const submitRes = await fetch('/api/dispatch/flanders', {
