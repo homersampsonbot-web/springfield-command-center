@@ -236,11 +236,17 @@ RECENT TEAM THREAD:
     // Get recent thread for context
     let threadContext = '';
     try {
-      const tr = await fetch('/api/thread/messages?thread=team&limit=15', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
+      const tr = await fetch('/api/thread/messages?thread=team&limit=30', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
       const td = await tr.json();
       const msgs = Array.isArray(td) ? td : (td.messages || []);
-      threadContext = msgs.slice(0,15)
-        .map((m: any) => `${m.payload?.participant||m.sender||'?'}: ${(m.message||m.content||'').slice(0,150)}`)
+      // Filter noise, keep signal
+      const NOISE = ['task queued', 'dispatching execution', 'homer execution status', 'maggie review brief', 'requestid:', '[lisa] thinking', '[marge] thinking'];
+      const filtered = msgs.filter((m: any) => {
+        const txt = (m.message || m.content || '').toLowerCase();
+        return !NOISE.some(n => txt.includes(n));
+      }).slice(0, 15);
+      threadContext = filtered
+        .map((m: any) => `${m.payload?.participant||m.sender||'?'}: ${(m.message||m.content||'').slice(0,200)}`)
         .join('\n');
     } catch {}
 

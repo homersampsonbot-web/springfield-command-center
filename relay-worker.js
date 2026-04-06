@@ -223,7 +223,7 @@ async function pollFlandersJobs() {
         const trimmedMessages = (payload.messages || []).slice(-8).map(m => ({
           ...m, content: typeof m.content === 'string' ? m.content.slice(0, 800) : m.content
         }));
-        const trimmedSystem = (payload.system || '').slice(0, 1500);
+        const trimmedSystem = (payload.system || "").slice(0, 4000);
         
         const res = await fetch('http://localhost:3014/relay', {
           method: 'POST',
