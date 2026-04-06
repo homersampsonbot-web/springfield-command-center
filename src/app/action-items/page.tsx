@@ -25,11 +25,20 @@ export default function ActionItemsPage() {
         fetch('/api/system-health', { headers: H }).then(r => r.json()).catch(() => ({})),
         fetch('/api/jobs?limit=20', { headers: H }).then(r => r.json()).catch(() => [])
       ]);
-      setAttention(attRes.items || []);
-      setDecisions(decRes.decisions?.slice(0, 10) || []);
-      setHeartbeats(healthRes.agents || []);
+      setAttention(Array.isArray(attRes.items) ? attRes.items : []);
+      setDecisions(Array.isArray(decRes.decisions) ? decRes.decisions.slice(0, 10) : []);
+      // system-health returns {gateway, database, relays:{marge,lisa}, sessions:{marge,lisa}}
+      const hbItems = [
+        { id: 'gateway', label: 'Gateway', status: healthRes?.gateway === 'online' ? 'ALIVE' : 'OFFLINE', detail: 'port 3001' },
+        { id: 'database', label: 'Database', status: healthRes?.database === 'connected' ? 'ALIVE' : 'OFFLINE', detail: 'Supabase' },
+        { id: 'marge', label: 'Marge', status: healthRes?.relays?.marge === 'up' ? 'ALIVE' : 'OFFLINE', detail: 'Relay :3012' },
+        { id: 'lisa', label: 'Lisa', status: healthRes?.relays?.lisa === 'up' ? 'ALIVE' : 'OFFLINE', detail: 'Relay :3013' },
+        { id: 'homer', label: 'Homer', status: healthRes?.gateway === 'online' ? 'ALIVE' : 'OFFLINE', detail: 'Executor' },
+        { id: 'flanders', label: 'Flanders', status: 'ALIVE', detail: 'Relay :3014' },
+      ];
+      setHeartbeats(hbItems);
       // Build alerts from failed jobs
-      const jobs = Array.isArray(jobRes) ? jobRes : [];
+      const jobs = Array.isArray(jobRes) ? jobRes : (Array.isArray(jobRes?.jobs) ? jobRes.jobs : []);
       setAlerts(jobs.filter((j: any) => j.status === 'FAILED').map((j: any) => ({
         id: j.id, jobId: j.id, title: j.title, detail: j.description || '', level: 'error'
       })));
