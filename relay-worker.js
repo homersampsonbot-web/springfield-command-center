@@ -218,14 +218,27 @@ async function pollFlandersJobs() {
         await prisma.job.update({ where: { id: job.id }, data: { status: 'CLAIMED' } });
         const payload = JSON.parse(job.description || '{}');
         const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 55000);
-        const res = await fetch('https://homer.margebot.com/api/dispatch', {
+        const tid = setTimeout(() => controller.abort(), 85000);
+        // Trim payload to avoid size limits
+        const trimmedMessages = (payload.messages || []).slice(-8).map(m => ({
+          ...m, content: typeof m.content === 'string' ? m.content.slice(0, 800) : m.content
+        }));
+        const trimmedSystem = (payload.system || '').slice(0, 1500);
+        
+        const res = await fetch('http://localhost:3014/relay', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb' },
-          body: JSON.stringify({ messages: payload.messages, system: payload.system }),
+          body: JSON.stringify({ 
+            message: trimmedMessages.map(m => `${m.role}: ${m.content}`).join('\n\n'),
+            system: trimmedSystem
+          }),
           signal: controller.signal
         });
         clearTimeout(tid);
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Homer dispatch ${res.status}: ${text.slice(0, 100)}`);
+        }
         const data = await res.json();
         await prisma.job.update({
           where: { id: job.id },

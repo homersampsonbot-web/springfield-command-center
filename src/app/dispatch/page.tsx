@@ -91,7 +91,7 @@ export default function DispatchPage() {
   useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
 
   // Continuous team thread polling — surfaces agent responses in Dispatch
-  const lastPollTs = useRef(Date.now() - 60000);
+  const lastPollTs = useRef(Date.now() - 600000); // Look back 10 minutes on mount
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
