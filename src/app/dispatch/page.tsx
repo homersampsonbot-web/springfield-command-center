@@ -118,7 +118,7 @@ export default function DispatchPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load message history from Supabase on mount
+  // Load message history from Supabase on mount + seed conversationHistory
   useEffect(() => {
     if (historyLoaded) return;
     setHistoryLoaded(true);
@@ -127,6 +127,15 @@ export default function DispatchPage() {
       .then(data => {
         if (data.messages && data.messages.length > 1) {
           setMessages(data.messages);
+          // Seed conversation history from persisted messages
+          const hist = data.messages
+            .filter((m: any) => m.type !== 'routing' && (m.agent === 'SMS' || m.agent === 'FLANDERS'))
+            .slice(-20)
+            .map((m: any) => ({
+              role: m.agent === 'SMS' ? 'user' : 'assistant',
+              content: (m.content || '').slice(0, 500)
+            }));
+          conversationHistory.current = hist;
         }
       }).catch(() => {});
   }, []);
@@ -226,10 +235,10 @@ RECENT TEAM THREAD:
     // Get recent thread for context
     let threadContext = '';
     try {
-      const tr = await fetch('/api/thread/messages?thread=team&limit=5', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
+      const tr = await fetch('/api/thread/messages?thread=team&limit=15', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
       const td = await tr.json();
-      threadContext = (td.messages || []).slice(0,5)
-        .map((m: any) => `${m.participant||m.sender}: ${(m.message||m.content||'').slice(0,100)}`)
+      threadContext = (td.messages || []).slice(0,15)
+        .map((m: any) => `${m.participant||m.sender}: ${(m.message||m.content||'').slice(0,150)}`)
         .join('\n');
     } catch {}
 
