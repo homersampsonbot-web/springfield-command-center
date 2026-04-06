@@ -27,14 +27,25 @@ export default function ActionItemsPage() {
       ]);
       setAttention(Array.isArray(attRes.items) ? attRes.items : []);
       setDecisions(Array.isArray(decRes.decisions) ? decRes.decisions.slice(0, 10) : []);
-      // system-health returns {gateway, database, relays:{marge,lisa}, sessions:{marge,lisa}}
+      // Check relay health directly via gateway proxy
+      const checkRelay = async (path: string) => {
+        try {
+          const r = await fetch(path, { headers: H, signal: AbortSignal.timeout(3000) });
+          const d = await r.json();
+          return d?.status === 'alive' ? 'ALIVE' : 'OFFLINE';
+        } catch { return 'OFFLINE'; }
+      };
+      const [margeStatus, lisaStatus, flandersStatus] = await Promise.all([
+        checkRelay('/api/marge-relay-health'),
+        checkRelay('/api/lisa-relay-health'),
+        checkRelay('/api/flanders-relay-health'),
+      ]);
       const hbItems = [
-        { id: 'gateway', label: 'Gateway', status: healthRes?.gateway === 'online' ? 'ALIVE' : 'OFFLINE', detail: 'port 3001' },
+        { id: 'gateway', label: 'Homer / Gateway', status: healthRes?.gateway === 'online' ? 'ALIVE' : 'OFFLINE', detail: 'EC2 :3001' },
         { id: 'database', label: 'Database', status: healthRes?.database === 'connected' ? 'ALIVE' : 'OFFLINE', detail: 'Supabase' },
-        { id: 'marge', label: 'Marge', status: healthRes?.relays?.marge === 'up' ? 'ALIVE' : 'OFFLINE', detail: 'Relay :3012' },
-        { id: 'lisa', label: 'Lisa', status: healthRes?.relays?.lisa === 'up' ? 'ALIVE' : 'OFFLINE', detail: 'Relay :3013' },
-        { id: 'homer', label: 'Homer', status: healthRes?.gateway === 'online' ? 'ALIVE' : 'OFFLINE', detail: 'Executor' },
-        { id: 'flanders', label: 'Flanders', status: 'ALIVE', detail: 'Relay :3014' },
+        { id: 'marge', label: 'Marge', status: margeStatus, detail: 'Claude Pro :3012' },
+        { id: 'lisa', label: 'Lisa', status: lisaStatus, detail: 'GPT-5.4 :3013' },
+        { id: 'flanders', label: 'Flanders', status: flandersStatus, detail: 'Claude Pro :3014' },
       ];
       setHeartbeats(hbItems);
       // Build alerts from failed jobs
