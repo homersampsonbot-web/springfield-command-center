@@ -154,8 +154,9 @@ export default function DispatchPage() {
           t(fetch('/api/kanban', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json()))
         ]);
         const pm2Output = execData?.output || 'PM2 status unavailable';
-        const recentMessages = (threadData?.messages || []).slice(0, 5)
-          .map((m: any) => `${m.participant || m.sender}: ${(m.message || m.content || '').slice(0, 80)}`).join('\n');
+        const threadArr = Array.isArray(threadData) ? threadData : (threadData?.messages || []);
+        const recentMessages = threadArr.slice(0, 5)
+          .map((m: any) => `${m.payload?.participant || m.sender || '?'}: ${(m.message || m.content || '').slice(0, 80)}`).join('\n');
         const activeJobs = (Array.isArray(jobsData) ? jobsData : []).filter((j: any) => ['IN_PROGRESS','QUEUED'].includes(j.status));
         const blockedJobs = (Array.isArray(jobsData) ? jobsData : []).filter((j: any) => j.status === 'BLOCKED');
         const jobsOutput = [
@@ -237,8 +238,9 @@ RECENT TEAM THREAD:
     try {
       const tr = await fetch('/api/thread/messages?thread=team&limit=15', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
       const td = await tr.json();
-      threadContext = (td.messages || []).slice(0,15)
-        .map((m: any) => `${m.participant||m.sender}: ${(m.message||m.content||'').slice(0,150)}`)
+      const msgs = Array.isArray(td) ? td : (td.messages || []);
+      threadContext = msgs.slice(0,15)
+        .map((m: any) => `${m.payload?.participant||m.sender||'?'}: ${(m.message||m.content||'').slice(0,150)}`)
         .join('\n');
     } catch {}
 
