@@ -40,6 +40,8 @@ model Job {
   risk             Risk       @default(LOW)
   labels           String[]
   requiresApproval Boolean    @default(false)
+  needsSms         Boolean    @default(false)
+  smsNote          String?
   blockedReason    String?
   dependsOn        Json?
   leaseToken       String?    @unique
@@ -264,4 +266,16 @@ model FlandersAction {
   expiresAt     DateTime
 
   @@map("FlandersAction")
+}
+
+model DecisionLedger {
+  id         String   @id @default(cuid())
+  title      String
+  decision   String
+  decidedBy  String
+  context    String?
+  jobId      String?
+  createdAt  DateTime @default(now())
+
+  @@map("DecisionLedger")
 }

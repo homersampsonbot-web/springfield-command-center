@@ -166,32 +166,35 @@ export default function DispatchPage() {
         const _unused = 0; // padding
 
 
-        // Ask Flanders to synthesize a briefing
-        const briefController = new AbortController();
-        const briefTid = setTimeout(() => briefController.abort(), 55000);
-        const briefRes = await fetch('https://homer.margebot.com/api/dispatch', {
+        // Fetch Flanders memory context
+        let flandersMemory = '';
+        try {
+          const memRes = await fetch('/api/dispatch/context', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
+          const memData = await memRes.json();
+          if (memData.contexts?.length > 0) {
+            flandersMemory = 'RECENT DECISIONS:\n' + memData.contexts.map((c: any) => `[${c.type}] ${c.summary}`).join('\n');
+          }
+        } catch {}
+        // Submit briefing via submit-then-poll — no timeout risk
+        const briefSubmit = await fetch('/api/dispatch/flanders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY },
           body: JSON.stringify({
             system: FLANDERS_PROMPT,
-            messages: [{
-              role: 'user',
-              content: `Generate a brief situational awareness greeting for SMS. Be concise — 4-5 sentences max. Cover: what's working, current sprint/job state, recent team activity, and one priority to tackle. Do not say Hi-diddly-ho. Be direct and informative.
-
-PM2 STATUS:
-\${pm2Output}
-
-ACTIVE/RECENT JOBS:
-\${jobsOutput}
-
-RECENT TEAM THREAD:
-\${recentMessages || 'No recent messages'}`
-            }]
+            messages: [{ role: 'user', content: `Generate a brief situational awareness greeting for SMS. 4-5 sentences max. Cover: what is working, what is in progress, recent team activity, one clear priority. Do not say Hi-diddly-ho. Be direct.\n\n${flandersMemory ? flandersMemory + '\n\n' : ''}PM2 STATUS:\n${pm2Output}\nACTIVE JOBS:\n${jobsOutput}\nRECENT THREAD:\n${recentMessages || 'No recent activity'}` }]
           })
         });
-        clearTimeout(briefTid);
-        const briefData = await briefRes.json();
-        const briefing = briefData.response || "All systems online. Phase 5 SUCCESS confirmed. Ready for directives.";
+        const { jobId: briefJobId } = await briefSubmit.json();
+        let briefing = "All systems online. Ready for directives.";
+        if (briefJobId) {
+          for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            const poll = await fetch(`/api/dispatch/flanders?jobId=${briefJobId}`, { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
+            const pd = await poll.json();
+            if (pd.status === 'done') { briefing = pd.response || briefing; break; }
+            if (pd.status === 'failed') break;
+          }
+        }
 
         setMessages([{
           id: Date.now(),

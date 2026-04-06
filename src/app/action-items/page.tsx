@@ -1,628 +1,139 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
-type ApprovalEntry = {
-  id: string;
-  title: string;
-  description: string;
-  requestedBy: string;
-  status: string;
-  createdAt: string;
-};
+const KEY = "c4c75fe2065fb96842e3690a3a6397fb";
+const H = { "x-springfield-key": KEY };
 
-type ArtifactEntry = {
-  id: string;
-  message: string;
-  payload: {
-    title: string;
-    artifactType: string;
-    proposingAgent: string;
-    stageReference: string;
-    status: string;
-    content: string;
-    recommendedAction?: string;
-  };
-  createdAt: string;
-};
-
-type SystemAlertEntry = {
-  id: string;
-  jobId: string;
-  title: string;
-  detail: string;
-  level: string;
-  createdAt?: string;
-};
-
-type HeartbeatEntry = {
-  id: string;
-  label: string;
-  status: string;
-  detail: string;
-};
+type AttentionItem = { id: string; title: string; description: string; status: string; smsNote: string; owner: string; updatedAt: string; };
+type Decision = { id: string; title: string; decision: string; decidedBy: string; context: string; createdAt: string; };
+type Alert = { id: string; jobId: string; title: string; detail: string; level: string; };
+type Heartbeat = { id: string; label: string; status: string; detail: string; };
 
 export default function ActionItemsPage() {
-  const [approvals, setApprovals] = useState<ApprovalEntry[]>([]);
-  const [artifacts, setArtifacts] = useState<ArtifactEntry[]>([]);
-  const [systemAlerts, setSystemAlerts] = useState<SystemAlertEntry[]>([]);
-  const [heartbeats, setHeartbeats] = useState<HeartbeatEntry[]>([]);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [attention, setAttention] = useState<AttentionItem[]>([]);
+  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [heartbeats, setHeartbeats] = useState<Heartbeat[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const refreshAll = () => {
-      fetch("/api/governance/approvals?status=PENDING", {
-        headers: { "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb" },
-      })
-        .then((r) => r.json())
-        .then((d) => {
-          if (mounted && d.entries) setApprovals(d.entries);
-        })
-        .catch(() => {});
-
-      fetch("/api/thread/artifact?status=PENDING_REVIEW", {
-        headers: { "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb" },
-      })
-        .then((r) => r.json())
-        .then((d) => {
-          if (mounted && d.entries) setArtifacts(d.entries);
-        })
-        .catch(() => {});
-
-      Promise.all([
-        fetch("/api/jobs?limit=20", {
-          headers: { "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb" },
-        }).then((r) => r.json()).catch(() => ({ jobs: [] })),
-        fetch("/api/system-health", {
-          headers: { "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb" },
-        }).then((r) => r.json()).catch(() => ({})),
-      ]).then(([jobsData, healthData]) => {
-        if (!mounted) return;
-
-        const alerts: SystemAlertEntry[] = [];
-
-        const jobs = Array.isArray(jobsData)
-          ? jobsData
-          : Array.isArray(jobsData?.jobs)
-          ? jobsData.jobs
-          : [];
-
-        jobs
-          .filter((job: any) => job.status === "FAILED")
-          .slice(0, 10)
-          .forEach((job: any) => {
-            const errorText = String(job.lastError || job.status || "Job failure");
-            const normalized = errorText.toLowerCase();
-            alerts.push({
-              id: job.id,
-              jobId: job.id,
-              title: errorText,
-              detail: `${job.owner || "UNKNOWN"} · ${job.title || "UNTITLED"}`,
-              level: normalized.includes("disabled") ? "WARN" : "ERROR",
-              createdAt: job.updatedAt || job.createdAt,
-            });
-          });
-
-        const systemHealth = healthData?.systemHealth || healthData;
-        if (systemHealth?.status && String(systemHealth.status).toLowerCase() !== "healthy") {
-          alerts.unshift({
-            id: "system-health",
-            jobId: "system-health",
-            title: `SYSTEM HEALTH · ${String(systemHealth.status).toUpperCase()}`,
-            detail: "System health endpoint reports non-healthy status.",
-            level: "ERROR",
-          });
-        }
-
-      fetch("/api/system-health", {
-        headers: { "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb" },
-      })
-        .then((r) => r.json())
-        .then((healthData) => {
-          if (!mounted) return;
-
-          const h = healthData?.systemHealth || healthData || {};
-          const nextHeartbeats: HeartbeatEntry[] = [
-            {
-              id: "homer",
-              label: "HOMER",
-              status: String(h?.agents?.homer || "UNKNOWN").toUpperCase(),
-              detail: "Execution / orchestration",
-            },
-            {
-              id: "marge",
-              label: "MARGE",
-              status: String(h?.agents?.marge || h?.relays?.marge || "UNKNOWN").toUpperCase(),
-              detail: `Relay: ${String(h?.relays?.marge || "unknown")} · Session: ${String(h?.sessions?.marge?.status || "unknown")}`,
-            },
-            {
-              id: "lisa",
-              label: "LISA",
-              status: String(h?.agents?.lisa || h?.relays?.lisa || "UNKNOWN").toUpperCase(),
-              detail: `Relay: ${String(h?.relays?.lisa || "unknown")} · Session: ${String(h?.sessions?.lisa?.status || "unknown")}`,
-            },
-            {
-              id: "bart",
-              label: "BART",
-              status: String(h?.agents?.bart || h?.bartAgent?.status || "UNKNOWN").toUpperCase(),
-              detail: "Browser relay / QA",
-            },
-          ];
-
-          setHeartbeats(nextHeartbeats);
-        })
-        .catch(() => {});
-
-        setSystemAlerts(alerts);
-      });
-    };
-
-    refreshAll();
-    const interval = setInterval(refreshAll, 15000);
-
-
-
-return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  async function resolveApproval(id: string, action: "APPROVE" | "REJECT") {
+  const load = async () => {
+    setLoading(true);
     try {
-      setBusyId(id);
-
-      const res = await fetch(`/api/governance/approvals/${id}/action`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb",
-        },
-        body: JSON.stringify({ action }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to resolve approval");
-        return;
-      }
-
-      setApprovals((prev) => prev.filter((item) => item.id !== id));
-    } catch {
-      alert("Failed to resolve approval");
+      const [attRes, decRes, healthRes, jobRes] = await Promise.all([
+        fetch('/api/dispatch/attention', { headers: H }).then(r => r.json()).catch(() => ({ items: [] })),
+        fetch('/api/dispatch/decisions', { headers: H }).then(r => r.json()).catch(() => ({ decisions: [] })),
+        fetch('/api/system-health', { headers: H }).then(r => r.json()).catch(() => ({})),
+        fetch('/api/jobs?limit=20', { headers: H }).then(r => r.json()).catch(() => [])
+      ]);
+      setAttention(attRes.items || []);
+      setDecisions(decRes.decisions?.slice(0, 10) || []);
+      setHeartbeats(healthRes.agents || []);
+      // Build alerts from failed jobs
+      const jobs = Array.isArray(jobRes) ? jobRes : [];
+      setAlerts(jobs.filter((j: any) => j.status === 'FAILED').map((j: any) => ({
+        id: j.id, jobId: j.id, title: j.title, detail: j.description || '', level: 'error'
+      })));
     } finally {
-      setBusyId(null);
+      setLoading(false);
     }
-  }
+  };
 
-  const sections = [
-    { title: "READY FOR TEST", description: "Changes that are ready for operator validation.", empty: "No test-ready items yet." },
-    { title: "SYSTEM ALERTS", description: "Operational issues requiring attention.", empty: "No system alerts yet." },
-    { title: "DELEGATION LIMITS", description: "Items blocked by delegation guardrails.", empty: "Delegation layer not active yet." },
-  ];
+  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, []);
+
+  const dismissAttention = async (id: string) => {
+    await fetch('/api/dispatch/attention', { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: id, clear: true }) });
+    load();
+  };
+
+  const style = {
+    page: { background: '#0a0a0f', minHeight: '100vh', padding: '20px', fontFamily: 'monospace', color: '#e0e0e0' },
+    title: { color: '#f0c040', fontFamily: 'serif', fontSize: 28, fontWeight: 'bold', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: 2 },
+    sub: { color: '#666', fontSize: 12, marginBottom: 24 },
+    section: { background: '#111', border: '1px solid #222', borderRadius: 8, padding: 16, marginBottom: 16 },
+    sectionTitle: { color: '#f0c040', fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase' as const, letterSpacing: 1, marginBottom: 12 },
+    card: { background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, padding: 12, marginBottom: 8 },
+    badge: (c: string) => ({ background: c, color: '#000', fontSize: 10, padding: '2px 6px', borderRadius: 3, fontWeight: 'bold' }),
+    btn: { background: '#f0c040', color: '#000', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 'bold' },
+    btnDanger: { background: '#cc4444', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 'bold' },
+    empty: { color: '#444', fontSize: 12, fontStyle: 'italic' as const, padding: '8px 0' },
+    heartRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #1a1a1a' },
+  };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0B0F19", color: "#fff", padding: 16 }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ padding: 16, borderRadius: 16, border: "1px solid rgba(255,217,15,0.2)", background: "rgba(255,255,255,0.03)" }}>
-          <div style={{ fontFamily: "Permanent Marker", fontSize: 24, color: "#FFD90F", marginBottom: 6 }}>ACTION ITEMS</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>
-            Operator interaction hub. APPROVALS is live. REVIEW REQUESTED now surfaces pending artifacts.
-          </div>
-        </div>
+    <div style={style.page}>
+      <div style={style.title}>⚡ Action Items</div>
+      <div style={style.sub}>SMS attention queue — items requiring your decision or review</div>
 
-        {heartbeats.length > 0 && (
-          <div style={{
-            padding: 16,
-            borderRadius: 16,
-            border: "1px solid rgba(0,255,140,0.2)",
-            background: "rgba(0,255,140,0.05)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}>
-            <div style={{ fontFamily: "Permanent Marker", fontSize: 18, color: "#7CFFB2" }}>
-              AGENT HEARTBEAT
-            </div>
-            {heartbeats.map((h) => (
-              <div
-                key={h.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  background: "rgba(0,0,0,0.18)",
-                  border: "1px solid rgba(0,255,140,0.12)",
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span style={{ color: "#fff", fontWeight: 600 }}>{h.label}</span>
-                  <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }}>{h.detail}</span>
+      {loading && <div style={{ color: '#666', fontSize: 12 }}>Loading...</div>}
+
+      {/* SMS ATTENTION QUEUE */}
+      <div style={style.section}>
+        <div style={style.sectionTitle}>🔴 Needs Your Decision ({attention.length})</div>
+        {attention.length === 0
+          ? <div style={style.empty}>No items waiting for your attention</div>
+          : attention.map(item => (
+            <div key={item.id} style={style.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 4 }}>{item.title}</div>
+                  {item.smsNote && <div style={{ color: '#f0c040', fontSize: 12, marginBottom: 4 }}>💬 {item.smsNote}</div>}
+                  <div style={{ color: '#888', fontSize: 11 }}>{item.owner} · {new Date(item.updatedAt).toLocaleString()}</div>
                 </div>
-                <span style={{ color: "#7CFFB2", fontWeight: 700 }}>{h.status}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div
-          style={{
-            padding: 16,
-            borderRadius: 16,
-            border: "1px solid rgba(255,217,15,0.15)",
-            background: "rgba(255,255,255,0.03)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          <div style={{ fontFamily: "Permanent Marker", fontSize: 18, color: "#FFD90F" }}>APPROVALS</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>
-            Pending approval requests that require SMS action.
-          </div>
-
-          {approvals.length > 0 ? (
-            approvals.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,217,15,0.2)",
-                  padding: 14,
-                  background: "rgba(0,0,0,0.18)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                <div style={{ fontFamily: "Permanent Marker", fontSize: 16, color: "#FFD90F" }}>{item.title}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.82)" }}>{item.description}</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
-                  Requested by: {item.requestedBy} · Status: {item.status} · {new Date(item.createdAt).toLocaleString()}
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => resolveApproval(item.id, "APPROVE")}
-                    disabled={busyId === item.id}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(0,255,140,0.25)",
-                      background: "rgba(0,255,140,0.08)",
-                      color: "#7CFFB2",
-                      cursor: "pointer",
-                      opacity: busyId === item.id ? 0.6 : 1,
-                    }}
-                  >
-                    APPROVE
-                  </button>
-                  <button
-                    onClick={() => resolveApproval(item.id, "REJECT")}
-                    disabled={busyId === item.id}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,90,90,0.25)",
-                      background: "rgba(255,90,90,0.08)",
-                      color: "#FF9A9A",
-                      cursor: "pointer",
-                      opacity: busyId === item.id ? 0.6 : 1,
-                    }}
-                  >
-                    REJECT
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div
-              style={{
-                borderRadius: 12,
-                border: "1px dashed rgba(255,217,15,0.2)",
-                padding: 14,
-                color: "rgba(255,255,255,0.6)",
-                fontSize: 13,
-                background: "rgba(0,0,0,0.15)",
-              }}
-            >
-              No approval items yet.
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            padding: 16,
-            borderRadius: 16,
-            border: "1px solid rgba(255,217,15,0.15)",
-            background: "rgba(255,255,255,0.03)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          <div style={{ fontFamily: "Permanent Marker", fontSize: 18, color: "#FFD90F" }}>REVIEW REQUESTED</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>
-            Artifacts and plans awaiting review.
-          </div>
-
-          {artifacts.length > 0 ? (
-            artifacts.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,217,15,0.2)",
-                  padding: 14,
-                  background: "rgba(0,0,0,0.18)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                <div style={{ fontFamily: "Permanent Marker", fontSize: 16, color: "#FFD90F" }}>
-                  {item.payload?.title || item.message}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
-                  Type: {item.payload?.artifactType} · Proposing Agent: {item.payload?.proposingAgent} · Stage: {item.payload?.stageReference}
-                </div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.82)" }}>
-                  {item.payload?.content}
-                </div>
-                {item.payload?.recommendedAction ? (
-                  <div style={{ fontSize: 12, color: "#FFD90F" }}>
-                    Recommended action: {item.payload.recommendedAction}
-                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                  <button
-                    onClick={async () => {
-                      await fetch(`/api/thread/artifact/${item.id}/action`, {
-                        method: "PATCH",
-                        headers: {
-                          "Content-Type": "application/json",
-                          "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb",
-                        },
-                        body: JSON.stringify({ action: "APPROVE" }),
-                      });
-                      setArtifacts((prev) => prev.filter((a) => a.id !== item.id));
-                    }}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(0,255,140,0.25)",
-                      background: "rgba(0,255,140,0.08)",
-                      color: "#7CFFB2",
-                      cursor: "pointer",
-                    }}
-                  >
-                    APPROVE
-                  </button>
-
-                  <button
-                    onClick={async () => {
-                      await fetch(`/api/thread/artifact/${item.id}/action`, {
-                        method: "PATCH",
-                        headers: {
-                          "Content-Type": "application/json",
-                          "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb",
-                        },
-                        body: JSON.stringify({ action: "REJECT" }),
-                      });
-                      setArtifacts((prev) => prev.filter((a) => a.id !== item.id));
-                    }}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,90,90,0.25)",
-                      background: "rgba(255,90,90,0.08)",
-                      color: "#FF9A9A",
-                      cursor: "pointer",
-                    }}
-                  >
-                    REJECT
-                  </button>
-                </div>
-                  </div>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <div
-              style={{
-                borderRadius: 12,
-                border: "1px dashed rgba(255,217,15,0.2)",
-                padding: 14,
-                color: "rgba(255,255,255,0.6)",
-                fontSize: 13,
-                background: "rgba(0,0,0,0.15)",
-              }}
-            >
-              No review items yet.
-            </div>
-          )}
-        </div>
-
-        {sections.map((section) => {
-          if (section.title === "SYSTEM ALERTS") {
-            return (
-              <div
-                key={section.title}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  border: "1px solid rgba(255,217,15,0.15)",
-                  background: "rgba(255,255,255,0.03)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
-                <div style={{ fontFamily: "Permanent Marker", fontSize: 18, color: "#FFD90F" }}>{section.title}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>{section.description}</div>
-
-                {systemAlerts.length > 0 ? (
-                  systemAlerts.map((alert) => {
-                    const accent =
-                      alert.level === "ERROR"
-                        ? "rgba(255,90,90,0.55)"
-                        : alert.level === "WARN"
-                        ? "rgba(255,170,60,0.55)"
-                        : "rgba(255,217,15,0.35)";
-
-                    return (
-                      <div
-                        key={alert.id}
-                        style={{
-                          borderRadius: 12,
-                          border: "1px solid rgba(255,217,15,0.2)",
-                          padding: 14,
-                          background: "rgba(0,0,0,0.18)",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                          boxShadow: `inset 4px 0 0 ${accent}`,
-                        }}
-                      >
-                        <div style={{ fontFamily: "Permanent Marker", fontSize: 16, color: "#FFD90F" }}>
-                          {alert.title}
-                        </div>
-                        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.82)" }}>
-                          {alert.detail}
-                        </div>
-                        {alert.createdAt ? (
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
-                            {new Date(alert.createdAt).toLocaleString()}
-                          </div>
-                        ) : null}
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                          <button
-                            onClick={async () => {
-  try {
-    const res = await fetch(`/api/jobs/move`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-springfield-key": "c4c75fe2065fb96842e3690a3a6397fb"
-      },
-      body: JSON.stringify({ jobId: alert.jobId, toStatus: "QUEUED" })
-    });
-    if (!res.ok) throw new Error("retry failed");
-    window.alert("Retry requested");
-    location.reload();
-  } catch (e) {
-    window.alert("Retry failed");
-  }
-}}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: "1px solid rgba(0,255,140,0.25)",
-                              background: "rgba(0,255,140,0.08)",
-                              color: "#7CFFB2",
-                              cursor: "pointer",
-                            }}
-                          >
-                            RETRY JOB
-                          </button>
-                          <button
-                            onClick={() => {
-  window.open(`/api/jobs/${alert.jobId}/events`, "_blank");
-}}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: "1px solid rgba(120,170,255,0.25)",
-                              background: "rgba(120,170,255,0.08)",
-                              color: "#9FC0FF",
-                              cursor: "pointer",
-                            }}
-                          >
-                            VIEW TRACE
-                          </button>
-                          <button
-                            onClick={async () => {
-  try {
-    const res = await fetch(`/api/directive`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: "Escalated alert",
-        description: alert.title,
-        sourceJob: alert.jobId
-      })
-    });
-    if (!res.ok) throw new Error("directive failed");
-    window.alert("Escalation sent to Marge");
-  } catch (e) {
-    window.alert("Escalation failed");
-  }
-}}
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: "1px solid rgba(255,170,60,0.25)",
-                              background: "rgba(255,170,60,0.08)",
-                              color: "#FFC37A",
-                              cursor: "pointer",
-                            }}
-                          >
-                            ESCALATE
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div
-                    style={{
-                      borderRadius: 12,
-                      border: "1px dashed rgba(255,217,15,0.2)",
-                      padding: 14,
-                      color: "rgba(255,255,255,0.6)",
-                      fontSize: 13,
-                      background: "rgba(0,0,0,0.15)",
-                    }}
-                  >
-                    {section.empty}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={section.title}
-              style={{
-                padding: 16,
-                borderRadius: 16,
-                border: "1px solid rgba(255,217,15,0.15)",
-                background: "rgba(255,255,255,0.03)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
-            >
-              <div style={{ fontFamily: "Permanent Marker", fontSize: 18, color: "#FFD90F" }}>{section.title}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>{section.description}</div>
-              <div
-                style={{
-                  borderRadius: 12,
-                  border: "1px dashed rgba(255,217,15,0.2)",
-                  padding: 14,
-                  color: "rgba(255,255,255,0.6)",
-                  fontSize: 13,
-                  background: "rgba(0,0,0,0.15)",
-                }}
-              >
-                {section.empty}
+                <button style={style.btn} onClick={() => dismissAttention(item.id)}>Dismiss</button>
               </div>
             </div>
-          );
-        })}
+          ))
+        }
+      </div>
+
+      {/* AGENT HEARTBEAT */}
+      <div style={style.section}>
+        <div style={style.sectionTitle}>💚 Agent Heartbeat</div>
+        {heartbeats.length === 0
+          ? <div style={style.empty}>No heartbeat data</div>
+          : heartbeats.map((h, i) => (
+            <div key={i} style={style.heartRow}>
+              <div>
+                <span style={{ fontWeight: 'bold', fontSize: 13 }}>{h.label}</span>
+                <span style={{ color: '#666', fontSize: 11, marginLeft: 8 }}>{h.detail}</span>
+              </div>
+              <span style={style.badge(h.status === 'ALIVE' ? '#44cc44' : '#cc4444')}>{h.status}</span>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* SYSTEM ALERTS */}
+      <div style={style.section}>
+        <div style={style.sectionTitle}>🚨 System Alerts ({alerts.length})</div>
+        {alerts.length === 0
+          ? <div style={style.empty}>No system alerts</div>
+          : alerts.map(alert => (
+            <div key={alert.id} style={{ ...style.card, borderLeft: '3px solid #cc4444' }}>
+              <div style={{ fontWeight: 'bold', fontSize: 13, color: '#ff6666' }}>{alert.title}</div>
+              <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>{alert.detail?.slice(0, 120)}</div>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* DECISION LEDGER */}
+      <div style={style.section}>
+        <div style={style.sectionTitle}>📋 Decision Ledger — Recent Rulings</div>
+        {decisions.length === 0
+          ? <div style={style.empty}>No decisions recorded yet</div>
+          : decisions.map(d => (
+            <div key={d.id} style={style.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontWeight: 'bold', fontSize: 13 }}>{d.title}</span>
+                <span style={style.badge('#4488cc')}>{d.decidedBy}</span>
+              </div>
+              <div style={{ color: '#ccc', fontSize: 12, marginBottom: 4 }}>{d.decision}</div>
+              {d.context && <div style={{ color: '#666', fontSize: 11 }}>{d.context}</div>}
+              <div style={{ color: '#444', fontSize: 10, marginTop: 4 }}>{new Date(d.createdAt).toLocaleString()}</div>
+            </div>
+          ))
+        }
       </div>
     </div>
   );
