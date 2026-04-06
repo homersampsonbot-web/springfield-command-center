@@ -226,3 +226,42 @@ enum DebateState {
   VERIFIED
   DONE
 }
+
+
+
+
+model FlandersState {
+  id                String    @id @default("singleton")
+  lastCheckedAt     DateTime  @default(now())
+  currentPriorities String    @default("[]")
+  pendingItems      String    @default("[]")
+  lastDigestAt      DateTime?
+  updatedAt         DateTime  @updatedAt
+
+  @@map("FlandersState")
+}
+
+model FlandersContext {
+  id        String   @id @default(cuid())
+  type      String
+  summary   String
+  detail    String?
+  jobId     String?
+  agents    String[] @default([])
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("FlandersContext")
+}
+
+model FlandersAction {
+  id            String   @id @default(cuid())
+  messageId     String
+  messageText   String
+  actionTaken   String
+  directiveSent String?
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  @@map("FlandersAction")
+}
