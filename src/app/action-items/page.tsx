@@ -53,7 +53,13 @@ export default function ActionItemsPage() {
       // Build alerts from failed jobs
       const jobs = Array.isArray(jobRes) ? jobRes : (Array.isArray(jobRes?.jobs) ? jobRes.jobs : []);
       setArtifacts(Array.isArray(artifactRes.artifacts) ? artifactRes.artifacts : []);
-      setAlerts(jobs.filter((j: any) => j.status === 'FAILED').map((j: any) => ({
+      // Only show alerts for jobs that need SMS attention — exclude internal relay/dispatch jobs
+      const INTERNAL_PREFIXES = ['FLANDERS_REQUEST:', 'RELAY_REQUEST:', 'DISPATCH_'];
+      setAlerts(jobs.filter((j: any) => 
+        j.status === 'FAILED' && 
+        j.needsSms === true &&
+        !INTERNAL_PREFIXES.some((p: string) => j.title?.startsWith(p))
+      ).map((j: any) => ({
         id: j.id, jobId: j.id, title: j.title, detail: j.description || '', level: 'error'
       })));
     } finally {

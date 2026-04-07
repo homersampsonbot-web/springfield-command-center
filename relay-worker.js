@@ -48,10 +48,10 @@ async function processRelayRequest(job) {
     if (jobRefMatch) {
       try {
         const jobId = jobRefMatch[1];
-        const job = await prisma.job.findUnique({
-          where: { id: jobId },
-          select: { title: true, description: true, status: true, labels: true }
-        });
+        // Support both full UUIDs and short 8-char prefixes
+        const job = jobId.length === 36 
+          ? await prisma.job.findUnique({ where: { id: jobId }, select: { title: true, description: true, status: true, labels: true } })
+          : await prisma.job.findFirst({ where: { id: { startsWith: jobId } }, select: { title: true, description: true, status: true, labels: true } });
         if (job) {
           fullMessage = message + '\n\n--- JOB CONTENT [' + jobId.slice(0,8) + '] ---\n' +
             'Title: ' + job.title + '\n' +
