@@ -5,7 +5,7 @@ import { requireAppAuth } from "@/lib/auth";
 export async function GET(req: Request, context: any) {
   try {
     await requireAppAuth(req);
-    const id = context.params?.id;
+    const { id } = await context.params;
     const artifact = await prisma.artifact.findUnique({ where: { id } });
     if (!artifact) return NextResponse.json({ error: 'not found' }, { status: 404 });
     return NextResponse.json({ artifact });
@@ -17,7 +17,7 @@ export async function GET(req: Request, context: any) {
 export async function PATCH(req: Request, context: any) {
   try {
     await requireAppAuth(req);
-    const id = context.params?.id;
+    const { id } = await context.params;
     const { status, reviewedBy, reviewNote } = await req.json();
     const artifact = await prisma.artifact.update({
       where: { id },
