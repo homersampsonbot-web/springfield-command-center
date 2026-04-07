@@ -80,13 +80,21 @@ async function processRelayRequest(job) {
         const artifactType = isRuling ? 'RULING' : isProposal ? 'PROPOSAL' : 'RESPONSE';
         const titleMatch = replyText.match(/\*\*([^*]+)\*\*/);
         const artifactTitle = titleMatch ? titleMatch[1].slice(0, 100) : `${targetAgent} ${artifactType} ${new Date().toISOString().slice(0,10)}`;
+        // Marge rulings are auto-approved — she has architectural authority
+        // Only flag for SMS review if explicitly requires it
+        const needsSmsReview = /NEEDS_SMS_APPROVAL|REQUIRES_SMS|spending|external service|new domain/i.test(replyText);
+        const artifactStatus = (isRuling && targetAgent === 'MARGE') ? 'APPROVED' 
+          : needsSmsReview ? 'PENDING_REVIEW' 
+          : targetAgent === 'MARGE' ? 'APPROVED'
+          : 'PENDING_REVIEW';
+        
         const artifact = await prisma.artifact.create({
           data: {
             type: artifactType,
             title: artifactTitle,
             content: replyText,
             authorAgent: targetAgent,
-            status: isRuling ? 'APPROVED' : 'PENDING_REVIEW',
+            status: artifactStatus,
             threadRef: requestId
           }
         });
