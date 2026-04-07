@@ -42,13 +42,36 @@ async function processRelayRequest(job) {
 
     console.log(`[Worker] Calling ${targetAgent} relay for requestId ${requestId}...`);
 
-    // 2. Call Actual Relay
+    // 2. Check for job reference [JOB:id] and fetch full content from Job table
+    let fullMessage = message;
+    const jobRefMatch = message.match(/\[JOB:([a-f0-9-]+)\]/i);
+    if (jobRefMatch) {
+      try {
+        const jobId = jobRefMatch[1];
+        const job = await prisma.job.findUnique({
+          where: { id: jobId },
+          select: { title: true, description: true, status: true, labels: true }
+        });
+        if (job) {
+          fullMessage = message + '\n\n--- JOB CONTENT [' + jobId.slice(0,8) + '] ---\n' +
+            'Title: ' + job.title + '\n' +
+            'Status: ' + job.status + '\n' +
+            'Labels: ' + (job.labels || []).join(', ') + '\n' +
+            'Description:\n' + (job.description || '').slice(0, 3000);
+          console.log('[Worker] Fetched job', jobId.slice(0,8), 'for', targetAgent, '-', (job.description||'').length, 'chars');
+        }
+      } catch(e) {
+        console.log('[Worker] Could not fetch job reference:', e.message);
+      }
+    }
+
+    // 3. Call Actual Relay
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000);
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message: fullMessage }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
