@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAppAuth } from "@/lib/auth";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, context: any) {
   try {
     await requireAppAuth(req);
-    const artifact = await prisma.artifact.findUnique({ where: { id: params.id } });
+    const id = context.params?.id;
+    const artifact = await prisma.artifact.findUnique({ where: { id } });
     if (!artifact) return NextResponse.json({ error: 'not found' }, { status: 404 });
     return NextResponse.json({ artifact });
   } catch (e: any) {
@@ -13,13 +14,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, context: any) {
   try {
     await requireAppAuth(req);
+    const id = context.params?.id;
     const { status, reviewedBy, reviewNote } = await req.json();
     const artifact = await prisma.artifact.update({
-      where: { id: params.id },
-      data: { ...(status && { status }), ...(reviewedBy && { reviewedBy }), ...(reviewNote && { reviewNote }) }
+      where: { id },
+      data: {
+        ...(status && { status }),
+        ...(reviewedBy && { reviewedBy }),
+        ...(reviewNote && { reviewNote })
+      }
     });
     return NextResponse.json({ artifact });
   } catch (e: any) {
