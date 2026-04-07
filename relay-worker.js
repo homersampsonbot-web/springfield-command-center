@@ -69,19 +69,55 @@ async function processRelayRequest(job) {
 
     console.log(`[Worker] Relay success for ${targetAgent}. Writing to thread...`);
 
+    // Auto-save long responses as artifacts
+    let artifactId = null;
+    const isLongResponse = replyText.length > 800;
+    const isRuling = /RULING:|ARCHITECTURAL AUTHORITY|APPROVED|REJECTED/i.test(replyText);
+    const isProposal = /PROPOSAL:|PART \d+\/\d+/i.test(replyText);
+    
+    if (isLongResponse && (isRuling || isProposal || targetAgent === 'MARGE' || targetAgent === 'LISA')) {
+      try {
+        const artifactType = isRuling ? 'RULING' : isProposal ? 'PROPOSAL' : 'RESPONSE';
+        const titleMatch = replyText.match(/\*\*([^*]+)\*\*/);
+        const artifactTitle = titleMatch ? titleMatch[1].slice(0, 100) : `${targetAgent} ${artifactType} ${new Date().toISOString().slice(0,10)}`;
+        const artifact = await prisma.artifact.create({
+          data: {
+            type: artifactType,
+            title: artifactTitle,
+            content: replyText,
+            authorAgent: targetAgent,
+            status: isRuling ? 'APPROVED' : 'PENDING_REVIEW',
+            threadRef: requestId
+          }
+        });
+        artifactId = artifact.id;
+        console.log(`[Worker] Saved artifact ${artifactId} (${artifactType}, ${replyText.length} chars)`);
+      } catch (artifactErr) {
+        console.error('[Worker] Failed to save artifact:', artifactErr.message);
+      }
+    }
+
+    // Post to thread — full text if short, summary + artifact ref if long
+    const threadMessage = artifactId 
+      ? `${replyText.slice(0, 500)}...
+
+[Full ${isRuling ? 'ruling' : 'response'} saved as artifact: ${artifactId}]`
+      : replyText;
+
     // 3. Append Full Reply Event
     await prisma.event.create({
       data: {
         scope: "SYSTEM",
         type: "THREAD_MESSAGE",
         level: "INFO",
-        message: replyText,
+        message: threadMessage,
         payload: {
           thread: "team",
           participant: targetAgent,
           source: "relay",
           target: targetAgent,
           requestId,
+          artifactId,
           raw: data
         }
       }

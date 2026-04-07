@@ -15,15 +15,17 @@ export default function ActionItemsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [heartbeats, setHeartbeats] = useState<Heartbeat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [artifacts, setArtifacts] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [attRes, decRes, healthRes, jobRes] = await Promise.all([
+      const [attRes, decRes, healthRes, jobRes, artifactRes] = await Promise.all([
         fetch('/api/dispatch/attention', { headers: H }).then(r => r.json()).catch(() => ({ items: [] })),
         fetch('/api/dispatch/decisions', { headers: H }).then(r => r.json()).catch(() => ({ decisions: [] })),
         fetch('/api/system-health', { headers: H }).then(r => r.json()).catch(() => ({})),
-        fetch('/api/jobs?limit=20', { headers: H }).then(r => r.json()).catch(() => [])
+        fetch('/api/jobs?limit=20', { headers: H }).then(r => r.json()).catch(() => []),
+        fetch('/api/artifacts?status=PENDING_REVIEW&limit=10', { headers: H }).then(r => r.json()).catch(() => ({ artifacts: [] }))
       ]);
       setAttention(Array.isArray(attRes.items) ? attRes.items : []);
       setDecisions(Array.isArray(decRes.decisions) ? decRes.decisions.slice(0, 10) : []);
@@ -50,6 +52,7 @@ export default function ActionItemsPage() {
       setHeartbeats(hbItems);
       // Build alerts from failed jobs
       const jobs = Array.isArray(jobRes) ? jobRes : (Array.isArray(jobRes?.jobs) ? jobRes.jobs : []);
+      setArtifacts(Array.isArray(artifactRes.artifacts) ? artifactRes.artifacts : []);
       setAlerts(jobs.filter((j: any) => j.status === 'FAILED').map((j: any) => ({
         id: j.id, jobId: j.id, title: j.title, detail: j.description || '', level: 'error'
       })));
@@ -132,6 +135,34 @@ export default function ActionItemsPage() {
             <div key={alert.id} style={{ ...style.card, borderLeft: '3px solid #cc4444' }}>
               <div style={{ fontWeight: 'bold', fontSize: 13, color: '#ff6666' }}>{alert.title}</div>
               <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>{alert.detail?.slice(0, 120)}</div>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* ARTIFACTS — PENDING REVIEW */}
+      <div style={style.section}>
+        <div style={style.sectionTitle}>📄 Review Requested ({artifacts.length})</div>
+        {artifacts.length === 0
+          ? <div style={style.empty}>No artifacts pending review</div>
+          : artifacts.map((a: any) => (
+            <div key={a.id} style={style.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontWeight: 'bold', fontSize: 13 }}>{a.title}</span>
+                <span style={style.badge('#aa44cc')}>{a.type}</span>
+              </div>
+              <div style={{ color: '#ccc', fontSize: 12, marginBottom: 4 }}>{a.content?.slice(0, 200)}...</div>
+              <div style={{ color: '#666', fontSize: 11 }}>{a.authorAgent} · {new Date(a.createdAt).toLocaleString()}</div>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                <button style={style.btn} onClick={async () => {
+                  await fetch(`/api/artifacts/${a.id}`, { method: 'PATCH', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'APPROVED', reviewedBy: 'SMS' }) });
+                  load();
+                }}>Approve</button>
+                <button style={style.btnDanger} onClick={async () => {
+                  await fetch(`/api/artifacts/${a.id}`, { method: 'PATCH', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'REJECTED', reviewedBy: 'SMS' }) });
+                  load();
+                }}>Reject</button>
+              </div>
             </div>
           ))
         }
