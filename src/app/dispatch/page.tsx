@@ -95,7 +95,7 @@ export default function DispatchPage() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/thread/messages?thread=team&limit=50', {
+        const res = await fetch('/api/thread/messages?thread=team&limit=20', {
           headers: { 'x-springfield-key': SPRINGFIELD_KEY }
         });
         const data = await res.json();
@@ -130,10 +130,10 @@ export default function DispatchPage() {
           // Seed conversation history from persisted messages
           const hist = data.messages
             .filter((m: any) => m.type !== 'routing' && (m.agent === 'SMS' || m.agent === 'FLANDERS'))
-            .slice(-20)
+            .slice(-10)
             .map((m: any) => ({
               role: m.agent === 'SMS' ? 'user' : 'assistant',
-              content: (m.content || '').slice(0, 500)
+              content: (m.content || '').slice(0, 200)
             }));
           conversationHistory.current = hist;
         }
@@ -150,7 +150,7 @@ export default function DispatchPage() {
         const t = (p: Promise<any>) => Promise.race([p.catch(() => null), new Promise(r => setTimeout(() => r(null), 8000))]);
         const [execData, threadData, jobsData] = await Promise.all([
           t(fetch('/api/dispatch/exec', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY }, body: JSON.stringify({ command: 'pm2 list --no-color 2>/dev/null | tail -12' }) }).then(r => r.json())),
-          t(fetch('/api/thread/messages?thread=team&limit=50', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json())),
+          t(fetch('/api/thread/messages?thread=team&limit=20', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json())),
           t(fetch('/api/kanban', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json()))
         ]);
         const pm2Output = execData?.output || 'PM2 status unavailable';
@@ -239,7 +239,7 @@ export default function DispatchPage() {
     // Get recent thread for context
     let threadContext = '';
     try {
-      const tr = await fetch('/api/thread/messages?thread=team&limit=50', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
+      const tr = await fetch('/api/thread/messages?thread=team&limit=20', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
       const td = await tr.json();
       const msgs = Array.isArray(td) ? td : (td.messages || []);
       // Filter noise, keep signal
@@ -263,7 +263,7 @@ export default function DispatchPage() {
       body: JSON.stringify({
         system: systemWithContext,
         messages: [
-          ...conversationHistory.current.slice(-10),
+          ...conversationHistory.current.slice(-6),
           { role: 'user', content: userMessage }
         ]
       })
@@ -299,7 +299,7 @@ export default function DispatchPage() {
     pollRef.current = setInterval(async () => {
       attempts++;
       try {
-        const res = await fetch('/api/thread/messages?thread=team&limit=50', {
+        const res = await fetch('/api/thread/messages?thread=team&limit=20', {
           headers: { 'x-springfield-key': SPRINGFIELD_KEY }
         });
         const data = await res.json();
