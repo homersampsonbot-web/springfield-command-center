@@ -95,7 +95,7 @@ export default function DispatchPage() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/thread/messages?thread=team&limit=20', {
+        const res = await fetch('/api/thread/messages?thread=team&limit=50', {
           headers: { 'x-springfield-key': SPRINGFIELD_KEY }
         });
         const data = await res.json();
@@ -150,7 +150,7 @@ export default function DispatchPage() {
         const t = (p: Promise<any>) => Promise.race([p.catch(() => null), new Promise(r => setTimeout(() => r(null), 8000))]);
         const [execData, threadData, jobsData] = await Promise.all([
           t(fetch('/api/dispatch/exec', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-springfield-key': SPRINGFIELD_KEY }, body: JSON.stringify({ command: 'pm2 list --no-color 2>/dev/null | tail -12' }) }).then(r => r.json())),
-          t(fetch('/api/thread/messages?thread=team&limit=10', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json())),
+          t(fetch('/api/thread/messages?thread=team&limit=50', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json())),
           t(fetch('/api/kanban', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } }).then(r => r.json()))
         ]);
         const pm2Output = execData?.output || 'PM2 status unavailable';
@@ -239,7 +239,7 @@ export default function DispatchPage() {
     // Get recent thread for context
     let threadContext = '';
     try {
-      const tr = await fetch('/api/thread/messages?thread=team&limit=30', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
+      const tr = await fetch('/api/thread/messages?thread=team&limit=50', { headers: { 'x-springfield-key': SPRINGFIELD_KEY } });
       const td = await tr.json();
       const msgs = Array.isArray(td) ? td : (td.messages || []);
       // Filter noise, keep signal
@@ -299,7 +299,7 @@ export default function DispatchPage() {
     pollRef.current = setInterval(async () => {
       attempts++;
       try {
-        const res = await fetch('/api/thread/messages?thread=team&limit=10', {
+        const res = await fetch('/api/thread/messages?thread=team&limit=50', {
           headers: { 'x-springfield-key': SPRINGFIELD_KEY }
         });
         const data = await res.json();
