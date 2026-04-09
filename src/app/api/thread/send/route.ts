@@ -372,6 +372,23 @@ export async function POST(req: Request) {
     }
 
 
+    // If Flanders responded with a directive targeting another agent, re-route it
+    if (targets.includes("flanders")) {
+      const flandersEvent = responses.find((r: any) => r?.payload?.participant === "FLANDERS");
+      const flandersText = flandersEvent?.message || "";
+      const hasDirective = flandersText.includes("@lisa") || flandersText.includes("@homer") || flandersText.includes("@marge");
+      if (hasDirective) {
+        try {
+          await fetch(`${baseUrl}/api/thread/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
+            body: JSON.stringify({ thread: "team", message: flandersText, sender: "FLANDERS" }),
+            signal: AbortSignal.timeout(10000),
+          });
+        } catch(e) { console.error("[Flanders re-route] failed:", e); }
+      }
+    }
+
     if (isMaggieTag && (senderNorm === "SMS" || senderNorm === "FLANDERS")) {
       try {
         const context = await buildContextPack(requestId);
