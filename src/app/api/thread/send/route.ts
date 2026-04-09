@@ -379,17 +379,10 @@ export async function POST(req: Request) {
       } else {
         const resp = await callRelaySync(agent);
         responses.push(resp);
-        // If Lisa responds with [NEEDS MARGE REVIEW], re-fire through routing so Marge escalation triggers
+        // If Lisa responds with [NEEDS MARGE REVIEW], trigger Marge directly without re-posting Lisa's message
         if (agent === "lisa" && resp?.message?.includes("[NEEDS MARGE REVIEW]")) {
-          try {
-            const rerouteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://commander.margebot.com";
-            fetch(`${rerouteUrl}/api/thread/send`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
-              body: JSON.stringify({ thread: "team", message: resp.message, sender: "LISA" }),
-              signal: AbortSignal.timeout(15000),
-            }).catch((e: any) => console.error("[Lisa->Marge escalation] failed:", e.message));
-          } catch(e) {}
+          targets.push("marge");
+          isAsyncTrigger = true;
         }
       }
     }
