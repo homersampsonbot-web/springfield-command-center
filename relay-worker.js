@@ -272,7 +272,8 @@ async function processRelayRequest(job) {
   }
 }
 
-// Flanders dispatch polling — every 5 seconds
+// DEPRECATED — Flanders dispatch polling removed. Flanders now in Team Chat.
+// Flanders dispatch polling — every 5 seconds (DISABLED)
 async function pollFlandersJobs() {
   try {
     const jobs = await prisma.job.findMany({
@@ -321,7 +322,7 @@ async function pollFlandersJobs() {
     console.error('[Flanders Worker] Poll error:', e.message);
   }
 }
-setInterval(pollFlandersJobs, 5000);
+// setInterval(pollFlandersJobs, 5000) — DISABLED;
 
 async function run() {
   console.log(`[Worker] Starting Springfield Relay Worker... Polling every ${POLLING_INTERVAL/1000}s`);

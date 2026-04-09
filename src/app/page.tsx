@@ -291,9 +291,9 @@ export default function Home() {
   const [bootDegraded, setBootDegraded] = useState(false);
 
   const [maggieStatus, setMaggieStatus] = useState<'Idle'|'Thinking'|'Planning'|'Planned'|'Failed'>('Idle');
+  const [maggieLiveStatus, setMaggieLiveStatus] = useState<string>('Idle');
   const [maggieEvents, setMaggieEvents] = useState<{ ts: string; level: string; message: string }[]>([]);
   const [maggieActivity, setMaggieActivity] = useState<any[]>([]);
-  const [maggieLiveStatus, setMaggieLiveStatus] = useState<'Idle' | 'Planning' | 'Dispatching' | 'Waiting' | 'Degraded'>('Idle');
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [directiveId, setDirectiveId] = useState<string | null>(null);
   const pollRef = useRef<any>(null);
@@ -379,7 +379,6 @@ export default function Home() {
           const last60s = events.filter((e: any) => (now - new Date(e.createdAt).getTime()) < 60000);
           const last2m = events.filter((e: any) => (now - new Date(e.createdAt).getTime()) < 120000);
           if (last60s.some((e: any) => ['JOB_CREATED', 'JOB_LEASED', 'JOB_COMPLETED'].includes(e.type))) {
-            setMaggieLiveStatus('Dispatching');
           } else if (last2m.some((e: any) => ['DIRECTIVE_RECEIVED', 'PLANNING_STARTED', 'DECOMPOSING_TASKS', 'PLAN_COMPLETE', 'SIMULATION_STARTED', 'DEBATE_TRIGGERED'].includes(e.type))) {
             setMaggieLiveStatus('Planning');
           } else if (activeDebateCount > 0 || activeJobs.some(j => j.requiresApproval)) {
@@ -427,7 +426,6 @@ export default function Home() {
 
   const sendDirective = async () => {
     if (!directive.trim()) return;
-    setStatus('Dispatching...');
     if (navigator.vibrate) navigator.vibrate(10);
     try {
       const r = await fetch(`/api/directives`, {
@@ -438,7 +436,6 @@ export default function Home() {
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || 'Failed');
       setMaggieStatus('Thinking');
-      setStatus(`✅ Dispatched — ${d.directiveId?.slice(0,8)}`);
       setDirective('');
     } catch {
       setStatus('❌ Send failed');
@@ -581,7 +578,6 @@ export default function Home() {
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                       <span style={{ fontSize:11, color:'var(--jarvis-text-dim)' }}>{status}</span>
                       <div style={{ display:'flex', gap:8 }}>
-                        <button onClick={sendDirective} style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'#FFD90F', color:'#000', fontFamily:'Permanent Marker', fontSize:13 }}>DISPATCH ➤</button>
                       </div>
                     </div>
                   </div>
