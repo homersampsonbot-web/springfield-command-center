@@ -379,12 +379,14 @@ export async function POST(req: Request) {
       const hasDirective = flandersText.includes("@lisa") || flandersText.includes("@homer") || flandersText.includes("@marge");
       if (hasDirective) {
         try {
-          await fetch(`${baseUrl}/api/thread/send`, {
+          const rerouteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://commander.margebot.com";
+          await fetch(`${rerouteUrl}/api/thread/send`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
             body: JSON.stringify({ thread: "team", message: flandersText, sender: "FLANDERS" }),
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(15000),
           });
+          console.log("[Flanders re-route] fired for:", flandersText.slice(0, 80));
         } catch(e) { console.error("[Flanders re-route] failed:", e); }
       }
     }
