@@ -135,22 +135,7 @@ async function processRelayRequest(job) {
 [Full ${isRuling ? 'ruling' : 'response'} saved as artifact: ${artifactId}]`
       : replyText;
 
-    // If Marge's full response contains a @lisa/@homer directive, fire it separately
-    if (targetAgent === 'MARGE' && typeof replyText === 'string') {
-      const directiveLine = replyText.split('\n').find(l => /^@(lisa|homer)\b/i.test(l.trim()));
-      if (directiveLine) {
-        try {
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://commander.margebot.com';
-          await fetch(`${appUrl}/api/thread/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb' },
-            body: JSON.stringify({ thread: 'team', message: directiveLine.trim(), sender: 'MARGE' }),
-            signal: AbortSignal.timeout(15000)
-          });
-          console.log('[Worker] Marge directive re-routed:', directiveLine.slice(0, 80));
-        } catch(e) { console.error('[Worker] Marge re-route failed:', e.message); }
-      }
-    }
+    // Marge directive re-route handled by universal re-route below
 
     // 3. Append Full Reply Event
     await prisma.event.create({
@@ -170,6 +155,23 @@ async function processRelayRequest(job) {
         }
       }
     });
+
+    // Universal agent directive re-routing — if any agent response starts a line with @lisa/@homer/@flanders, fire it
+    if (typeof replyText === 'string') {
+      const agentDirectiveLine = replyText.split('\n').find(l => /^@(lisa|homer|flanders)\b/i.test(l.trim()));
+      if (agentDirectiveLine) {
+        try {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://commander.margebot.com';
+          await fetch(`${appUrl}/api/thread/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb' },
+            body: JSON.stringify({ thread: 'team', message: agentDirectiveLine.trim(), sender: targetAgent }),
+            signal: AbortSignal.timeout(15000)
+          });
+          console.log(`[Worker] ${targetAgent} directive re-routed:`, agentDirectiveLine.slice(0, 80));
+        } catch(e) { console.error(`[Worker] ${targetAgent} directive re-route failed:`, e.message); }
+      }
+    }
 
     if (
       targetAgent === 'MARGE' &&
