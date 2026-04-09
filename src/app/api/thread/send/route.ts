@@ -54,6 +54,7 @@ export async function POST(req: Request) {
     const isMaggieTag = tag("@maggie");
     const isTeamTag = tag("@team");
     const isMargeTag = tag("@marge") || isTeamTag;
+    const isFlandersTag = tag("@flanders");
     const isLisaTag = tag("@lisa") || isTeamTag;
     const isHomerTag = tag("@homer") || isTeamTag;
 
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
     }
 
     // Maggie Auto-Classification + Routing (No @mention, SMS sender)
-    const mentions = ["@marge", "@lisa", "@homer", "@bart", "@maggie", "@team"];
+    const mentions = ["@marge", "@lisa", "@homer", "@bart", "@maggie", "@team", "@flanders"];
     const hasMention = mentions.some(m => msgLower.includes(m));
 
     // Determine Base URL dynamically from request
@@ -204,6 +205,7 @@ export async function POST(req: Request) {
         if (isHomerTag && !isMaggieTag) targets.push("homer");
         if (isMargeTag) { targets.push("marge"); isAsyncTrigger = true; }
         if (isLisaTag) targets.push("lisa");
+        if (isFlandersTag) targets.push("flanders");
       } else if (["HOMER","MARGE","LISA"].includes(senderNorm)) {
         if (isTeamTag) {
           targets.push("homer","marge","lisa");
@@ -312,6 +314,8 @@ export async function POST(req: Request) {
           }
         } else if (agent === "lisa") {
           enhancedMessage = `[TEAM THREAD - be concise, max 3 sentences] ${message}`;
+        } else if (agent === "flanders") {
+          enhancedMessage = `[TEAM THREAD] ${message}`;
         }
         
         const res = await fetch(`${baseUrl}/api/relay/${agent}`, {
