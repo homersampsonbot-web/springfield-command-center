@@ -339,6 +339,10 @@ export async function POST(req: Request) {
         try { data = JSON.parse(raw); } catch (e) { data = { error: "Non-JSON", preview: raw.slice(0, 200) }; }
 
         let text = data.response || data.reply || data.message || data.error || JSON.stringify(data);
+        // Flanders: gateway re-route handles posting the directive — skip DB save here to avoid duplicates
+        if (agent === "flanders") {
+          return { message: text, payload: { participant: "FLANDERS", source: "relay" } };
+        }
         return await prisma.event.create({
           data: {
             scope: "SYSTEM",
@@ -373,7 +377,20 @@ export async function POST(req: Request) {
       if (isAsyncTrigger && (agent === "marge" || agent === "lisa")) {
         responses.push(await triggerAsyncRelay(agent));
       } else {
-        responses.push(await callRelaySync(agent));
+        const resp = await callRelaySync(agent);
+        responses.push(resp);
+        // If Lisa responds with [NEEDS MARGE REVIEW], re-fire through routing so Marge escalation triggers
+        if (agent === "lisa" && resp?.message?.includes("[NEEDS MARGE REVIEW]")) {
+          try {
+            const rerouteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://commander.margebot.com";
+            fetch(`${rerouteUrl}/api/thread/send`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
+              body: JSON.stringify({ thread: "team", message: resp.message, sender: "LISA" }),
+              signal: AbortSignal.timeout(15000),
+            }).catch((e: any) => console.error("[Lisa->Marge escalation] failed:", e.message));
+          } catch(e) {}
+        }
       }
     }
 
