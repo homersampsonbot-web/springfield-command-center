@@ -339,10 +339,6 @@ export async function POST(req: Request) {
         try { data = JSON.parse(raw); } catch (e) { data = { error: "Non-JSON", preview: raw.slice(0, 200) }; }
 
         let text = data.response || data.reply || data.message || data.error || JSON.stringify(data);
-        // Flanders: gateway re-route handles posting the directive — skip DB save here to avoid duplicates
-        if (agent === "flanders") {
-          return { message: text, payload: { participant: "FLANDERS", source: "relay" } };
-        }
         return await prisma.event.create({
           data: {
             scope: "SYSTEM",
