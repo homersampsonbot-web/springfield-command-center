@@ -53,7 +53,13 @@ export async function POST(req: Request) {
     const tag = (t: string) => msgLower.includes(t);
     const isMaggieTag = tag("@maggie");
     const isTeamTag = tag("@team");
-    const isMargeTag = tag("@marge") || isTeamTag;
+    // isMargeTag only fires if @marge appears as a directive (start of message/line), not mid-sentence
+    const hasMargeMention = tag("@marge");
+    const isMargeDirective = hasMargeMention && (
+      msgLower.trimStart().startsWith("@marge") ||
+      message.split("\n").some((l: string) => l.trim().toLowerCase().startsWith("@marge"))
+    );
+    const isMargeTag = isMargeDirective || isTeamTag;
     const isFlandersTag = tag("@flanders");
     const isLisaTag = tag("@lisa") || isTeamTag;
     const isHomerTag = tag("@homer") || isTeamTag;
@@ -372,24 +378,7 @@ export async function POST(req: Request) {
     }
 
 
-    // If Flanders responded with a directive targeting another agent, re-route it
-    if (targets.includes("flanders")) {
-      const flandersEvent = responses.find((r: any) => r?.payload?.participant === "FLANDERS");
-      const flandersText = flandersEvent?.message || "";
-      const hasDirective = flandersText.includes("@lisa") || flandersText.includes("@homer") || flandersText.includes("@marge");
-      if (hasDirective) {
-        try {
-          const rerouteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://commander.margebot.com";
-          await fetch(`${rerouteUrl}/api/thread/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
-            body: JSON.stringify({ thread: "team", message: flandersText, sender: "FLANDERS" }),
-            signal: AbortSignal.timeout(15000),
-          });
-          console.log("[Flanders re-route] fired for:", flandersText.slice(0, 80));
-        } catch(e) { console.error("[Flanders re-route] failed:", e); }
-      }
-    }
+    // Flanders re-route handled by gateway — no Vercel-side re-route needed
 
     if (isMaggieTag && (senderNorm === "SMS" || senderNorm === "FLANDERS")) {
       try {
