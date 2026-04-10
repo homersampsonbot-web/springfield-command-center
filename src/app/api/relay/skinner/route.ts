@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
-  const key = req.headers.get('x-springfield-key');
   const body = await req.json();
   try {
     const res = await fetch('https://homer.margebot.com/api/skinner-relay', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-springfield-key': key || process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb'
+        'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb'
       },
       body: JSON.stringify(body)
     });
