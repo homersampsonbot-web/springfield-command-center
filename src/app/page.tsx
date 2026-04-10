@@ -279,6 +279,23 @@ import JarvisKPI from '@/components/jarvis/JarvisKPI';
 function CommandWorkspace({ messages, setMessages }: { messages: {role:string,text:string,ts:string}[], setMessages: React.Dispatch<React.SetStateAction<{role:string,text:string,ts:string}[]>> }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (messages.length > 0) return;
+    setLoading(true);
+    fetch('/api/thread/messages?thread=command&limit=50', {
+      headers: { 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' }
+    }).then(r => r.json()).then(data => {
+      const msgs = Array.isArray(data) ? data : (data.messages || []);
+      if (msgs.length > 0) {
+        setMessages(msgs.map((m: any) => ({
+          role: m.payload?.sender === 'SMS' ? 'sms' : 'skinner',
+          text: m.message || '',
+          ts: new Date(m.createdAt || Date.now()).toLocaleTimeString()
+        })));
+      }
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -292,13 +309,26 @@ function CommandWorkspace({ messages, setMessages }: { messages: {role:string,te
     setSending(true);
     setMessages(m => [...m, { role: 'sms', text, ts: new Date().toLocaleTimeString() }]);
     try {
+      // Save SMS message to thread
+      await fetch('/api/thread/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
+        body: JSON.stringify({ thread: 'command', message: text, sender: 'SMS' })
+      }).catch(() => {});
       const res = await fetch('/api/relay/skinner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
         body: JSON.stringify({ message: text })
       });
       const data = await res.json();
-      setMessages(m => [...m, { role: 'skinner', text: data.response || data.error || 'No response', ts: new Date().toLocaleTimeString() }]);
+      const reply = data.response || data.error || 'No response';
+      // Save Skinner response to thread
+      await fetch('/api/thread/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
+        body: JSON.stringify({ thread: 'command', message: reply, sender: 'SKINNER' })
+      }).catch(() => {});
+      setMessages(m => [...m, { role: 'skinner', text: reply, ts: new Date().toLocaleTimeString() }]);
     } catch(e: any) {
       setMessages(m => [...m, { role: 'skinner', text: 'Error: ' + e.message, ts: new Date().toLocaleTimeString() }]);
     }
@@ -308,7 +338,8 @@ function CommandWorkspace({ messages, setMessages }: { messages: {role:string,te
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
       <div style={{ flex:1, overflowY:'auto', padding:'8px 4px', display:'flex', flexDirection:'column', gap:8 }}>
-        {messages.length === 0 && (
+        {loading && <div style={{ color:'rgba(255,217,15,0.5)', fontSize:11, textAlign:'center', marginTop:20 }}>Loading conversation...</div>}
+        {!loading && messages.length === 0 && (
           <div style={{ color:'rgba(255,255,255,0.3)', fontSize:12, textAlign:'center', marginTop:20 }}>
             Direct line to Skinner. He has SSH access and can act on your behalf.
           </div>
