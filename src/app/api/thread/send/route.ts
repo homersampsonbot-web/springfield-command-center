@@ -206,13 +206,13 @@ export async function POST(req: Request) {
       }
 
       // Tagged flow (existing behavior)
-      if (senderNorm === "SMS" || senderNorm === "FLANDERS") {
+      if (senderNorm === "SMS" || senderNorm === "FLANDERS" || senderNorm === "SKINNER") {
         if (!isMargeTag && !isLisaTag && !isMaggieTag && !isTeamTag && !isHomerTag && !isFlandersTag) targets.push("homer");
         if (isHomerTag && !isMaggieTag) targets.push("homer");
         if (isMargeTag) { targets.push("marge"); isAsyncTrigger = true; }
         if (isLisaTag) targets.push("lisa");
         if (isFlandersTag) targets.push("flanders");
-      } else if (["HOMER","MARGE","LISA"].includes(senderNorm)) {
+      } else if (["HOMER","MARGE","LISA","SKINNER"].includes(senderNorm)) {
         if (isTeamTag) {
           targets.push("homer","marge","lisa");
         } else {
