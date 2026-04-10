@@ -295,7 +295,7 @@ function CommandWorkspace() {
     try {
       const res = await fetch('https://homer.margebot.com/api/skinner-relay', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6797fb' },
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
         body: JSON.stringify({ message: text })
       });
       const data = await res.json();
