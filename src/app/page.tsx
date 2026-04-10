@@ -275,6 +275,73 @@ import JarvisDivider from '@/components/jarvis/JarvisDivider';
 import JarvisConsole from '@/components/jarvis/JarvisConsole';
 import JarvisKPI from '@/components/jarvis/JarvisKPI';
 
+
+function CommandWorkspace() {
+  const [messages, setMessages] = React.useState<{role:string,text:string,ts:string}[]>([]);
+  const [input, setInput] = React.useState('');
+  const [sending, setSending] = React.useState(false);
+  const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const send = async () => {
+    if (!input.trim() || sending) return;
+    const text = input.trim();
+    setInput('');
+    setSending(true);
+    setMessages(m => [...m, { role: 'sms', text, ts: new Date().toLocaleTimeString() }]);
+    try {
+      const res = await fetch('https://homer.margebot.com/api/skinner-relay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6797fb' },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      setMessages(m => [...m, { role: 'skinner', text: data.response || data.error || 'No response', ts: new Date().toLocaleTimeString() }]);
+    } catch(e: any) {
+      setMessages(m => [...m, { role: 'skinner', text: 'Error: ' + e.message, ts: new Date().toLocaleTimeString() }]);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
+      <div style={{ flex:1, overflowY:'auto', padding:'8px 4px', display:'flex', flexDirection:'column', gap:8 }}>
+        {messages.length === 0 && (
+          <div style={{ color:'rgba(255,255,255,0.3)', fontSize:12, textAlign:'center', marginTop:20 }}>
+            Direct line to Skinner. He has SSH access and can act on your behalf.
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} style={{ display:'flex', flexDirection:'column', alignItems: m.role === 'sms' ? 'flex-end' : 'flex-start' }}>
+            <div style={{ maxWidth:'85%', padding:'8px 12px', borderRadius: m.role === 'sms' ? '12px 12px 2px 12px' : '12px 12px 12px 2px', background: m.role === 'sms' ? '#FFD90F' : 'rgba(255,255,255,0.08)', color: m.role === 'sms' ? '#000' : '#fff', fontSize:13, whiteSpace:'pre-wrap' }}>
+              {m.text}
+            </div>
+            <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{m.role === 'sms' ? 'YOU' : 'SKINNER'} {m.ts}</span>
+          </div>
+        ))}
+        {sending && <div style={{ color:'rgba(255,217,15,0.5)', fontSize:11 }}>Skinner is thinking...</div>}
+        <div ref={bottomRef} />
+      </div>
+      <div style={{ display:'flex', gap:8, padding:'8px 0 0', flexShrink:0 }}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+          placeholder="Message Skinner..."
+          style={{ flex:1, padding:'10px 12px', borderRadius:10, border:'1px solid rgba(255,217,15,0.2)', background:'rgba(0,0,0,0.3)', color:'#fff', fontSize:13, outline:'none' }}
+        />
+        <button onClick={send} disabled={sending}
+          style={{ padding:'10px 16px', borderRadius:10, background: sending ? 'rgba(255,217,15,0.3)' : '#FFD90F', color:'#000', fontFamily:'Permanent Marker', fontSize:12, border:'none', cursor: sending ? 'not-allowed' : 'pointer' }}>
+          SEND
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [pin, setPin] = useState('');
   const [auth, setAuth] = useState(false);
@@ -555,8 +622,8 @@ export default function Home() {
           >
             <div style={{ display:'flex', flexDirection:'column', gap:8, height:'100%', minHeight:0 }}>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap', flexShrink:0 }}>
-                {['debate','relay','team','terminal','kanban'].map(tab => (
-                  <button key={tab} onClick={() => { if (tab === 'debate') window.location.href = '/debate'; else if (tab === 'kanban') window.location.href = '/kanban'; else setActiveTab(tab); }}
+                {['team','action-items','command','kanban'].map(tab => (
+                  <button key={tab} onClick={() => { if (tab === 'kanban') window.location.href = '/kanban'; else if (tab === 'action-items') window.location.href = '/action-items'; else setActiveTab(tab); }}
                     style={{ flex:1, minHeight:32, padding:6, borderRadius:8, border:'1px solid rgba(255,217,15,0.1)', background: activeTab===tab ? 'rgba(255,217,15,0.1)' : 'rgba(0,0,0,0.2)', color: activeTab===tab ? '#FFD90F' : 'rgba(255,255,255,0.6)', fontFamily:'Permanent Marker', fontSize: 11 }}>
                     {tab.toUpperCase()}
                   </button>
@@ -582,9 +649,8 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-                {activeTab === 'relay' && <RelayWorkspace />}
                 {activeTab === 'team' && <TeamWorkspace systemHealth={systemHealth} maggieStatus={maggieStatus} isMobile={isMobile} />}
-                {activeTab === 'terminal' && <div style={{ flex:1, background:'#000', borderRadius:10, padding:10, color:'#00FF41', fontFamily:'monospace', fontSize:11 }}>Standby…</div>}
+                {activeTab === 'command' && <CommandWorkspace />}
               </div>
             </div>
           </JarvisPanel>
