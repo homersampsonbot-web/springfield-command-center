@@ -293,7 +293,7 @@ function CommandWorkspace() {
     setSending(true);
     setMessages(m => [...m, { role: 'sms', text, ts: new Date().toLocaleTimeString() }]);
     try {
-      const res = await fetch('https://homer.margebot.com/api/skinner-relay', {
+      const res = await fetch('/api/relay/skinner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
         body: JSON.stringify({ message: text })
