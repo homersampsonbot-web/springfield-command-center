@@ -276,8 +276,7 @@ import JarvisConsole from '@/components/jarvis/JarvisConsole';
 import JarvisKPI from '@/components/jarvis/JarvisKPI';
 
 
-function CommandWorkspace() {
-  const [messages, setMessages] = useState<{role:string,text:string,ts:string}[]>([]);
+function CommandWorkspace({ messages, setMessages }: { messages: {role:string,text:string,ts:string}[], setMessages: React.Dispatch<React.SetStateAction<{role:string,text:string,ts:string}[]>> }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -354,6 +353,7 @@ export default function Home() {
   const [activeDebateCount, setActiveDebateCount] = useState(0);
 
   const [activeTab, setActiveTab] = useState('team');
+  const [skinnerMessages, setSkinnerMessages] = useState<{role:string,text:string,ts:string}[]>([]);
   const [mode, setMode] = useState<'DIRECTIVE'|'AUTO_PLAN'>('DIRECTIVE');
   const [bootDegraded, setBootDegraded] = useState(false);
 
@@ -650,7 +650,7 @@ export default function Home() {
                   </div>
                 )}
                 {activeTab === 'team' && <TeamWorkspace systemHealth={systemHealth} maggieStatus={maggieStatus} isMobile={isMobile} />}
-                {activeTab === 'command' && <CommandWorkspace />}
+                {activeTab === 'command' && <CommandWorkspace messages={skinnerMessages} setMessages={setSkinnerMessages} />}
               </div>
             </div>
           </JarvisPanel>
