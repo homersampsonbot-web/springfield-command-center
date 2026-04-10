@@ -277,12 +277,12 @@ import JarvisKPI from '@/components/jarvis/JarvisKPI';
 
 
 function CommandWorkspace() {
-  const [messages, setMessages] = React.useState<{role:string,text:string,ts:string}[]>([]);
-  const [input, setInput] = React.useState('');
-  const [sending, setSending] = React.useState(false);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<{role:string,text:string,ts:string}[]>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
