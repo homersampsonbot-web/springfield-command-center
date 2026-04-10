@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const type = searchParams.get("type");
     const requestId = searchParams.get("requestId");
 
-    if (thread !== "team") {
+    if (thread !== "team" && thread !== "command") {
       return NextResponse.json({ error: "Invalid thread" }, { status: 400 });
     }
 
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
       type: type || "THREAD_MESSAGE",
       payload: {
         path: ["thread"],
-        equals: "team"
+        equals: thread
       }
     };
 

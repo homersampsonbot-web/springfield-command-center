@@ -241,7 +241,7 @@ export async function POST(req: Request) {
       }
     });
 
-    if (!message || thread !== "team") {
+    if (!message || (thread !== "team" && thread !== "command")) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
