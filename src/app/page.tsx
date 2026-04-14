@@ -289,7 +289,7 @@ function CommandWorkspace({ messages, setMessages }: { messages: {role:string,te
       const msgs = Array.isArray(data) ? data : (data.messages || []);
       if (msgs.length > 0) {
         setMessages(msgs.map((m: any) => ({
-          role: m.payload?.sender === 'SMS' ? 'sms' : 'skinner',
+          role: (m.payload?.participant || m.payload?.sender || '').toUpperCase() === 'SMS' ? 'sms' : 'skinner',
           text: m.message || '',
           ts: new Date(m.createdAt || Date.now()).toLocaleTimeString()
         })));
