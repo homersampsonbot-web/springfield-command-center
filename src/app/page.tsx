@@ -646,7 +646,7 @@ export default function Home() {
         </div>
 
         {/* CENTER: Command Podium */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight: 0, width:'100%' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight: 0, width:'100%', height: '100%' }}>
           <JarvisPanel 
             title="COMMAND PODIUM" 
             actions={<button onClick={() => setMode('DIRECTIVE')} style={{ fontSize:10, padding:'6px 10px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>RESET</button>}
