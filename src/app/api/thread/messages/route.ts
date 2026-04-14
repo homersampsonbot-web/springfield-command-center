@@ -4,41 +4,21 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-
     const thread = searchParams.get("thread");
     const limit = parseInt(searchParams.get("limit") || "50");
-
-    const participant = searchParams.get("participant");
-    const source = searchParams.get("source");
-    const type = searchParams.get("type");
-    const requestId = searchParams.get("requestId");
 
     if (thread !== "team" && thread !== "command") {
       return NextResponse.json({ error: "Invalid thread" }, { status: 400 });
     }
 
-    const where: any = {
-      scope: "SYSTEM",
-      type: type || "THREAD_MESSAGE",
-      payload: {
-        path: ["thread"],
-        equals: thread
-      }
-    };
-
-    if (participant) {
-      where.payload = {
-        ...where.payload,
-        path: ["participant"],
-        equals: participant
-      };
-    }
-
-    const messages = await prisma.event.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
+    const messages = await prisma.$queryRawUnsafe(`
+      SELECT * FROM "Event"
+      WHERE scope = 'SYSTEM'
+      AND type = 'THREAD_MESSAGE'
+      AND payload->>'thread' = $1
+      ORDER BY "createdAt" DESC
+      LIMIT $2
+    `, thread, limit) as any[];
 
     return NextResponse.json(messages.reverse());
   } catch (e: any) {
