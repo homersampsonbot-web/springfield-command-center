@@ -96,7 +96,7 @@ function TeamWorkspace({ systemHealth, maggieStatus, isMobile }: { systemHealth:
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 5000);
+    const interval = setInterval(fetchMessages, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -498,7 +498,7 @@ export default function Home() {
       fetchJobs();
       fetchDebates();
       fetchMaggieActivity();
-    }, isMobile ? 5000 : 10000);
+    }, isMobile ? 30000 : 60000);
 
     return () => clearInterval(interval);
   }, [auth, activeDebateCount, activeJobs.length, systemHealth?.maggieState, isMobile]);
