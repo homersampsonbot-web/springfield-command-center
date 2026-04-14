@@ -253,7 +253,7 @@ export async function POST(req: Request) {
         level: "INFO",
         message: message,
         payload: {
-          thread: "team",
+          thread: thread,
           participant: senderNorm,
           source: senderNorm === "SMS" ? "user" : "relay",
           target: isTeamTag ? "TEAM" : (isMargeTag ? "MARGE" : isLisaTag ? "LISA" : isHomerTag ? "HOMER" : null),
