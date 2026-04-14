@@ -681,7 +681,7 @@ export default function Home() {
                   </div>
                 )}
                 {activeTab === 'team' && <TeamWorkspace systemHealth={systemHealth} maggieStatus={maggieStatus} isMobile={isMobile} />}
-                {activeTab === 'command' && <CommandWorkspace messages={skinnerMessages} setMessages={setSkinnerMessages} />}
+                {activeTab === 'command' && <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, height:'100%' }}><CommandWorkspace messages={skinnerMessages} setMessages={setSkinnerMessages} /></div>}
               </div>
             </div>
           </JarvisPanel>
