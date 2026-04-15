@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb"
       },
       body: JSON.stringify({ ...body, message: enhanced }),
-      signal: AbortSignal.timeout(55000),
+      signal: AbortSignal.timeout(280000),
     });
 
     const raw = await res.text();

@@ -1,14 +1,26 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/directive", "destination": "/api/directive/route.js" },
-    { "source": "/api/results", "destination": "/api/results/route.js" }
+    {
+      "source": "/api/directive",
+      "destination": "/api/directive/route.js"
+    },
+    {
+      "source": "/api/results",
+      "destination": "/api/results/route.js"
+    }
   ],
   "functions": {
     "src/app/api/relay/skinner/route.ts": {
       "maxDuration": 300
     },
     "src/app/api/relay/marge/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/relay/flanders/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/thread/send/route.ts": {
       "maxDuration": 300
     }
   }
