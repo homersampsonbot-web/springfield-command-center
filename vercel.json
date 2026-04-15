@@ -23,5 +23,6 @@
     "src/app/api/thread/send/route.ts": {
       "maxDuration": 300
     }
-  }
+  },
+  "fluid": true
 }
