@@ -280,7 +280,7 @@ export async function POST(req: Request) {
 
       const job = await prisma.job.create({
         data: {
-          title: `RELAY_REQUEST:${requestId}`,
+          title: `RELAY_REQUEST:${requestId}:${agent.toUpperCase()}`,
           description: `Async relay for ${agent.toUpperCase()}: ${message.slice(0, 100)}...`,
           owner: agent.toUpperCase() as any,
           status: "QUEUED",

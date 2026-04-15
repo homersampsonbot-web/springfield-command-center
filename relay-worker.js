@@ -67,7 +67,8 @@ async function processRelayRequest(job) {
 
     // 3. Call Actual Relay
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    const timeoutMs = targetAgent === 'MARGE' ? 240000 : 120000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
@@ -158,6 +159,7 @@ async function processRelayRequest(job) {
 
     // Universal agent directive re-routing — if any agent response starts a line with @lisa/@homer/@flanders, fire it
     if (typeof replyText === 'string') {
+      // Only re-route @lisa, @homer, @flanders — NOT @marge (thread/send handles [NEEDS MARGE REVIEW] already)
       const agentDirectiveLine = replyText.split('\n').find(l => /^@(lisa|homer|flanders)\b/i.test(l.trim()));
       if (agentDirectiveLine) {
         try {
