@@ -642,14 +642,5 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer Event Stream */}
-      <div style={{ flexShrink:0, position:'relative', zIndex:1, display: isMobile ? 'none' : 'block', marginTop: isMobile ? 72 : 0 }}>
-        <JarvisPanel title="EVENT STREAM" actions={<button onClick={() => setEventCollapsed(!eventCollapsed)} style={{ fontSize:10, padding:'6px 10px', borderRadius:8, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>{eventCollapsed ? 'EXPAND' : 'COLLAPSE'}</button>}>
-          {!eventCollapsed && (
-            <JarvisConsole lines={maggieEvents.map(e => ({ ts: new Date(e.ts).toLocaleTimeString(), level: e.level || 'INFO', message: e.message }))} />
-          )}
-        </JarvisPanel>
-      </div>
-    </div>
   );
 }
