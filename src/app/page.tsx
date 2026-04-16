@@ -599,52 +599,6 @@ export default function Home() {
 
       {/* Main Grid */}
       <div style={{ display:'flex', flex:1, gap:16, minHeight:0, flexDirection:'row' }}>
-        {/* LEFT: Activity & Jobs */}
-        <div style={{ display: isMobile ? 'none' : 'flex', flexDirection:'column', gap:12, width:'320px', minHeight:0, flexShrink:0 }}>
-          <JarvisPanel 
-            title={isMobile && activityCollapsed ? `ACTIVITY (${maggieActivity.length})` : "ACTIVITY"}
-            actions={
-              <button onClick={() => setActivityCollapsed(!activityCollapsed)} style={{ fontSize:10, padding:'4px 8px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:6, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>
-                {activityCollapsed ? 'EXPAND' : 'COLLAPSE'}
-              </button>
-            }
-          >
-            {!activityCollapsed && (
-              <div style={{ display:'flex', flexDirection:'column', gap:8, maxHeight: isMobile ? 100 : 300, overflowY:'auto' }}>
-                {maggieActivity.map(event => (
-                  <div key={event.id} onClick={() => setSelectedEvent(event)} style={{ padding:8, borderRadius:8, background:'rgba(0,0,0,0.2)', border:'1px solid rgba(255,255,255,0.05)', cursor:'pointer' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:2 }}>
-                      <span style={{ fontSize:10, color: event.level === 'ERROR' ? '#FF4444' : '#FFD90F', fontWeight:700 }}>✦ {event.type}</span>
-                      <span style={{ fontSize:9, color:'var(--jarvis-text-dim)' }}>{new Date(event.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.85)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{event.message}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </JarvisPanel>
-
-          <JarvisPanel 
-            title={isMobile && jobsCollapsed ? `JOBS (${activeJobs.length})` : "JOBS"}
-            actions={
-              <button onClick={() => setJobsCollapsed(!jobsCollapsed)} style={{ fontSize:10, padding:'4px 8px', border:'1px solid rgba(255,217,15,0.3)', borderRadius:6, background:'rgba(255,217,15,0.1)', color:'#FFD90F' }}>
-                {jobsCollapsed ? 'EXPAND' : 'COLLAPSE'}
-              </button>
-            }
-          >
-            {!jobsCollapsed && (
-              <div style={{ display:'flex', flexDirection:'column', gap:10, maxHeight: isMobile ? 100 : 300, overflowY:'auto' }}>
-                {activeJobs.map(job => (
-                  <div key={job.id} style={{ padding:10, borderRadius:10, background:'rgba(0,0,0,0.25)', border:'1px solid rgba(255,217,15,0.15)' }}>
-                    <div style={{ fontWeight:700, fontSize:12 }}>{job.title}</div>
-                    <div style={{ fontSize:11, color:'var(--jarvis-text-dim)', display:'flex', justifyContent:'space-between' }}><span>{job.owner}</span><span>{job.status}</span></div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </JarvisPanel>
-        </div>
-
         {/* CENTER: Command Podium */}
         <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, minHeight: 0, width:'100%', height: '100%' }}>
           <JarvisPanel 
