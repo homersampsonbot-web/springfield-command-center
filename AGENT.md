@@ -35,3 +35,15 @@ Good: `python3 -c "...edit script..."`
 Bad: `cat page.tsx` (wrong path)
 Bad: `read_file src/app/page.tsx` (not a shell command)
 Bad: `implement the UI changes` (too vague)
+
+## Gateway Files (NOT in REPO_DIR)
+These files are in /home/ubuntu/springfield-gateway/ — use absolute paths:
+- dead-tasks.json: /home/ubuntu/springfield-gateway/dead-tasks.json
+- executor.js: /home/ubuntu/springfield-gateway/executor.js
+- marge-relay.js: /home/ubuntu/springfield-gateway/marge-relay.js
+- lisa-relay.js: /home/ubuntu/springfield-gateway/lisa-relay.js
+- flanders-relay.js: /home/ubuntu/springfield-gateway/flanders-relay.js
+
+## Prisma Schema
+- Location: prisma/schema.prisma (relative to REPO_DIR)
+- Read with: cat prisma/schema.prisma

@@ -50,6 +50,7 @@ model Job {
   attempts         Int        @default(0)
   lastError        String?
   lastEventAt      DateTime?
+  steps            Json?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   events           Event[]    @relation("JobEvents")
