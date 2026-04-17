@@ -160,17 +160,19 @@ async function processRelayRequest(job) {
     // Universal agent directive re-routing — if any agent response starts a line with @lisa/@homer/@flanders, fire it
     if (typeof replyText === 'string') {
       // Only re-route @lisa, @homer, @flanders — NOT @marge (thread/send handles [NEEDS MARGE REVIEW] already)
-      const agentDirectiveLine = replyText.split('\n').find(l => /^@(lisa|homer|flanders)\b/i.test(l.trim()));
-      if (agentDirectiveLine) {
+      // Fire ALL @agent directives, not just the first one
+      const agentDirectiveLines = replyText.split('\n').filter(l => /^@(lisa|homer|flanders)\b/i.test(l.trim()));
+      const agentDirectiveLine = agentDirectiveLines[0]; // keep for backward compat
+      for (const directive of agentDirectiveLines) {
         try {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://commander.margebot.com';
           await fetch(`${appUrl}/api/thread/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb' },
-            body: JSON.stringify({ thread: 'team', message: agentDirectiveLine.trim(), sender: targetAgent }),
+            body: JSON.stringify({ thread: 'team', message: directive.trim(), sender: targetAgent }),
             signal: AbortSignal.timeout(15000)
           });
-          console.log(`[Worker] ${targetAgent} directive re-routed:`, agentDirectiveLine.slice(0, 80));
+          console.log(`[Worker] ${targetAgent} directive re-routed:`, directive.slice(0, 80));
         } catch(e) { console.error(`[Worker] ${targetAgent} directive re-route failed:`, e.message); }
       }
     }
