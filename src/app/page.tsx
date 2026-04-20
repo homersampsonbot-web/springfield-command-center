@@ -284,7 +284,7 @@ function CommandWorkspace({ messages, setMessages }: { messages: {role:string,te
     if (messages.length > 0) return;
     setLoading(true);
     fetch('/api/thread/messages?thread=command&limit=50', {
-      headers: { 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' }
+      headers: { 'x-springfield-key': '314e60bced474eb381ac8655eefd3525' }
     }).then(r => r.json()).then(data => {
       const msgs = Array.isArray(data) ? data : (data.messages || []);
       if (msgs.length > 0) {
@@ -312,12 +312,12 @@ function CommandWorkspace({ messages, setMessages }: { messages: {role:string,te
       // Save SMS message to thread
       await fetch('/api/thread/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': '314e60bced474eb381ac8655eefd3525' },
         body: JSON.stringify({ thread: 'command', message: text, sender: 'SMS' })
       }).catch(() => {});
       const res = await fetch('/api/relay/skinner', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': '314e60bced474eb381ac8655eefd3525' },
         body: JSON.stringify({ message: text })
       });
       const data = await res.json();
@@ -325,7 +325,7 @@ function CommandWorkspace({ messages, setMessages }: { messages: {role:string,te
       // Save Skinner response to thread
       await fetch('/api/thread/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-springfield-key': 'c4c75fe2065fb96842e3690a3a6397fb' },
+        headers: { 'Content-Type': 'application/json', 'x-springfield-key': '314e60bced474eb381ac8655eefd3525' },
         body: JSON.stringify({ thread: 'command', message: reply, sender: 'SKINNER' })
       }).catch(() => {});
       setMessages(m => [...m, { role: 'skinner', text: reply, ts: new Date().toLocaleTimeString() }]);

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
     const res = await fetch(relayUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
+      headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "314e60bced474eb381ac8655eefd3525" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(55000),
     });

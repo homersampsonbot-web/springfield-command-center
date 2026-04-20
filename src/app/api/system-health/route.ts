@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     const gatewayUrl = process.env.HOMER_GATEWAY_URL || "";
-    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "314e60bced474eb381ac8655eefd3525";
 
     const margeRelayUrl = process.env.MARGE_RELAY_URL || "disabled";
     const lisaRelayUrl = process.env.LISA_RELAY_URL || "disabled";

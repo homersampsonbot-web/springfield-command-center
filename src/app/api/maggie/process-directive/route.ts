@@ -5,7 +5,7 @@ import { parseDirectiveToJobs } from "@/lib/maggieProvider";
 async function persistMaggieEvent(payload: { type: string; message?: string; directiveId?: string }) {
   try {
     const gatewayUrl = (process.env.HOMER_GATEWAY_PUBLIC_URL || process.env.HOMER_GATEWAY_URL || "").trim();
-    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+    const gatewayKey = process.env.HOMER_GATEWAY_TOKEN || "314e60bced474eb381ac8655eefd3525";
     if (!gatewayUrl) return;
     await fetch(`${gatewayUrl.replace(/\/$/, "")}/persistence/maggie-event`, {
       method: "POST",

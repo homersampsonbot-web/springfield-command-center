@@ -4,7 +4,7 @@ export async function requireAppAuth(req: Request) {
   // Check for Springfield API Key first (for agent/worker access)
   const headerList = await headers();
   const apiKey = headerList.get("x-springfield-key");
-  const validKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+  const validKey = process.env.HOMER_GATEWAY_TOKEN || "314e60bced474eb381ac8655eefd3525";
 
   if (apiKey === validKey) {
     return; // Authorized via API key

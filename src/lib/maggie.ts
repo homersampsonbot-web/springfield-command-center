@@ -95,7 +95,7 @@ SHAPE:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb'
+            'x-springfield-key': process.env.SPRINGFIELD_KEY || '314e60bced474eb381ac8655eefd3525'
           },
           body: JSON.stringify({
             messages: [{
