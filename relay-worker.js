@@ -71,7 +71,7 @@ async function processRelayRequest(job) {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "c4c75fe2065fb96842e3690a3a6397fb" },
+      headers: { "Content-Type": "application/json", "x-springfield-key": process.env.SPRINGFIELD_KEY || "314e60bced474eb381ac8655eefd3525" },
       body: JSON.stringify({ message: fullMessage }),
       signal: controller.signal
     });
@@ -168,7 +168,7 @@ async function processRelayRequest(job) {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://commander.margebot.com';
           await fetch(`${appUrl}/api/thread/send`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb' },
+            headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || '314e60bced474eb381ac8655eefd3525' },
             body: JSON.stringify({ thread: 'team', message: directive.trim(), sender: targetAgent }),
             signal: AbortSignal.timeout(15000)
           });
@@ -318,7 +318,7 @@ async function pollFlandersJobs() {
         
         const res = await fetch('http://localhost:3014/relay', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || 'c4c75fe2065fb96842e3690a3a6397fb' },
+          headers: { 'Content-Type': 'application/json', 'x-springfield-key': process.env.SPRINGFIELD_KEY || '314e60bced474eb381ac8655eefd3525' },
           body: JSON.stringify({ 
             message: trimmedMessages.map(m => `${m.role}: ${m.content}`).join('\n\n'),
             system: trimmedSystem
