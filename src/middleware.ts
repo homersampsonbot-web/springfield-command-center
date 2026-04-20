@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   if (isProtected) {
     // 1. Check for API key (x-springfield-key)
     const apiKey = request.headers.get('x-springfield-key');
-    const validKey = process.env.HOMER_GATEWAY_TOKEN || "c4c75fe2065fb96842e3690a3a6397fb";
+    const validKey = process.env.HOMER_GATEWAY_TOKEN || "314e60bced474eb381ac8655eefd3525";
 
     if (apiKey === validKey) {
       return NextResponse.next();
